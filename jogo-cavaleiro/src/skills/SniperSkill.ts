@@ -1,6 +1,6 @@
 import { Skill } from './Skill';
 
-/** Patrulheiro: flecha gigante que atravessa tudo em linha reta até o inimigo mais próximo. */
+/** Atirador de Elite: flecha gigante que atravessa tudo em linha reta até o inimigo mais próximo. */
 export class SniperSkill extends Skill {
   readonly id = 'tiro' as const;
   private timer = 700;

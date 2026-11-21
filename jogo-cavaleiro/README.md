@@ -25,12 +25,12 @@ Todos começam como **Aprendiz**. No **nível 5** escolhem a 1ª classe e no **n
 |---|---|---|
 | Espadachim: Escudo Giratório | Cavaleiro: Golpe Devastador | Paladino: Aura Sagrada |
 | Mago: Bola de Fogo | Bruxo: Corrente de Raios | Professor: Livros Voadores |
-| Arqueiro: Flecha | Caçador: Chuva de Flechas | Patrulheiro: Tiro Certeiro |
+| Arqueiro: Flecha | Atirador de Elite: Tiro Perfurante | Caçador de Sombras: Saraivada das Sombras |
 
 O Golpe de Espada do Aprendiz continua com todos. Cada habilidade vai até o nível 5. Também existem 8 melhorias passivas (Força, Agilidade, Alcance, Vitalidade, Regeneração, Botas, Ímã, Armadura).
 
 ## Sprites desenhados à mão
-Aprendiz, Espadachim, Mago, Cavaleiro, Paladino, Bruxo e Professor usam sprites recortados das imagens enviadas. A fonte em PNG fica em `sprites/` e o jogo usa as versões WebP de `src/assets/`, registradas em `src/sprites.ts`. Os arqueiros e os monstros ainda usam a arte gerada em `src/art.ts`.
+Todos os heróis usam sprites recortados das imagens enviadas. A fonte em PNG fica em `sprites/` e o jogo usa as versões WebP de `src/assets/`, registradas em `src/sprites.ts`. Os monstros ainda usam a arte gerada em `src/art.ts`.
 
 ## Inimigos e chefes
 Gosma, Morcego, Cogumelo Andante, Esqueleto, Fantasma, Orc e Cavaleiro Negro (elite) aparecem conforme o tempo passa. A cada minuto vem uma horda. A cada 5 minutos aparece um chefe (Rei Gosma, depois Lorde Esqueleto, e assim por diante), com barra de vida no topo da tela.

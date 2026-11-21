@@ -121,9 +121,9 @@ export const SKILLS: Record<SkillId, SkillDef> = {
     ],
   },
   chuva: {
-    id: 'chuva', name: 'Chuva de Flechas', maxLevel: 5, color: 0x9ad06a,
+    id: 'chuva', name: 'Saraivada das Sombras', maxLevel: 5, color: 0x9a7ad0,
     levelDesc: [
-      'Uma chuva de flechas cai sobre um grupo de inimigos.',
+      'Flechas sombrias caem sobre um grupo de inimigos.',
       '+3 dano por flecha, área maior.',
       'Duas chuvas por vez! +3 dano.',
       '+3 dano, dura mais.',
@@ -131,7 +131,7 @@ export const SKILLS: Record<SkillId, SkillDef> = {
     ],
   },
   tiro: {
-    id: 'tiro', name: 'Tiro Certeiro', maxLevel: 5, color: 0xffe36a,
+    id: 'tiro', name: 'Tiro Perfurante', maxLevel: 5, color: 0xffe36a,
     levelDesc: [
       'Flecha gigante que atravessa tudo em linha reta.',
       '+20 dano, recarga menor.',

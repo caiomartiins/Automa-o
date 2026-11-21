@@ -8,6 +8,9 @@ import paladinoUrl from './assets/paladino.webp?inline';
 import magoUrl from './assets/mago.webp?inline';
 import bruxoUrl from './assets/bruxo.webp?inline';
 import professorUrl from './assets/professor.webp?inline';
+import arqueiroUrl from './assets/arqueiro.webp?inline';
+import atiradorUrl from './assets/atirador.webp?inline';
+import cacadorSombrasUrl from './assets/cacador-sombras.webp?inline';
 
 /**
  * Personagens com arte em PNG (spritesheet de quadros 128x128, pés na linha 122,
@@ -54,6 +57,9 @@ const SHEETS: SheetDef[] = [
   hero('hero-mago', magoUrl, 2, 4, 1, 2, false),
   hero('hero-bruxo', bruxoUrl, 2, 4, 3, 3),
   hero('hero-professor', professorUrl, 2, 3, 2, 2),
+  hero('hero-arqueiro', arqueiroUrl, 2, 4, 1, 2),
+  hero('hero-atirador', atiradorUrl, 3, 3, 1, 1),
+  hero('hero-cacador-sombras', cacadorSombrasUrl, 2, 3, 1, 2, false),
   {
     key: 'hero-aprendiz',
     url: aprendizUrl,

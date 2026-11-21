@@ -73,18 +73,18 @@ export const CLASSES: Record<ClassId, ClassDef> = {
 
   // ---- Arqueiro → Caçador ou Patrulheiro
   arqueiro: {
-    id: 'arqueiro', name: 'Arqueiro', texture: 'hero-recruta', minLevel: PROFESSION_LEVEL,
+    id: 'arqueiro', name: 'Arqueiro', texture: 'hero-arqueiro', minLevel: PROFESSION_LEVEL,
     description: 'Ágil e certeiro: atira flechas no inimigo mais próximo. +15 Velocidade.',
     statBonus: { speed: 15 }, grantsSkill: 'flecha', choices: ['cacador', 'patrulheiro'],
   },
   cacador: {
-    id: 'cacador', name: 'Caçador', texture: 'hero-cacador', minLevel: SECOND_CLASS_LEVEL,
-    description: 'Ganha a Chuva de Flechas. +25 Vida, ataques 10% mais rápidos, +15 Velocidade.',
+    id: 'cacador', name: 'Caçador de Sombras', texture: 'hero-cacador-sombras', minLevel: SECOND_CLASS_LEVEL,
+    description: 'Some nas sombras. Ganha a Saraivada das Sombras. +25 Vida, ataques 10% mais rápidos, +15 Velocidade.',
     statBonus: { maxHp: 25, haste: 0.1, speed: 15 }, grantsSkill: 'chuva',
   },
   patrulheiro: {
-    id: 'patrulheiro', name: 'Patrulheiro', texture: 'hero-patrulheiro', minLevel: SECOND_CLASS_LEVEL,
-    description: 'Ganha o Tiro Certeiro. +30 Vida, +25% Dano, +1 Armadura.',
+    id: 'patrulheiro', name: 'Atirador de Elite', texture: 'hero-atirador', minLevel: SECOND_CLASS_LEVEL,
+    description: 'Mira perfeita. Ganha o Tiro Perfurante. +30 Vida, +25% Dano, +1 Armadura.',
     statBonus: { maxHp: 30, might: 0.25, armor: 1 }, grantsSkill: 'tiro',
   },
 };
@@ -109,7 +109,7 @@ export const LINES: Record<LineId, LineDef> = {
   },
   arqueiro: {
     id: 'arqueiro', name: 'Arqueiro', tagline: 'Veloz, ataca de longe',
-    classes: ['arqueiro', 'cacador', 'patrulheiro'], color: 0x7ee07e,
+    classes: ['arqueiro', 'patrulheiro', 'cacador'], color: 0x7ee07e,
   },
 };
 

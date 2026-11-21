@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { Skill } from './Skill';
 
-/** Caçador: chuva de flechas que fere tudo numa área por alguns instantes. */
+/** Caçador de Sombras: saraivada de flechas sombrias que fere tudo numa área. */
 export class ArrowRainSkill extends Skill {
   readonly id = 'chuva' as const;
   private timer = 600;
@@ -24,7 +24,7 @@ export class ArrowRainSkill extends Skill {
       for (let k = 0; k < 3; k++) {
         const a = Math.random() * Math.PI * 2;
         const r = Math.sqrt(Math.random()) * this.radius;
-        this.g.fx.lance(z.x + Math.cos(a) * r, z.y + Math.sin(a) * r - 40, Math.PI / 2, 40, 10, 0xd8f0a0);
+        this.g.fx.lance(z.x + Math.cos(a) * r, z.y + Math.sin(a) * r - 40, Math.PI / 2, 40, 10, 0x6a4a9a);
       }
       for (const e of this.g.queryEnemies(z.x, z.y, this.radius, this.near)) {
         if (e.active && (e.x - z.x) ** 2 + (e.y - z.y) ** 2 <= (this.radius + e.def.radius) ** 2) {
@@ -46,7 +46,7 @@ export class ArrowRainSkill extends Skill {
     Phaser.Utils.Array.Shuffle(targets);
     for (let i = 0; i < this.zonesPerCast; i++) {
       const t = targets[i % targets.length];
-      this.g.fx.ring(t.x, t.y, this.radius, 1, this.ticks * 160 + 100, 0x9ad06a, 0.18);
+      this.g.fx.ring(t.x, t.y, this.radius, 1, this.ticks * 160 + 100, 0x3a2a5a, 0.3);
       this.zones.push({ x: t.x, y: t.y, ticks: this.ticks, next: now + 120 });
     }
   }

@@ -526,47 +526,8 @@ function drawHero(c: Ctx, L: HeroLook, p: Pose) {
   }
 }
 
+/** Visual dos personagens desenhados por código (hoje só o Cavaleiro Negro; os heróis usam sprites) */
 const HEROES: Record<string, HeroLook> = {
-  'hero-espadachim': {
-    skin: '#f7d3b0', hair: '#8a5a32', eye: '#4f8f3a', tunic: '#b98a52', trim: '#e9d9b6',
-    pants: '#6e5a45', boots: '#6b4226', blade: '#c9cfd6', bladeLength: 14,
-  },
-  'hero-guarda': {
-    skin: '#f5d0ad', hair: '#3b4a6b', eye: '#3a6ac0', tunic: '#3e6bb8', trim: '#dfe7f2',
-    pants: '#3a3f4f', boots: '#4a4038', blade: '#dfe5ec', bladeLength: 18, armor: '#aeb8c6', helm: 'cap', helmColor: '#9aa6b5',
-  },
-  'hero-cavaleiro': {
-    skin: '#f7d6b5', hair: '#e6be6a', eye: '#3d7fd6', tunic: '#f2f0ea', trim: '#d6a84a',
-    pants: '#4a4458', boots: '#6b4a2e', blade: '#f3f7ff', bladeLength: 22, armor: '#dfe3ea', circlet: '#e0b43a', cape: '#b3262e',
-  },
-  'hero-aprendiz-magia': {
-    skin: '#f7d3b0', hair: '#c45aa0', eye: '#a040c0', tunic: '#8f7ad8', trim: '#f0e6ff',
-    pants: '#4a3f6a', boots: '#5a3a5a', blade: '#ccc', bladeLength: 0, weapon: 'staff', orb: '#ff9a3a', robe: true,
-  },
-  'hero-mago': {
-    skin: '#f5d0ad', hair: '#9fb4e0', eye: '#3a6ac0', tunic: '#3a4fb0', trim: '#e8c04a',
-    pants: '#2a2f5a', boots: '#3a2a4a', blade: '#ccc', bladeLength: 0, weapon: 'staff', orb: '#7ad8ff', robe: true,
-    hat: 'wizard', hatColor: '#2f3f99',
-  },
-  'hero-arquimago': {
-    skin: '#f7d6b5', hair: '#f0f0f0', eye: '#b040ff', tunic: '#4b1f6f', trim: '#e8c04a',
-    pants: '#2a1a3a', boots: '#3a2030', blade: '#ccc', bladeLength: 0, weapon: 'staff', orb: '#d070ff', robe: true,
-    hat: 'wizard', hatColor: '#3a1658', hatStar: true, cape: '#22123a',
-  },
-  'hero-recruta': {
-    skin: '#f7d3b0', hair: '#e07a2a', eye: '#3a8a5a', tunic: '#6a9a40', trim: '#e9d9b6',
-    pants: '#5a4a35', boots: '#6b4226', blade: '#ccc', bladeLength: 0, weapon: 'bow', bowColor: '#a8743e',
-  },
-  'hero-cacador': {
-    skin: '#f0c9a4', hair: '#5a3a22', eye: '#4f8f3a', tunic: '#8a6a3a', trim: '#c9a46a',
-    pants: '#4a4030', boots: '#4a3020', blade: '#ccc', bladeLength: 0, weapon: 'bow', bowColor: '#8a5a2e',
-    hat: 'hood', hatColor: '#3f6e3a',
-  },
-  'hero-patrulheiro': {
-    skin: '#f7d6b5', hair: '#c8a050', eye: '#2f8a6a', tunic: '#2f5a3a', trim: '#e0b43a',
-    pants: '#2a3a2a', boots: '#4a3020', blade: '#ccc', bladeLength: 0, weapon: 'bow', bowColor: '#6a4a2a',
-    armor: '#a08060', hat: 'hood', hatColor: '#24452c', cape: '#24452c',
-  },
   'en-cavaleiro-negro': {
     skin: '#d9c3b0', hair: '#2a2a33', eye: '#ff3030', tunic: '#2b2733', trim: '#7a2020',
     pants: '#2a2630', boots: '#1f1b22', blade: '#9a2a2a', bladeLength: 22, armor: '#4a4556', helm: 'full', helmColor: '#3d3947', cape: '#3a0f14',
