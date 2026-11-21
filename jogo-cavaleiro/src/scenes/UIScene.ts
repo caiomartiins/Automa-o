@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import type { GameScene } from './GameScene';
 import { CLASSES } from '../data/classes';
 import { SKILLS } from '../data/skills';
-import { isTouch, text } from '../ui';
+import { isPortrait, isTouch, onResize, text } from '../ui';
 
 /** HUD desenhado por cima do jogo */
 export class UIScene extends Phaser.Scene {
@@ -33,15 +33,22 @@ export class UIScene extends Phaser.Scene {
     this.game_ = this.scene.get('Game') as GameScene;
     const { width, height } = this.scale;
     const k = (this.k = isTouch(this) ? 1.4 : 1);
+    const portrait = isPortrait(this);
+    this.lastBars = '';
+    this.lastSecond = -1;
+    this.lastKills = -1;
+    this.lastSkills = '';
 
     this.bars = this.add.graphics();
     this.levelText = text(this, width / 2, 9 * k, '', 14 * k).setOrigin(0.5);
     this.hpText = text(this, 26, 24 * k + 9 * k, '', 13 * k).setOrigin(0, 0.5);
     this.classText = text(this, 16, 50 * k, '', 18 * k);
-    this.timeText = text(this, width / 2, 30 * k, '', 28 * k).setOrigin(0.5, 0);
+    // em pé, o relógio desce para não encostar na barra de vida
+    this.timeText = text(this, width / 2, (portrait ? 80 : 30) * k, '', 28 * k).setOrigin(0.5, 0);
     this.killText = text(this, width - 16, 24 * k, '', 18 * k).setOrigin(1, 0);
-    this.skillText = text(this, 16, height - 16, '', 15 * k).setOrigin(0, 1);
-    this.announceText = text(this, width / 2, 150, '', 30 * k, '#ffd04a').setOrigin(0.5).setAlpha(0);
+    this.skillText = text(this, 16, height - 16, '', 15 * k).setOrigin(0, 1).setWordWrapWidth(width - 32);
+    this.announceText = text(this, width / 2, portrait ? 240 : 150, '', 30 * k, '#ffd04a')
+      .setOrigin(0.5).setAlign('center').setWordWrapWidth(width - 40).setAlpha(0);
     this.pauseText = text(
       this, width / 2, height / 2,
       isTouch(this) ? 'PAUSADO\n\nToque em ▶ para continuar' : 'PAUSADO\n\nP, ESC ou ▶ para continuar',
@@ -63,6 +70,13 @@ export class UIScene extends Phaser.Scene {
     if (this.sys.game.device.fullscreen.available) {
       this.button(width - 16 - btnR * 3 - 12, btnY + btnR, btnR, '⛶', () => this.toggleFullscreen());
     }
+
+    // se o jogo já estava pausado (ex.: HUD recriado ao girar o celular), mantém o aviso
+    if (this.scene.isPaused('Game') && !this.scene.isActive('LevelUp')) {
+      this.pauseText.setVisible(true);
+      this.pauseIcon.setText('▶');
+    }
+    onResize(this, () => this.scene.restart());
 
     this.input.keyboard?.on('keydown-P', () => this.togglePause());
     this.input.keyboard?.on('keydown-ESC', () => this.togglePause());

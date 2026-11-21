@@ -8,7 +8,7 @@ import type { SkillId } from '../data/skills';
 import { rollUpgrades, type Upgrade } from '../data/upgrades';
 import type { Skill } from '../skills/Skill';
 import { createSkill } from '../skills';
-import { isTouch } from '../ui';
+import { isTouch, onResize } from '../ui';
 import { SpatialGrid } from '../spatialGrid';
 import { Fx, FX_DEPTH } from '../fx';
 
@@ -121,6 +121,7 @@ export class GameScene extends Phaser.Scene {
 
     const { width, height } = this.scale;
     this.bg = this.add.tileSprite(0, 0, width, height, 'grama').setOrigin(0).setScrollFactor(0).setDepth(-1e7);
+    onResize(this, () => this.bg.setSize(this.scale.width, this.scale.height));
 
     this.fx = new Fx(this, perf.maxNumbers);
     this.player = this.add.image(0, 0, CLASSES.aprendiz.texture);
@@ -370,12 +371,19 @@ export class GameScene extends Phaser.Scene {
     return pool[0];
   }
 
-  /** Ponto logo fora da tela, ao redor do jogador */
+  /** Ponto logo fora da borda da tela, na direção `angle` a partir do jogador */
   private ringPosition(angle?: number) {
     const cam = this.cameras.main;
-    const r = Math.hypot(cam.width, cam.height) / 2 + 50;
     const a = angle ?? Math.random() * Math.PI * 2;
-    return { x: this.player.x + Math.cos(a) * r, y: this.player.y + Math.sin(a) * r };
+    const cos = Math.cos(a);
+    const sin = Math.sin(a);
+    // distância até a borda do retângulo visível (funciona deitado e em pé)
+    const toEdge = Math.min(
+      Math.abs(cos) > 1e-6 ? cam.width / 2 / Math.abs(cos) : Infinity,
+      Math.abs(sin) > 1e-6 ? cam.height / 2 / Math.abs(sin) : Infinity,
+    );
+    const r = toEdge + 60;
+    return { x: this.player.x + cos * r, y: this.player.y + sin * r };
   }
 
   private spawnEnemy(def: EnemyDef, x?: number, y?: number) {
