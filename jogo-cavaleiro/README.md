@@ -32,9 +32,16 @@ O Golpe de Espada do Aprendiz continua com todos. Cada habilidade vai até o ní
 ## Sprites desenhados à mão
 Todos os heróis usam sprites recortados das imagens enviadas. A fonte em PNG fica em `sprites/` e o jogo usa as versões WebP de `src/assets/`, registradas em `src/sprites.ts`. Os monstros ainda usam a arte gerada em `src/art.ts`.
 
+## Evolução do personagem
+
+- **Ao subir de nível** abre a janela **Equipamento + Status**: slots de equipamento dos dois lados, o personagem no meio e os atributos com o botão ▶. A pausa abre a mesma janela.
+- **Pontos de status:** cada nível dá `nível/5 + 4` pontos. Subir um atributo custa 2 pontos, e o custo aumenta 1 a cada 10 pontos no atributo.
+- **O dano vem dos atributos e do equipamento:** FOR, DES e INT dão +3% de dano corpo a corpo, à distância e mágico por ponto. Não há mais escolha de bônus ao subir de nível.
+- **Habilidades** sobem sozinhas: a cada 2 níveis de classe, a de menor nível sobe.
+- **Equipamentos** (`src/data/equipment.ts`): são comprados com zeny na loja (cabeça, corpo, arma, mão esquerda, capa, calçado e 2 acessórios), ficam salvos e valem em todas as partidas. O Ferreiro refina a arma equipada, e cada arma guarda o próprio refino.
+
 ## Sistemas de RPG (`src/data/rpg.ts`)
 
-- **Atributos:** FOR, AGI, VIT, INT, DES e SOR. São 3 pontos por nível, distribuídos na tela de nível; o que sobrar vai para o foco da classe.
   - FOR, DES e INT aumentam o dano corpo a corpo, à distância e mágico.
   - AGI aumenta a velocidade de ataque e a esquiva.
   - VIT aumenta a vida, a regeneração e a resistência a estados.
@@ -49,7 +56,7 @@ Todos os heróis usam sprites recortados das imagens enviadas. A fonte em PNG fi
 - **Nível de classe:** sobe derrotando monstros, recomeça a cada promoção e dá +2% de dano por nível.
 - **Mascotes:** ovos caem dos monstros ou são comprados na loja. Gosminha, Morceguinho (ataca), Fantasminha e Cogumelinho.
 - **Mapas:** Campos Verdes, Deserto Escaldante, Caverna Sombria e Ruínas Esquecidas, escolhidos no menu. Cada um tem seu chão, decoração e monstros mais comuns.
-- **Loja e Ferreiro** (entre partidas, com o zeny guardado no navegador): melhorias permanentes, ovo de mascote e refino da arma de +1 a +10. A partir do +5 o refino pode falhar e a arma volta a +0.
+- **Loja de Equipamentos e Ferreiro** (entre partidas, com o zeny guardado no navegador): refino da arma de +1 a +10. A partir do +5 o refino pode falhar e a arma volta a +0.
 - **Janela de status:** aparece ao pausar e mostra atributos, cartas, habilidades, equipamento e mascote.
 
 ## Inimigos e chefes

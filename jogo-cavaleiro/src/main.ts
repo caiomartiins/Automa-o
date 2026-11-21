@@ -4,6 +4,7 @@ import { GameScene } from './scenes/GameScene';
 import { UIScene } from './scenes/UIScene';
 import { LevelUpScene } from './scenes/LevelUpScene';
 import { ShopScene } from './scenes/ShopScene';
+import { StatusScene } from './scenes/StatusScene';
 import { gameSizeFor } from './ui';
 
 const parent = document.getElementById('game')!;
@@ -26,7 +27,7 @@ const game = new Phaser.Game({
   },
   // o jogo não usa o motor de física: movimento e colisões são feitos à mão (mais leve)
   input: { activePointers: 2 },
-  scene: [BootScene, MenuScene, GameScene, UIScene, LevelUpScene, GameOverScene, ShopScene],
+  scene: [BootScene, MenuScene, GameScene, UIScene, LevelUpScene, StatusScene, GameOverScene, ShopScene],
 });
 
 // Ao girar o celular (ou redimensionar a janela), ajusta o tamanho do jogo ao novo formato

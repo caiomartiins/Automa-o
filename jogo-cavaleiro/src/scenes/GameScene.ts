@@ -7,7 +7,8 @@ import { CLASSES, LINES, lineOf, type ClassDef, type ClassId, type LineId } from
 import { feetOffset, heroScale, needsShadow } from '../sprites';
 import { BASE_STATS, type Stats } from '../data/stats';
 import { SKILLS, type SkillId } from '../data/skills';
-import { rollUpgrades, type Upgrade } from '../data/upgrades';
+import type { Upgrade } from '../data/upgrades';
+import { EQUIPMENT, equipById, type EquipStats } from '../data/equipment';
 import type { Skill } from '../skills/Skill';
 import { createSkill } from '../skills';
 import { isTouch, onResize } from '../ui';
@@ -15,7 +16,7 @@ import { SpatialGrid } from '../spatialGrid';
 import { Fx, FX_DEPTH } from '../fx';
 import { Projectiles } from '../projectiles';
 import {
-  ATTR_FOCUS, ATTR_IDS, ATTR_POINTS_PER_LEVEL, DROPS, MAPS, PETS, REFINE_DMG, STATUS, cardOf, elementMult, emptyMods,
+  ATTR_FX, ATTR_IDS, DROPS, attrCost, statPointsForLevel, MAPS, PETS, REFINE_DMG, STATUS, cardOf, elementMult, emptyMods,
   type Attr, type Attrs, type MapDef, type Mods, type PetDef, type RpgHost, type StatusId,
 } from '../data/rpg';
 import { loadSave, writeSave } from '../save';
@@ -85,6 +86,10 @@ export class GameScene extends Phaser.Scene implements RpgHost {
   attrs: Attrs = { for: 1, agi: 1, vit: 1, int: 1, des: 1, sor: 1 };
   /** Pontos de atributo ainda não distribuídos */
   attrPoints = 0;
+  /** Bônus de atributo vindos de equipamento e cartas (não custam pontos) */
+  bonusAttrs: Attrs = { for: 0, agi: 0, vit: 0, int: 0, des: 0, sor: 0 };
+  /** Soma dos efeitos do equipamento usado nesta partida */
+  equipTotals: Required<Omit<EquipStats, 'attrs'>> = { atk: 0, matk: 0, def: 0, hp: 0, speed: 0, crit: 0, flee: 0, aspd: 0, regen: 0, magnet: 0 };
   /** Cartas coletadas (id do monstro), na ordem */
   cards: string[] = [];
   items = { asa: 0, pena: 0 };
@@ -106,9 +111,8 @@ export class GameScene extends Phaser.Scene implements RpgHost {
   private grid = new SpatialGrid<Enemy>(GRID_CELL);
   private nearBuf: Enemy[] = [];
 
-  private resolvedLevel = 1;
-  private pendingLevelUps = 0;
-  private choosing = false;
+  /** Uma tela de nível/classe está aberta */
+  choosing = false;
   private over = false;
   private spawnTimer = 0;
   private nextWaveAt = 60;
@@ -171,8 +175,6 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     this.elapsed = 0;
     this.kills = 0;
     this.live = [];
-    this.resolvedLevel = 1;
-    this.pendingLevelUps = 0;
     this.choosing = false;
     this.over = false;
     this.spawnTimer = 600;
@@ -206,16 +208,12 @@ export class GameScene extends Phaser.Scene implements RpgHost {
 
     // progresso entre partidas: loja, refino, mascote e mapa escolhido
     const save = loadSave();
-    const up = (id: string) => save.up[id] ?? 0;
     this.map = MAPS.find((m) => m.id === save.map) ?? MAPS[0];
-    this.stats.maxHp += 10 * up('vida');
+    this.bonusAttrs = { for: 0, agi: 0, vit: 0, int: 0, des: 0, sor: 0 };
+    this.applyEquipment(save.equip);
+    // o refino só vale se houver uma arma equipada
+    if (save.equip.arma) this.mods.dmgAll += save.refine * REFINE_DMG;
     this.hp = this.stats.maxHp;
-    this.mods.dmgAll += 0.05 * up('dano') + save.refine * REFINE_DMG;
-    this.stats.magnet *= 1 + 0.15 * up('ima');
-    this.mods.zeny += 0.1 * up('zeny');
-    this.items.asa += up('asa') ? 2 : 0;
-    this.items.pena += up('pena') ? 1 : 0;
-    this.attrPoints += 2 * up('pontos');
 
     const { width, height } = this.scale;
     this.bg = this.add.tileSprite(0, 0, width, height, this.map.ground).setOrigin(0).setScrollFactor(0).setDepth(-1e7);
@@ -423,7 +421,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
 
   /** Aplica maldição (lentidão) ou veneno no jogador; VIT dá chance de resistir */
   afflictPlayer(kind: 'maldicao' | 'veneno', ms: number) {
-    if (Math.random() < Math.min(0.5, this.attrs.vit * 0.01)) {
+    if (Math.random() < Math.min(0.5, this.attr('vit') * ATTR_FX.vitResist)) {
       this.fx.number(this.player.x, this.player.y - 44, '0', 0xdddddd);
       return;
     }
@@ -459,12 +457,17 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     return true;
   }
 
+  /** Bônus de dano dos atributos para cada tipo de dano */
+  attrDamage(kind: 'melee' | 'ranged' | 'magic') {
+    return kind === 'melee' ? this.attr('for') * ATTR_FX.forDmg : kind === 'ranged' ? this.attr('des') * ATTR_FX.desDmg : this.attr('int') * ATTR_FX.intDmg;
+  }
+
   evadeChance() {
-    return Math.min(0.4, this.attrs.agi * 0.003 + this.mods.evade);
+    return Math.min(0.4, this.attr('agi') * ATTR_FX.agiFlee + this.mods.evade);
   }
 
   critChance() {
-    return Math.min(0.6, this.attrs.sor * 0.005 + this.mods.crit);
+    return Math.min(0.6, this.attr('sor') * ATTR_FX.sorCrit + this.mods.crit);
   }
 
   /** Pena da Ressurreição: volta com metade da vida */
@@ -773,7 +776,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       let mult = (1 + this.mods.dmgAll) * (1 + (this.jobLevel - 1) * 0.02);
       let elemMult = 1;
       if (sk) {
-        const attrBonus = sk.kind === 'melee' ? this.attrs.for * 0.02 : sk.kind === 'ranged' ? this.attrs.des * 0.025 : this.attrs.int * 0.025;
+        const attrBonus = this.attrDamage(sk.kind);
         mult *= 1 + attrBonus + this.mods.kindDmg[sk.kind];
         elemMult = elementMult(sk.element, e.def.element);
         mult *= elemMult * (1 + (this.mods.elemDmg[sk.element] ?? 0));
@@ -892,7 +895,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
 
   /** Sorteia zeny, poções, asas, penas, cartas e ovos (a Sorte aumenta as chances) */
   private rollDrops(def: EnemyDef, x: number, y: number) {
-    const luck = 1 + this.attrs.sor * 0.02 + this.mods.drop;
+    const luck = 1 + this.attr('sor') * ATTR_FX.sorDrop + this.mods.drop;
     const elite = def.elite ? 10 : 1;
     const r = () => Math.random();
     const off = () => Phaser.Math.Between(-14, 14);
@@ -959,37 +962,66 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     this.events.emit('announce', `${card.name}: ${card.desc}`);
   }
 
-  // ---------------------------------------------------------------- atributos
+  // ---------------------------------------------------------------- equipamento e atributos
 
-  /** Soma pontos num atributo e aplica os efeitos que mudam atributos fixos */
-  addAttr(a: Attr, n: number) {
-    this.attrs[a] += n;
-    if (a === 'agi') this.stats.haste += 0.012 * n;
+  /** Aplica os efeitos dos itens equipados (no início da partida) */
+  private applyEquipment(equip: Record<string, string | undefined>) {
+    const t = { atk: 0, matk: 0, def: 0, hp: 0, speed: 0, crit: 0, flee: 0, aspd: 0, regen: 0, magnet: 0 };
+    for (const id of Object.values(equip)) {
+      const item = equipById(id);
+      if (!item) continue;
+      const st = item.stats;
+      for (const key of Object.keys(t) as (keyof typeof t)[]) t[key] += st[key] ?? 0;
+      for (const [a, v] of Object.entries(st.attrs ?? {})) this.addAttr(a as Attr, v!);
+    }
+    this.equipTotals = t;
+    this.mods.kindDmg.melee += t.atk;
+    this.mods.kindDmg.ranged += t.atk;
+    this.mods.kindDmg.magic += t.matk;
+    this.stats.armor += t.def;
+    this.stats.maxHp += t.hp;
+    this.stats.speed += t.speed;
+    this.mods.crit += t.crit;
+    this.mods.evade += t.flee;
+    this.stats.haste += t.aspd;
+    this.stats.regen += t.regen;
+    this.stats.magnet *= 1 + t.magnet;
+  }
+
+  /** Valor total do atributo (pontos gastos + equipamento e cartas) */
+  attr(a: Attr) {
+    return this.attrs[a] + this.bonusAttrs[a];
+  }
+
+  /** Efeitos fixos que mudam quando um atributo muda */
+  private attrEffects(a: Attr, n: number) {
+    if (a === 'agi') this.stats.haste += ATTR_FX.agiAspd * n;
     if (a === 'vit') {
-      this.stats.maxHp += 5 * n;
-      this.hp += 5 * n;
-      this.stats.regen += 0.03 * n;
+      this.stats.maxHp += ATTR_FX.vitHp * n;
+      this.hp += ATTR_FX.vitHp * n;
+      this.stats.regen += ATTR_FX.vitRegen * n;
     }
   }
 
-  /** Gasta um ponto escolhido pelo jogador */
+  /** Bônus de atributo de equipamento ou carta (não gasta pontos) */
+  addAttr(a: Attr, n: number) {
+    this.bonusAttrs[a] += n;
+    this.attrEffects(a, n);
+  }
+
+  /** Custo em pontos para subir o atributo */
+  attrCostOf(a: Attr) {
+    return attrCost(this.attrs[a]);
+  }
+
+  /** Gasta pontos de status para subir um atributo (o custo cresce a cada 10) */
   spendAttr(a: Attr) {
-    if (this.attrPoints <= 0) return false;
-    this.attrPoints--;
-    this.addAttr(a, 1);
+    const cost = this.attrCostOf(a);
+    if (this.attrPoints < cost || this.attrs[a] >= 99) return false;
+    this.attrPoints -= cost;
+    this.attrs[a]++;
+    this.attrEffects(a, 1);
     return true;
-  }
-
-  /** Distribui os pontos que sobraram conforme o foco da classe */
-  autoSpendAttrs() {
-    const focus = ATTR_FOCUS[this.line ?? 'aprendiz'];
-    const ids = ATTR_IDS.filter((a) => focus[a]);
-    const total = ids.reduce((s, a) => s + focus[a]!, 0);
-    while (this.attrPoints > 0) {
-      let r = Math.random() * total;
-      const pick = ids.find((a) => (r -= focus[a]!) <= 0) ?? ids[0];
-      this.spendAttr(pick);
-    }
   }
 
   // ---------------------------------------------------------------- nível de classe
@@ -1000,8 +1032,19 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     while (this.jobXp >= jobForLevel(this.jobLevel) && this.jobLevel < MAX_JOB) {
       this.jobXp -= jobForLevel(this.jobLevel);
       this.jobLevel++;
-      if (this.jobLevel % 5 === 0) this.events.emit('toast', `Nível de classe ${this.jobLevel}! (+${(this.jobLevel - 1) * 2}% de dano)`, '#9fc3ff');
+      if (this.jobLevel % 2 === 0) this.levelUpSkill();
+      else if (this.jobLevel % 5 === 0) this.events.emit('toast', `Nível de classe ${this.jobLevel}! (+${(this.jobLevel - 1) * 2}% de dano)`, '#9fc3ff');
     }
+  }
+
+  /** A cada 2 níveis de classe, a habilidade de menor nível sobe (a mais nova desempata) */
+  private levelUpSkill() {
+    const list = [...this.skills.values()].filter((sk) => sk.level < SKILLS[sk.id].maxLevel);
+    if (!list.length) return;
+    const minLv = Math.min(...list.map((sk) => sk.level));
+    const pick = list.filter((sk) => sk.level === minLv).pop()!;
+    pick.levelUp();
+    this.events.emit('toast', `${SKILLS[pick.id].name} subiu para o Nv ${pick.level}!`, '#9aff8a');
   }
 
   // ---------------------------------------------------------------- mascote
@@ -1079,59 +1122,61 @@ export class GameScene extends Phaser.Scene implements RpgHost {
   gainXp(amount: number) {
     if (this.over) return;
     this.xp += amount;
+    let gained = 0;
     while (this.xp >= this.xpNext) {
       this.xp -= this.xpNext;
       this.level++;
       this.xpNext = xpForLevel(this.level);
-      this.pendingLevelUps++;
-      this.attrPoints += ATTR_POINTS_PER_LEVEL;
+      const pts = statPointsForLevel(this.level);
+      this.attrPoints += pts;
+      gained += pts;
     }
-    if (this.pendingLevelUps > 0 && !this.choosing) {
-      this.choosing = true;
-      const data = this.nextLevelUp()!;
-      this.scene.pause();
-      this.scene.launch('LevelUp', data);
+    if (gained > 0) {
+      this.events.emit('levelup', this.level, gained);
+      this.fx.ring(this.player.x, this.player.y, 24, 4, 450, 0x9fe6ff, 0.5);
+      this.openLevelScreens();
     }
   }
 
-  /**
-   * Prepara a próxima tela de level up (ou null se não houver mais).
-   * Chamada pela LevelUpScene depois de cada escolha.
-   */
-  nextLevelUp(): LevelUpData | null {
-    if (this.pendingLevelUps <= 0) {
-      this.choosing = false;
-      return null;
-    }
-    this.pendingLevelUps--;
-    this.resolvedLevel++;
+  /** Ao upar: escolha de classe (se for a hora) e depois a janela de Equipamento/Status */
+  private openLevelScreens() {
+    if (this.choosing) return;
+    this.choosing = true;
+    this.scene.pause();
+    const choice = this.classChoice();
+    if (choice) this.scene.launch('LevelUp', choice);
+    else this.scene.launch('Status', { reason: 'levelup' });
+  }
 
-    // hora de escolher a próxima classe (1ª classe no nível 5, 2ª no nível 15)
+  /** Dados da tela de escolha de classe, se o nível já permitir (senão null) */
+  classChoice(): LevelUpData | null {
     const cur = CLASSES[this.classId];
-    if (cur.choices && this.resolvedLevel >= CLASSES[cur.choices[0]].minLevel) {
-      const options: Upgrade[] = cur.choices.map((id) => {
-        const def = CLASSES[id];
-        const line = LINES[lineOf(id)!];
-        return {
-          id: `classe-${id}`,
-          title: def.name,
-          desc: def.description,
-          color: line.color,
-          icon: def.texture,
-          apply: (g: GameScene) => g.chooseProfession(id),
-        };
-      });
-      const first = this.classId === 'aprendiz';
+    if (!cur.choices || this.level < CLASSES[cur.choices[0]].minLevel) return null;
+    const options: Upgrade[] = cur.choices.map((id) => {
+      const def = CLASSES[id];
+      const line = LINES[lineOf(id)!];
       return {
-        level: this.resolvedLevel, promotion: null, options,
-        choiceTitle: first ? 'ESCOLHA SUA PROFISSÃO' : 'ESCOLHA SUA 2ª CLASSE',
-        choiceSubtitle: first
-          ? `Nível ${this.resolvedLevel}: o Aprendiz está pronto para se especializar`
-          : `Nível ${this.resolvedLevel}: o ${cur.name} pode seguir dois caminhos`,
+        id: `classe-${id}`,
+        title: def.name,
+        desc: def.description,
+        color: line.color,
+        icon: def.texture,
+        apply: (g: GameScene) => g.chooseProfession(id),
       };
-    }
-    const promotion: ClassDef | null = null;
-    return { level: this.resolvedLevel, promotion, options: rollUpgrades(this, 3) };
+    });
+    const first = this.classId === 'aprendiz';
+    return {
+      level: this.level, promotion: null, options,
+      choiceTitle: first ? 'ESCOLHA SUA PROFISSÃO' : 'ESCOLHA SUA 2ª CLASSE',
+      choiceSubtitle: first
+        ? `Nível ${this.level}: o Aprendiz está pronto para se especializar`
+        : `Nível ${this.level}: o ${cur.name} pode seguir dois caminhos`,
+    };
+  }
+
+  /** Chamado quando a janela de Status (do nível ou da pausa) fecha */
+  closeLevelScreens() {
+    this.choosing = false;
   }
 
   // ---------------------------------------------------------------- classes e habilidades

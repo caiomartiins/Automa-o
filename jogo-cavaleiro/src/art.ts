@@ -1357,6 +1357,93 @@ function drawMapGrounds(scene: Phaser.Scene) {
   });
 }
 
+// ------------------------------------------------------------------ ícones de equipamento
+// Desenhados em tons claros com contorno escuro: a cor de cada item é aplicada com tint.
+
+function drawEquipIcons(scene: Phaser.Scene) {
+  const L = '#f4f4f4';
+  const M = '#cfcfcf';
+  const D = '#9a9a9a';
+  const icon = (key: string, draw: (c: Ctx) => void) => single(scene, key, 24, 24, draw);
+  icon('eq-chapeu', (c) => {
+    paint(c, ell(c, 12, 17, 11, 3.5), M, 1);
+    paint(c, () => { c.moveTo(5, 17); c.quadraticCurveTo(6, 5, 12, 4); c.quadraticCurveTo(18, 5, 19, 17); c.closePath(); }, vgrad(c, 4, 17, L, M), 1);
+    paint(c, () => rr(c, 5.5, 13, 13, 3, 1), D, 0.8);
+  });
+  icon('eq-elmo', (c) => {
+    paint(c, () => { c.moveTo(4, 20); c.quadraticCurveTo(3, 4, 12, 3); c.quadraticCurveTo(21, 4, 20, 20); c.closePath(); }, vgrad(c, 3, 20, L, D), 1);
+    paint(c, () => rr(c, 7, 11, 10, 3, 1), '#3a3a3a', 0.6);
+    paint(c, () => rr(c, 11, 3, 2, 8, 1), M, 0.6);
+  });
+  icon('eq-tiara', (c) => {
+    paint(c, () => { c.moveTo(3, 17); c.quadraticCurveTo(12, 11, 21, 17); c.lineTo(20, 19); c.quadraticCurveTo(12, 14, 4, 19); c.closePath(); }, M, 1);
+    paint(c, () => { c.moveTo(9, 14); c.lineTo(12, 5); c.lineTo(15, 14); c.closePath(); }, L, 1);
+    paint(c, ell(c, 12, 10, 1.8, 1.8), '#ffffff', 0.6);
+  });
+  icon('eq-chifres', (c) => {
+    paint(c, () => { c.moveTo(5, 20); c.quadraticCurveTo(1, 8, 8, 3); c.quadraticCurveTo(6, 10, 10, 18); c.closePath(); }, vgrad(c, 3, 20, L, D), 1);
+    paint(c, () => { c.moveTo(19, 20); c.quadraticCurveTo(23, 8, 16, 3); c.quadraticCurveTo(18, 10, 14, 18); c.closePath(); }, vgrad(c, 3, 20, L, D), 1);
+  });
+  icon('eq-armadura', (c) => {
+    paint(c, () => { c.moveTo(6, 4); c.lineTo(18, 4); c.lineTo(22, 9); c.lineTo(18, 11); c.lineTo(18, 21); c.lineTo(6, 21); c.lineTo(6, 11); c.lineTo(2, 9); c.closePath(); }, vgrad(c, 4, 21, L, M), 1);
+    paint(c, () => { c.moveTo(9, 4); c.quadraticCurveTo(12, 8, 15, 4); }, 'rgba(0,0,0,0)', 1);
+    c.strokeStyle = D; c.lineWidth = 1; c.beginPath(); c.moveTo(12, 8); c.lineTo(12, 20); c.stroke();
+  });
+  icon('eq-manto', (c) => {
+    paint(c, () => { c.moveTo(8, 3); c.lineTo(16, 3); c.lineTo(21, 21); c.lineTo(3, 21); c.closePath(); }, vgrad(c, 3, 21, L, M), 1);
+    paint(c, () => rr(c, 9, 3, 6, 4, 2), D, 0.8);
+  });
+  icon('eq-espada', (c) => {
+    paint(c, () => { c.moveTo(19, 2); c.lineTo(22, 5); c.lineTo(9, 18); c.lineTo(6, 15); c.closePath(); }, vgrad(c, 2, 18, '#ffffff', M), 1);
+    paint(c, () => { c.moveTo(4, 13); c.lineTo(11, 20); c.lineTo(9.5, 21.5); c.lineTo(2.5, 14.5); c.closePath(); }, D, 1);
+    paint(c, () => { c.moveTo(5, 18); c.lineTo(2, 21); c.lineTo(3, 22); c.lineTo(6, 19); c.closePath(); }, '#7a5a3a', 0.8);
+  });
+  icon('eq-cajado', (c) => {
+    c.strokeStyle = '#2a1c14'; c.lineWidth = 3.4; c.beginPath(); c.moveTo(4, 22); c.lineTo(17, 7); c.stroke();
+    c.strokeStyle = '#b08050'; c.lineWidth = 2; c.stroke();
+    paint(c, ell(c, 18.5, 5.5, 4.2, 4.2), vgrad(c, 1, 10, '#ffffff', M), 1);
+  });
+  icon('eq-arco', (c) => {
+    c.beginPath(); c.moveTo(6, 2); c.lineTo(6, 22); c.strokeStyle = '#555'; c.lineWidth = 0.8; c.stroke();
+    c.beginPath(); c.moveTo(6, 2); c.quadraticCurveTo(22, 12, 6, 22); c.strokeStyle = '#2a1c14'; c.lineWidth = 3.4; c.stroke();
+    c.strokeStyle = L; c.lineWidth = 2; c.stroke();
+  });
+  icon('eq-escudo', (c) => {
+    paint(c, () => { c.moveTo(4, 4); c.lineTo(20, 4); c.quadraticCurveTo(20, 16, 12, 22); c.quadraticCurveTo(4, 16, 4, 4); c.closePath(); }, vgrad(c, 4, 22, L, M), 1);
+    paint(c, () => { c.moveTo(7, 7); c.lineTo(17, 7); c.quadraticCurveTo(17, 15, 12, 19); c.quadraticCurveTo(7, 15, 7, 7); c.closePath(); }, D, 0.8);
+  });
+  icon('eq-livro', (c) => {
+    paint(c, () => rr(c, 4, 3, 16, 19, 2), vgrad(c, 3, 22, L, M), 1);
+    paint(c, () => rr(c, 4, 3, 4, 19, 1.5), D, 0.8);
+    paint(c, ell(c, 14, 12, 3, 3), '#ffffff', 0.8);
+  });
+  icon('eq-aljava', (c) => {
+    paint(c, () => rr(c, 7, 7, 10, 15, 3), vgrad(c, 7, 22, L, M), 1);
+    for (const x of [9, 12, 15]) {
+      c.strokeStyle = '#2a1c14'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(x, 8); c.lineTo(x - 1, 2); c.stroke();
+      paint(c, () => { c.moveTo(x - 2.5, 3.5); c.lineTo(x - 1, 1); c.lineTo(x + 0.5, 3.5); c.closePath(); }, '#ffffff', 0.6);
+    }
+  });
+  icon('eq-capa', (c) => {
+    paint(c, () => { c.moveTo(7, 3); c.lineTo(17, 3); c.quadraticCurveTo(22, 14, 20, 22); c.lineTo(4, 22); c.quadraticCurveTo(2, 14, 7, 3); c.closePath(); }, vgrad(c, 3, 22, L, D), 1);
+    paint(c, ell(c, 12, 4, 3, 1.6), M, 0.8);
+  });
+  icon('eq-bota', (c) => {
+    paint(c, () => { c.moveTo(7, 3); c.lineTo(14, 3); c.lineTo(14, 14); c.lineTo(21, 17); c.lineTo(21, 21); c.lineTo(6, 21); c.closePath(); }, vgrad(c, 3, 21, L, M), 1);
+    paint(c, () => rr(c, 6, 19, 15, 2.5, 1), D, 0.8);
+  });
+  icon('eq-anel', (c) => {
+    c.beginPath(); c.ellipse(12, 15, 7, 6, 0, 0, TAU); c.strokeStyle = '#2a1c14'; c.lineWidth = 4; c.stroke();
+    c.strokeStyle = M; c.lineWidth = 2.4; c.stroke();
+    paint(c, () => { c.moveTo(8, 9); c.lineTo(12, 3); c.lineTo(16, 9); c.lineTo(12, 11); c.closePath(); }, '#ffffff', 1);
+  });
+  icon('eq-colar', (c) => {
+    c.beginPath(); c.moveTo(4, 3); c.quadraticCurveTo(12, 16, 20, 3); c.strokeStyle = '#2a1c14'; c.lineWidth = 2.4; c.stroke();
+    c.strokeStyle = M; c.lineWidth = 1.2; c.stroke();
+    paint(c, () => { c.moveTo(12, 11); c.lineTo(17, 16); c.lineTo(12, 22); c.lineTo(7, 16); c.closePath(); }, vgrad(c, 11, 22, '#ffffff', M), 1);
+  });
+}
+
 // ------------------------------------------------------------------ montagem
 
 export const DECOR_KEYS = ['deco-tuft', 'deco-flores', 'deco-pedra', 'deco-arbusto', 'deco-cogumelo'] as const;
@@ -1412,6 +1499,7 @@ export function createArt(scene: Phaser.Scene) {
   drawDecor(scene);
   drawItems(scene);
   drawMapGrounds(scene);
+  drawEquipIcons(scene);
 
   // animações
   const anims = scene.anims;

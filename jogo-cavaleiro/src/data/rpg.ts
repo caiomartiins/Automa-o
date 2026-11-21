@@ -58,16 +58,27 @@ export type Attrs = Record<Attr, number>;
 export const ATTR_IDS: Attr[] = ['for', 'agi', 'vit', 'int', 'des', 'sor'];
 
 export const ATTRS: Record<Attr, { short: string; name: string; desc: string; color: number }> = {
-  for: { short: 'FOR', name: 'Força', desc: '+2% de dano corpo a corpo', color: 0xff7a6a },
-  agi: { short: 'AGI', name: 'Agilidade', desc: '+1,2% de velocidade de ataque e +0,3% de esquiva', color: 0x7ae0a0 },
-  vit: { short: 'VIT', name: 'Vitalidade', desc: '+5 de vida, +regeneração e resistência a estados', color: 0xffc06a },
-  int: { short: 'INT', name: 'Inteligência', desc: '+2,5% de dano mágico', color: 0x9a8aff },
-  des: { short: 'DES', name: 'Destreza', desc: '+2,5% de dano à distância', color: 0x6ad0ff },
-  sor: { short: 'SOR', name: 'Sorte', desc: '+0,5% de crítico e mais itens raros', color: 0xffe36a },
+  for: { short: 'FOR', name: 'Força', desc: '+3% de dano corpo a corpo', color: 0xff7a6a },
+  agi: { short: 'AGI', name: 'Agilidade', desc: '+1,5% de velocidade de ataque e +0,4% de esquiva', color: 0x7ae0a0 },
+  vit: { short: 'VIT', name: 'Vitalidade', desc: '+6 de vida, +regeneração e resistência a estados', color: 0xffc06a },
+  int: { short: 'INT', name: 'Inteligência', desc: '+3% de dano mágico', color: 0x9a8aff },
+  des: { short: 'DES', name: 'Destreza', desc: '+3% de dano à distância', color: 0x6ad0ff },
+  sor: { short: 'SOR', name: 'Sorte', desc: '+0,6% de crítico e mais itens raros', color: 0xffe36a },
 };
 
-/** Pontos de atributo ganhos a cada nível */
-export const ATTR_POINTS_PER_LEVEL = 3;
+/** Efeito de cada ponto de atributo */
+export const ATTR_FX = {
+  forDmg: 0.03, desDmg: 0.03, intDmg: 0.03,
+  agiAspd: 0.015, agiFlee: 0.004,
+  vitHp: 6, vitRegen: 0.03, vitResist: 0.01,
+  sorCrit: 0.006, sorDrop: 0.02,
+};
+
+/** Pontos de status ganhos ao chegar no nível `level` */
+export const statPointsForLevel = (level: number) => Math.floor(level / 5) + 4;
+
+/** Custo em pontos para subir um atributo que está em `value` (fica mais caro a cada 10) */
+export const attrCost = (value: number) => Math.floor((value - 1) / 10) + 2;
 
 /** Peso de cada atributo na distribuição automática, por linhagem */
 export const ATTR_FOCUS: Record<string, Partial<Attrs>> = {
@@ -233,24 +244,6 @@ export const MAPS: MapDef[] = [
 ];
 
 // ------------------------------------------------------------------ loja e refino (entre partidas)
-
-export interface ShopItem {
-  id: string;
-  name: string;
-  desc: string;
-  max: number;
-  cost: (level: number) => number;
-}
-
-export const SHOP: ShopItem[] = [
-  { id: 'vida', name: 'Vigor', desc: '+10 de vida inicial', max: 5, cost: (l) => 80 + l * 70 },
-  { id: 'dano', name: 'Treino de Combate', desc: '+5% de dano', max: 5, cost: (l) => 100 + l * 90 },
-  { id: 'pontos', name: 'Talento Nato', desc: '+2 pontos de atributo no início', max: 3, cost: (l) => 150 + l * 120 },
-  { id: 'ima', name: 'Bolsa Grande', desc: '+15% de raio de coleta', max: 3, cost: (l) => 80 + l * 60 },
-  { id: 'zeny', name: 'Olho de Mercador', desc: '+10% de zeny', max: 3, cost: (l) => 120 + l * 100 },
-  { id: 'asa', name: 'Asas na Mochila', desc: 'Começa com 2 Asas de Teletransporte', max: 1, cost: () => 300 },
-  { id: 'pena', name: 'Pena Guardada', desc: 'Começa com 1 Pena da Ressurreição', max: 1, cost: () => 700 },
-];
 
 export const MAX_REFINE = 10;
 /** Chance de sucesso ao tentar refinar para +n */

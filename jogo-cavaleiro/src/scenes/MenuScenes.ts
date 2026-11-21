@@ -143,7 +143,7 @@ export class MenuScene extends Phaser.Scene {
     const row2 = portrait ? rowY + bh + 18 : rowY;
     const shopCx = portrait ? bw / 2 - 110 * s : bw - 20 - 150 * s - 12 - 85 * s;
     const playCx = portrait ? bw / 2 + 110 * s : bw - 20 - 75 * s;
-    bot.c.add(uiButton(this, shopCx, row2, 170 * s, bh, 'Loja e Ferreiro', () => go('Shop'), { size: 14 * s }).c);
+    bot.c.add(uiButton(this, shopCx, row2, 170 * s, bh, 'Equipamentos', () => go('Shop'), { size: 14 * s }).c);
     bot.c.add(uiButton(this, playCx, row2, 150 * s, bh + 6, touch ? 'JOGAR' : 'JOGAR  [Espaço]', () => go('Game'), { size: 16 * s, primary: true }).c);
     if (portrait) {
       bot.c.add(wtext(this, bw / 2, row2 + bh + 8, 'Toque e arraste para andar  •  Ataques automáticos', 12 * s, WIN.muted).setOrigin(0.5, 0));

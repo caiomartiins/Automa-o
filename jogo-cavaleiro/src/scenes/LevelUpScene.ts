@@ -1,8 +1,7 @@
 import Phaser from 'phaser';
 import type { GameScene, LevelUpData } from './GameScene';
-import { darken, dim, isPortrait, isTouch, onResize, uiArrow, uiPanel, uiScale, uiWindow, WIN, wtext } from '../ui';
+import { darken, dim, isPortrait, isTouch, onResize, uiPanel, uiScale, uiWindow, WIN, wtext } from '../ui';
 import { heroScale } from '../sprites';
-import { ATTRS, ATTR_IDS } from '../data/rpg';
 
 /** Tela de escolha de melhoria (e de escolha de classe), no estilo de janelas */
 export class LevelUpScene extends Phaser.Scene {
@@ -28,7 +27,7 @@ export class LevelUpScene extends Phaser.Scene {
 
     // ---- medidas: janela de escolha em cima, janela de status embaixo
     const winW = Math.min(portrait ? width - 24 : 1120, width - 24);
-    const statusH = portrait ? 34 * s + 2 * (40 * s) + 26 : 34 * s + 44 * s + 22;
+    const statusH = 0;
     const withIcons = options.some((o) => o.icon);
     const pad = 14;
     const gap = 12;
@@ -97,47 +96,10 @@ export class LevelUpScene extends Phaser.Scene {
       this.tweens.add({ targets: card, alpha: 1, delay: 60 * i, duration: 180 });
     });
 
-    this.buildStatus((width - winW) / 2, y0 + winH + 12, winW, statusH, portrait, s);
 
     const kb = this.input.keyboard!;
     ['ONE', 'TWO', 'THREE'].forEach((k, i) => kb.once(`keydown-${k}`, () => this.choose(i)));
     onResize(this, () => this.scene.restart(this.data_));
-  }
-
-  /** Janela "Status": atributos com o botão ▶ para gastar os pontos do nível */
-  private buildStatus(x: number, y: number, w: number, h: number, portrait: boolean, s: number) {
-    const game = this.scene.get('Game') as GameScene;
-    const win = uiWindow(this, x, y, w, h, '', s);
-    const perRow = portrait ? 3 : 6;
-    const cellW = (w - 24) / perRow;
-    const cellH = (portrait ? 40 : 44) * s;
-    const rows: { value: Phaser.GameObjects.Text; arrow: ReturnType<typeof uiArrow> }[] = [];
-    const refresh = () => {
-      win.title.setText(game.attrPoints > 0 ? `Status   •   Pontos: ${game.attrPoints}` : 'Status   •   Pontos distribuídos');
-      ATTR_IDS.forEach((a, i) => {
-        rows[i].value.setText(String(game.attrs[a]));
-        rows[i].arrow.setEnabled(game.attrPoints > 0);
-      });
-    };
-    win.c.add(uiPanel(this, 10, win.top + 6, w - 20, h - win.top - 14));
-    win.c.add(wtext(this, w - 14, 2 + 12 * s, 'os pontos que sobrarem vão para o foco da classe', 10 * s, WIN.muted).setOrigin(1, 0.5));
-    ATTR_IDS.forEach((a, i) => {
-      const col = i % perRow;
-      const row = Math.floor(i / perRow);
-      const cx = 12 + col * cellW;
-      const cy = win.top + 10 + row * cellH + cellH / 2;
-      win.c.add(wtext(this, cx + 10, cy, ATTRS[a].short, 15 * s, WIN.label, true).setOrigin(0, 0.5));
-      const value = wtext(this, cx + cellW - 46 * s, cy, '', 16 * s, WIN.text, true).setOrigin(1, 0.5);
-      const arrow = uiArrow(this, cx + cellW - 24 * s, cy, 26 * s, () => {
-        if (game.spendAttr(a)) {
-          this.tweens.add({ targets: value, scale: { from: 1.35, to: 1 }, duration: 160 });
-          refresh();
-        }
-      });
-      win.c.add([value, arrow.c]);
-      rows.push({ value, arrow });
-    });
-    refresh();
   }
 
   choose(i: number) {
@@ -147,13 +109,8 @@ export class LevelUpScene extends Phaser.Scene {
     const game = this.scene.get('Game') as GameScene;
     opt.apply(game);
 
-    const next = game.nextLevelUp();
-    if (!next) game.autoSpendAttrs();
-    if (next) {
-      this.scene.restart(next);
-    } else {
-      this.scene.stop();
-      this.scene.resume('Game');
-    }
+    // depois da escolha de classe, abre a janela de Equipamento/Status
+    this.scene.stop();
+    this.scene.launch('Status', { reason: 'levelup' });
   }
 }
