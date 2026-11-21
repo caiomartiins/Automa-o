@@ -1,7 +1,13 @@
 import Phaser from 'phaser';
 // Sprites desenhados à mão (PNG). O "?inline" embute a imagem no código,
 // assim o jogo continua sendo um arquivo só na hora de publicar.
-import aprendizUrl from './assets/aprendiz.png?inline';
+import aprendizUrl from './assets/aprendiz.webp?inline';
+import espadachimUrl from './assets/espadachim.webp?inline';
+import cavaleiroUrl from './assets/cavaleiro.webp?inline';
+import paladinoUrl from './assets/paladino.webp?inline';
+import magoUrl from './assets/mago.webp?inline';
+import bruxoUrl from './assets/bruxo.webp?inline';
+import professorUrl from './assets/professor.webp?inline';
 
 /**
  * Personagens com arte em PNG (spritesheet de quadros 128x128, pés na linha 122,
@@ -10,20 +16,51 @@ import aprendizUrl from './assets/aprendiz.png?inline';
 interface SheetDef {
   key: string;
   url: string;
-  cell: number;
+  /** Largura e altura de cada quadro */
+  cellW: number;
+  cellH: number;
   frames: string[];
   /** Escala de exibição no jogo */
   scale: number;
   anims: { name: string; frames: string[]; rate: number; repeat: number }[];
 }
 
+
+/** Atalho para os personagens recortados das imagens enviadas (quadros 160x128) */
+function hero(key: string, url: string, idle: number, walk: number, atk: number, die: number, hurt = true): SheetDef {
+  const seq = (p: string, n: number) => Array.from({ length: n }, (_, i) => `${p}${i}`);
+  const frames = [...seq('idle', idle), ...seq('walk', walk), ...seq('atk', atk), ...(hurt ? ['hurt'] : []), ...seq('die', die)];
+  const idleLoop = idle > 2 ? [...seq('idle', idle), ...seq('idle', idle).slice(1, -1).reverse()] : seq('idle', idle);
+  return {
+    key, url, cellW: 160, cellH: 128, frames, scale: SPRITE_SCALE,
+    anims: [
+      { name: 'idle', frames: idleLoop, rate: 3.5, repeat: -1 },
+      { name: 'walk', frames: seq('walk', walk), rate: walk >= 6 ? 10 : 7, repeat: -1 },
+      { name: 'attack', frames: seq('atk', atk), rate: atk === 1 ? 5 : 11, repeat: 0 },
+      { name: 'die', frames: seq('die', die), rate: 4, repeat: 0 },
+    ],
+  };
+}
+
+/** Escala dos sprites recortados (deixa do tamanho dos personagens desenhados) */
+const SPRITE_SCALE = 0.72;
+/** Linha dos pés dentro de cada quadro */
+const FEET_Y = 122;
+
 const SHEETS: SheetDef[] = [
+  hero('hero-espadachim', espadachimUrl, 2, 4, 2, 2),
+  hero('hero-cavaleiro', cavaleiroUrl, 3, 5, 3, 2),
+  hero('hero-paladino', paladinoUrl, 3, 6, 3, 2),
+  hero('hero-mago', magoUrl, 2, 4, 1, 2, false),
+  hero('hero-bruxo', bruxoUrl, 2, 4, 3, 3),
+  hero('hero-professor', professorUrl, 2, 3, 2, 2),
   {
     key: 'hero-aprendiz',
     url: aprendizUrl,
-    cell: 128,
+    cellW: 128,
+    cellH: 128,
     frames: ['idle0', 'idle1', 'idle2', 'walk0', 'walk1', 'walk2', 'walk3', 'walk4', 'walk5', 'atk0', 'atk1', 'atk2', 'hurt', 'die0', 'die1', 'die2'],
-    scale: 0.62,
+    scale: SPRITE_SCALE,
     anims: [
       { name: 'idle', frames: ['idle0', 'idle1', 'idle2', 'idle1'], rate: 4, repeat: -1 },
       { name: 'walk', frames: ['walk0', 'walk1', 'walk2', 'walk3', 'walk4', 'walk5'], rate: 10, repeat: -1 },
@@ -43,6 +80,12 @@ export function needsShadow(texture: string) {
   return SHEETS.some((s) => s.key === texture);
 }
 
+/** Distância do centro do sprite até os pés, já na escala do jogo */
+export function feetOffset(texture: string) {
+  const s = SHEETS.find((d) => d.key === texture);
+  return s ? (FEET_Y - s.cellH / 2) * s.scale : 33;
+}
+
 export function preloadSprites(scene: Phaser.Scene) {
   for (const s of SHEETS) scene.load.image(s.key, s.url);
 }
@@ -52,7 +95,7 @@ export function setupSprites(scene: Phaser.Scene) {
   for (const s of SHEETS) {
     const tex = scene.textures.get(s.key);
     s.frames.forEach((name, i) => {
-      if (!tex.has(name)) tex.add(name, 0, i * s.cell, 0, s.cell, s.cell);
+      if (!tex.has(name)) tex.add(name, 0, i * s.cellW, 0, s.cellW, s.cellH);
     });
     for (const a of s.anims) {
       const key = `${s.key}-${a.name}`;

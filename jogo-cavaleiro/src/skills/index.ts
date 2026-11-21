@@ -10,14 +10,20 @@ import { MeteorSkill } from './MeteorSkill';
 import { ArrowSkill } from './ArrowSkill';
 import { ArrowRainSkill } from './ArrowRainSkill';
 import { SniperSkill } from './SniperSkill';
+import { ImpactSkill } from './ImpactSkill';
+import { AuraSkill } from './AuraSkill';
+import { BookSkill } from './BookSkill';
 
 const FACTORIES: Record<SkillId, new (g: GameScene) => Skill> = {
   espada: SwordSkill,
   escudo: ShieldSkill,
   lanca: LanceSkill,
+  impacto: ImpactSkill,
+  aura: AuraSkill,
   fogo: FireballSkill,
   raio: LightningSkill,
   meteoro: MeteorSkill,
+  livro: BookSkill,
   flecha: ArrowSkill,
   chuva: ArrowRainSkill,
   tiro: SniperSkill,

@@ -1,4 +1,7 @@
-export type SkillId = 'espada' | 'escudo' | 'lanca' | 'fogo' | 'raio' | 'meteoro' | 'flecha' | 'chuva' | 'tiro';
+export type SkillId =
+  | 'espada' | 'escudo' | 'lanca' | 'impacto' | 'aura'
+  | 'fogo' | 'raio' | 'meteoro' | 'livro'
+  | 'flecha' | 'chuva' | 'tiro';
 
 export interface SkillDef {
   id: SkillId;
@@ -42,6 +45,27 @@ export const SKILLS: Record<SkillId, SkillDef> = {
     ],
   },
 
+  impacto: {
+    id: 'impacto', name: 'Golpe Devastador', maxLevel: 5, color: 0xffc04a,
+    levelDesc: [
+      'Golpe com o espadão que explode no chão à sua frente.',
+      '+20 dano, área maior.',
+      'Segunda onda de choque logo depois! +20 dano.',
+      '+20 dano, área maior.',
+      '+20 dano, recarga menor.',
+    ],
+  },
+  aura: {
+    id: 'aura', name: 'Aura Sagrada', maxLevel: 5, color: 0xfff0a0,
+    levelDesc: [
+      'Uma aura ao seu redor fere os inimigos e cura você aos poucos.',
+      '+3 dano, área maior, cura mais.',
+      '+3 dano, área maior, cura mais.',
+      '+3 dano, área maior, cura mais.',
+      '+3 dano, área bem maior, cura mais.',
+    ],
+  },
+
   // ---- Mago
   fogo: {
     id: 'fogo', name: 'Bola de Fogo', maxLevel: 5, color: 0xff8a3a,
@@ -71,6 +95,17 @@ export const SKILLS: Record<SkillId, SkillDef> = {
       '+25 dano, área maior.',
       '+1 meteoro, +25 dano.',
       '+2 meteoros, +25 dano, recarga menor.',
+    ],
+  },
+
+  livro: {
+    id: 'livro', name: 'Livros Voadores', maxLevel: 5, color: 0xc98a4a,
+    levelDesc: [
+      'Arremessa livros pesados que atravessam os inimigos.',
+      '+1 livro, +7 dano.',
+      'Os livros atravessam +1 inimigo. +7 dano.',
+      '+1 livro, +7 dano.',
+      '+1 livro, +7 dano, recarga menor.',
     ],
   },
 

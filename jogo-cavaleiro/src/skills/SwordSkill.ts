@@ -24,7 +24,7 @@ export class SwordSkill extends Skill {
   private swing(angle: number) {
     const p = this.g.player;
     const r = this.range;
-    const color = this.g.classId === 'cavaleiro' ? 0xffe9a0 : this.g.classId === 'guarda' ? 0xcfe0ff : 0xffffff;
+    const color = this.g.classId === 'cavaleiro' || this.g.classId === 'paladino' ? 0xffe9a0 : this.g.classId === 'espadachim' ? 0xcfe0ff : 0xffffff;
     this.g.fx.slash(p.x, p.y, angle, r, color);
 
     for (const e of this.g.queryEnemies(p.x, p.y, r, this.near)) {

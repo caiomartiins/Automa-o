@@ -934,6 +934,20 @@ function drawProjectiles(scene: Phaser.Scene) {
       c.closePath();
     }, '#f2f2f2', 0.7);
   });
+  single(scene, 'proj-livro', 26, 20, (c) => {
+    paint(c, () => rr(c, 2, 3, 22, 15, 2), vgrad(c, 3, 18, '#9a5a2e', '#5a2e14'), 1.1);
+    paint(c, () => rr(c, 4, 4.5, 18, 10, 1), '#f4ecd8', 0.6);
+    c.strokeStyle = '#b8a890';
+    c.lineWidth = 0.6;
+    for (const y of [7, 9.5, 12]) {
+      c.beginPath();
+      c.moveTo(6, y);
+      c.lineTo(20, y);
+      c.stroke();
+    }
+    paint(c, () => rr(c, 2, 3, 4, 15, 1.5), '#7a3e1e', 0.8);
+    paint(c, ell(c, 4, 10.5, 1.2, 1.2), '#e0b43a', 0);
+  });
   single(scene, 'fx-meteoro', 36, 60, (c) => {
     // caindo de cima para baixo, com rastro de fogo
     const trail = c.createLinearGradient(0, 0, 0, 44);

@@ -19,7 +19,7 @@ export class LevelUpScene extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale;
-    const { promotion, options, level, profession } = this.data_;
+    const { promotion, options, level, choiceTitle, choiceSubtitle } = this.data_;
     const portrait = isPortrait(this);
     const touch = isTouch(this);
     const big = touch ? 1.3 : 1;
@@ -53,10 +53,10 @@ export class LevelUpScene extends Phaser.Scene {
       text(this, width / 2, top + 272, promotion.description, 18, '#e8e8e8')
         .setOrigin(0.5, 0.5).setAlign('center').setWordWrapWidth(width - 60);
       text(this, width / 2, top + 312, `Nível ${level} — escolha uma melhoria`, 20, '#9fc3ff').setOrigin(0.5);
-    } else if (profession) {
-      const title = text(this, width / 2, top + 30, 'ESCOLHA SUA PROFISSÃO', Math.min(44, (width - 40) / 13), '#ffd04a').setOrigin(0.5);
+    } else if (choiceTitle) {
+      const title = text(this, width / 2, top + 30, choiceTitle, Math.min(44, (width - 40) / 13), '#ffd04a').setOrigin(0.5);
       this.tweens.add({ targets: title, scale: { from: 0.6, to: 1 }, duration: 400, ease: 'Back.Out' });
-      text(this, width / 2, top + 80, `Nível ${level}: o Aprendiz está pronto para se especializar`, 20).setOrigin(0.5)
+      text(this, width / 2, top + 80, choiceSubtitle ?? `Nível ${level}`, 20).setOrigin(0.5)
         .setAlign('center').setWordWrapWidth(width - 40);
     } else {
       text(this, width / 2, top + 30, 'SUBIU DE NÍVEL!', 46, '#9fc3ff').setOrigin(0.5);

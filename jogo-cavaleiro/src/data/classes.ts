@@ -1,92 +1,91 @@
 import type { Stats } from './stats';
 import type { SkillId } from './skills';
 
-export type LineId = 'cavaleiro' | 'mago' | 'arqueiro';
+export type LineId = 'espadachim' | 'mago' | 'arqueiro';
 
 export type ClassId =
   | 'aprendiz'
-  | 'espadachim' | 'guarda' | 'cavaleiro'
-  | 'aprendiz-magia' | 'mago' | 'arquimago'
-  | 'recruta' | 'cacador' | 'patrulheiro';
+  | 'espadachim' | 'cavaleiro' | 'paladino'
+  | 'mago' | 'bruxo' | 'professor'
+  | 'arqueiro' | 'cacador' | 'patrulheiro';
 
 export interface ClassDef {
   id: ClassId;
   name: string;
   /** Chave da textura do personagem */
   texture: string;
-  /** Nível em que o personagem é promovido para esta classe */
+  /** Nível em que o personagem pode virar esta classe */
   minLevel: number;
   description: string;
-  /** Bônus somados aos atributos ao virar esta classe (inclusive a primeira) */
+  /** Bônus somados aos atributos ao virar esta classe */
   statBonus: Partial<Stats>;
   /** Habilidade recebida ao virar esta classe */
   grantsSkill?: SkillId;
-  /** Próxima classe da linhagem */
-  next?: ClassId;
-  /** Profissões que o jogador pode escolher (só o Aprendiz) */
+  /** Classes que o jogador pode escolher a seguir */
   choices?: ClassId[];
 }
 
-/** Nível em que o Aprendiz escolhe a profissão */
+/** Nível da 1ª classe (profissão) e da 2ª classe */
 export const PROFESSION_LEVEL = 5;
+export const SECOND_CLASS_LEVEL = 15;
 
 export const CLASSES: Record<ClassId, ClassDef> = {
-  // ---- Todos começam como Aprendiz e escolhem a profissão no nível 5
+  // ---- Todos começam como Aprendiz
   aprendiz: {
     id: 'aprendiz', name: 'Aprendiz', texture: 'hero-aprendiz', minLevel: 1,
     description: 'Um jovem aventureiro começando a jornada.',
-    statBonus: {}, grantsSkill: 'espada', choices: ['espadachim', 'aprendiz-magia', 'recruta'],
+    statBonus: {}, grantsSkill: 'espada', choices: ['espadachim', 'mago', 'arqueiro'],
   },
 
-  // ---- Linhagem do Cavaleiro: corpo a corpo, resistente
+  // ---- Espadachim → Cavaleiro ou Paladino
   espadachim: {
     id: 'espadachim', name: 'Espadachim', texture: 'hero-espadachim', minLevel: PROFESSION_LEVEL,
-    description: 'Mestre da espada. Golpe de Espada +1 nível, +20 Vida, +1 Armadura.',
-    statBonus: { maxHp: 20, armor: 1 }, grantsSkill: 'espada', next: 'guarda',
-  },
-  guarda: {
-    id: 'guarda', name: 'Guarda', texture: 'hero-guarda', minLevel: 10,
-    description: 'Ganha o Escudo Giratório. +30 Vida, +2 Armadura.',
-    statBonus: { maxHp: 30, armor: 2 }, grantsSkill: 'escudo', next: 'cavaleiro',
+    description: 'Espada e escudo. Ganha o Escudo Giratório. +30 Vida, +2 Armadura.',
+    statBonus: { maxHp: 30, armor: 2 }, grantsSkill: 'escudo', choices: ['cavaleiro', 'paladino'],
   },
   cavaleiro: {
-    id: 'cavaleiro', name: 'Cavaleiro', texture: 'hero-cavaleiro', minLevel: 20,
-    description: 'Ganha a Investida de Lança. +50 Vida, +3 Armadura, +25% Dano, +20 Velocidade.',
-    statBonus: { maxHp: 50, armor: 3, might: 0.25, speed: 20 }, grantsSkill: 'lanca',
+    id: 'cavaleiro', name: 'Cavaleiro', texture: 'hero-cavaleiro', minLevel: SECOND_CLASS_LEVEL,
+    description: 'Espadão de duas mãos. Ganha o Golpe Devastador. +40 Vida, +25% Dano, +2 Armadura.',
+    statBonus: { maxHp: 40, armor: 2, might: 0.25, speed: 10 }, grantsSkill: 'impacto',
+  },
+  paladino: {
+    id: 'paladino', name: 'Paladino', texture: 'hero-paladino', minLevel: SECOND_CLASS_LEVEL,
+    description: 'Guerreiro sagrado. Ganha a Aura Sagrada, que fere e cura. +60 Vida, +4 Armadura.',
+    statBonus: { maxHp: 60, armor: 4, regen: 0.5 }, grantsSkill: 'aura',
   },
 
-  // ---- Linhagem do Mago: dano em área à distância, pouca vida
-  'aprendiz-magia': {
-    id: 'aprendiz-magia', name: 'Iniciado Arcano', texture: 'hero-aprendiz-magia', minLevel: PROFESSION_LEVEL,
-    description: 'Estuda magia e lança bolas de fogo que explodem em área. +10% Dano, -10 Vida.',
-    statBonus: { maxHp: -10, might: 0.1 }, grantsSkill: 'fogo', next: 'mago',
-  },
+  // ---- Mago → Bruxo ou Professor
   mago: {
-    id: 'mago', name: 'Mago', texture: 'hero-mago', minLevel: 10,
-    description: 'Ganha a Corrente de Raios. +20 Vida, +15% Dano, +10% Área.',
-    statBonus: { maxHp: 20, might: 0.15, area: 0.1 }, grantsSkill: 'raio', next: 'arquimago',
+    id: 'mago', name: 'Mago', texture: 'hero-mago', minLevel: PROFESSION_LEVEL,
+    description: 'Estuda magia e lança bolas de fogo que explodem em área. +10% Dano, -10 Vida.',
+    statBonus: { maxHp: -10, might: 0.1 }, grantsSkill: 'fogo', choices: ['bruxo', 'professor'],
   },
-  arquimago: {
-    id: 'arquimago', name: 'Arquimago', texture: 'hero-arquimago', minLevel: 20,
-    description: 'Ganha a Chuva de Meteoros. +30 Vida, +30% Dano, +20% Área, ataques 10% mais rápidos.',
-    statBonus: { maxHp: 30, might: 0.3, area: 0.2, haste: 0.1 }, grantsSkill: 'meteoro',
+  bruxo: {
+    id: 'bruxo', name: 'Bruxo', texture: 'hero-bruxo', minLevel: SECOND_CLASS_LEVEL,
+    description: 'Mestre dos elementos. Ganha a Corrente de Raios. +30% Dano, +15% Área, +20 Vida.',
+    statBonus: { maxHp: 20, might: 0.3, area: 0.15 }, grantsSkill: 'raio',
+  },
+  professor: {
+    id: 'professor', name: 'Professor', texture: 'hero-professor', minLevel: SECOND_CLASS_LEVEL,
+    description: 'Sábio da academia. Ganha os Livros Voadores. Ataques 15% mais rápidos, +ímã, +25 Vida.',
+    statBonus: { maxHp: 25, haste: 0.15, area: 0.1, magnet: 60 }, grantsSkill: 'livro',
   },
 
-  // ---- Linhagem do Arqueiro: rápido, ataques à distância
-  recruta: {
-    id: 'recruta', name: 'Arqueiro', texture: 'hero-recruta', minLevel: PROFESSION_LEVEL,
+  // ---- Arqueiro → Caçador ou Patrulheiro
+  arqueiro: {
+    id: 'arqueiro', name: 'Arqueiro', texture: 'hero-recruta', minLevel: PROFESSION_LEVEL,
     description: 'Ágil e certeiro: atira flechas no inimigo mais próximo. +15 Velocidade.',
-    statBonus: { speed: 15 }, grantsSkill: 'flecha', next: 'cacador',
+    statBonus: { speed: 15 }, grantsSkill: 'flecha', choices: ['cacador', 'patrulheiro'],
   },
   cacador: {
-    id: 'cacador', name: 'Caçador', texture: 'hero-cacador', minLevel: 10,
-    description: 'Ganha a Chuva de Flechas. +20 Vida, ataques 10% mais rápidos, +15 Velocidade.',
-    statBonus: { maxHp: 20, haste: 0.1, speed: 15 }, grantsSkill: 'chuva', next: 'patrulheiro',
+    id: 'cacador', name: 'Caçador', texture: 'hero-cacador', minLevel: SECOND_CLASS_LEVEL,
+    description: 'Ganha a Chuva de Flechas. +25 Vida, ataques 10% mais rápidos, +15 Velocidade.',
+    statBonus: { maxHp: 25, haste: 0.1, speed: 15 }, grantsSkill: 'chuva',
   },
   patrulheiro: {
-    id: 'patrulheiro', name: 'Patrulheiro', texture: 'hero-patrulheiro', minLevel: 20,
-    description: 'Ganha o Tiro Certeiro. +35 Vida, +25% Dano, ataques 10% mais rápidos, +2 Armadura.',
-    statBonus: { maxHp: 35, might: 0.25, haste: 0.1, armor: 2 }, grantsSkill: 'tiro',
+    id: 'patrulheiro', name: 'Patrulheiro', texture: 'hero-patrulheiro', minLevel: SECOND_CLASS_LEVEL,
+    description: 'Ganha o Tiro Certeiro. +30 Vida, +25% Dano, +1 Armadura.',
+    statBonus: { maxHp: 30, might: 0.25, armor: 1 }, grantsSkill: 'tiro',
   },
 };
 
@@ -94,21 +93,27 @@ export interface LineDef {
   id: LineId;
   name: string;
   tagline: string;
+  /** [1ª classe, 2ª classe opção A, 2ª classe opção B] */
   classes: [ClassId, ClassId, ClassId];
   color: number;
 }
 
 export const LINES: Record<LineId, LineDef> = {
-  cavaleiro: {
-    id: 'cavaleiro', name: 'Cavaleiro', tagline: 'Corpo a corpo e muita resistência',
-    classes: ['espadachim', 'guarda', 'cavaleiro'], color: 0xffd04a,
+  espadachim: {
+    id: 'espadachim', name: 'Espadachim', tagline: 'Corpo a corpo e muita resistência',
+    classes: ['espadachim', 'cavaleiro', 'paladino'], color: 0xffd04a,
   },
   mago: {
     id: 'mago', name: 'Mago', tagline: 'Magias em área, mas pouca vida',
-    classes: ['aprendiz-magia', 'mago', 'arquimago'], color: 0xb07aff,
+    classes: ['mago', 'bruxo', 'professor'], color: 0xb07aff,
   },
   arqueiro: {
     id: 'arqueiro', name: 'Arqueiro', tagline: 'Veloz, ataca de longe',
-    classes: ['recruta', 'cacador', 'patrulheiro'], color: 0x7ee07e,
+    classes: ['arqueiro', 'cacador', 'patrulheiro'], color: 0x7ee07e,
   },
 };
+
+/** Linhagem a que uma classe pertence */
+export function lineOf(id: ClassId): LineId | null {
+  return (Object.values(LINES).find((l) => l.classes.includes(id))?.id) ?? null;
+}

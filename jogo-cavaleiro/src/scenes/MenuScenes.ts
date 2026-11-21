@@ -52,7 +52,7 @@ export class MenuScene extends Phaser.Scene {
     text(this, width / 2 - 95, apY + 6, `No nível ${PROFESSION_LEVEL}, escolha sua profissão:`, 17, '#9fc3ff').setOrigin(0, 0.5);
 
     // as três profissões (só informação)
-    const lines = [LINES.cavaleiro, LINES.mago, LINES.arqueiro];
+    const lines = [LINES.espadachim, LINES.mago, LINES.arqueiro];
     const top = apY + (portrait ? 70 : 52);
     const gap = 16;
     const bottomSpace = 90;
@@ -81,14 +81,15 @@ export class MenuScene extends Phaser.Scene {
       line.classes.forEach((id, k) => {
         const c = CLASSES[id];
         const x = (k - 1) * spacing;
-        const hero = this.add.sprite(x, heroY, c.texture, 'idle0').setScale(heroScaleK).play(`${c.texture}-idle`);
+        const hero = this.add.sprite(x, heroY, c.texture, 'idle0').setScale(heroScaleK * (heroScale(c.texture) / 0.5)).play(`${c.texture}-idle`);
         const name = text(this, x, heroY + (160 * heroScaleK) / 2 + 4, c.name, 14).setOrigin(0.5, 0)
           .setAlign('center').setWordWrapWidth(spacing - 6);
         const lvl = text(this, x, name.y + name.height + 1, `Nv ${c.minLevel}`, 12, '#9fc3ff').setOrigin(0.5, 0);
         card.add([hero, name, lvl]);
-        if (k < 2) card.add(text(this, x + spacing / 2, heroY, '→', 20, hex(line.color)).setOrigin(0.5));
+        if (k < 2) card.add(text(this, x + spacing / 2, heroY, k === 0 ? '→' : 'ou', k === 0 ? 20 : 15, hex(line.color)).setOrigin(0.5));
       });
-      const skills = line.classes.map((id) => SKILLS[CLASSES[id].grantsSkill!].name).join('  →  ');
+      const [s0, s1, s2] = line.classes.map((id) => SKILLS[CLASSES[id].grantsSkill!].name);
+      const skills = `${s0}  →  ${s1} ou ${s2}`;
       card.add(text(this, 0, cardH / 2 - 26, skills, 13, '#bfc6d6').setOrigin(0.5).setAlign('center').setWordWrapWidth(cardW - 24));
     });
 

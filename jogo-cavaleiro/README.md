@@ -19,18 +19,18 @@ npm run build    # gera a pasta dist/ pronta para publicar (itch.io, GitHub Page
 
 ## Classes
 
-Todos começam como **Aprendiz** (sprite desenhado à mão, em `src/assets/aprendiz.png`). No **nível 5** o jogador escolhe a profissão, e as promoções seguintes acontecem nos níveis 10 e 20.
+Todos começam como **Aprendiz**. No **nível 5** escolhem a 1ª classe e no **nível 15** escolhem entre dois caminhos de 2ª classe.
 
-| Profissão (Nv 5) | Nível 10 | Nível 20 |
+| 1ª classe (Nv 5) | 2ª classe (Nv 15): opção A | 2ª classe (Nv 15): opção B |
 |---|---|---|
-| Espadachim: Golpe de Espada +1 | Guarda: Escudo Giratório | Cavaleiro: Investida de Lança |
-| Iniciado Arcano: Bola de Fogo | Mago: Corrente de Raios | Arquimago: Chuva de Meteoros |
+| Espadachim: Escudo Giratório | Cavaleiro: Golpe Devastador | Paladino: Aura Sagrada |
+| Mago: Bola de Fogo | Bruxo: Corrente de Raios | Professor: Livros Voadores |
 | Arqueiro: Flecha | Caçador: Chuva de Flechas | Patrulheiro: Tiro Certeiro |
 
-Cada habilidade vai até o nível 5. Também existem 8 melhorias passivas (Força, Agilidade, Alcance, Vitalidade, Regeneração, Botas, Ímã, Armadura).
+O Golpe de Espada do Aprendiz continua com todos. Cada habilidade vai até o nível 5. Também existem 8 melhorias passivas (Força, Agilidade, Alcance, Vitalidade, Regeneração, Botas, Ímã, Armadura).
 
 ## Sprites desenhados à mão
-Ficam em `src/assets/` e são registrados em `src/sprites.ts`. Formato: PNG com fundo transparente, quadros de 128x128 lado a lado, personagem virado para a direita e pés na altura 122. Os quadros com nome (`idle0`, `walk0`, `atk0`, `die0`...) viram as animações `parado`, `andar`, `ataque` e `morte`.
+Aprendiz, Espadachim, Mago, Cavaleiro, Paladino, Bruxo e Professor usam sprites recortados das imagens enviadas. A fonte em PNG fica em `sprites/` e o jogo usa as versões WebP de `src/assets/`, registradas em `src/sprites.ts`. Os arqueiros e os monstros ainda usam a arte gerada em `src/art.ts`.
 
 ## Inimigos e chefes
 Gosma, Morcego, Cogumelo Andante, Esqueleto, Fantasma, Orc e Cavaleiro Negro (elite) aparecem conforme o tempo passa. A cada minuto vem uma horda. A cada 5 minutos aparece um chefe (Rei Gosma, depois Lorde Esqueleto, e assim por diante), com barra de vida no topo da tela.

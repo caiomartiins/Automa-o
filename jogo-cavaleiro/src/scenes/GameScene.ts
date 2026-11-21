@@ -2,8 +2,8 @@ import Phaser from 'phaser';
 import { Enemy } from '../objects/Enemy';
 import { Pickup } from '../objects/Pickup';
 import { BOSSES, BOSS_INTERVAL, ENEMIES, MAX_ENEMY_RADIUS, hpScale, type EnemyDef } from '../data/enemies';
-import { CLASSES, LINES, PROFESSION_LEVEL, type ClassDef, type ClassId, type LineId } from '../data/classes';
-import { heroScale, needsShadow } from '../sprites';
+import { CLASSES, LINES, lineOf, type ClassDef, type ClassId, type LineId } from '../data/classes';
+import { feetOffset, heroScale, needsShadow } from '../sprites';
 import { BASE_STATS, type Stats } from '../data/stats';
 import { SKILLS, type SkillId } from '../data/skills';
 import { rollUpgrades, type Upgrade } from '../data/upgrades';
@@ -35,8 +35,9 @@ export interface LevelUpData {
   level: number;
   promotion: ClassDef | null;
   options: Upgrade[];
-  /** true na tela de escolha de profissão */
-  profession?: boolean;
+  /** Preenchidos na tela de escolha de classe */
+  choiceTitle?: string;
+  choiceSubtitle?: string;
 }
 
 export interface RunResult {
@@ -197,7 +198,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number) {
-    if (this.over) return;
+    if (this.over || !this.cameras?.main) return;
     const dt = Math.min(delta, 50);
     this.elapsed += dt;
     this.frame++;
@@ -324,7 +325,7 @@ export class GameScene extends Phaser.Scene {
     }
     this.player.setDepth(this.player.y);
     // sombra no chão para os sprites que não têm sombra desenhada
-    this.shadow.setVisible(needsShadow(tex)).setPosition(this.player.x, this.player.y + 33).setDepth(this.player.y - 1);
+    this.shadow.setVisible(needsShadow(tex)).setPosition(this.player.x, this.player.y + feetOffset(tex) - 2).setDepth(this.player.y - 1);
 
     if (this.elapsed < this.hurtUntil) this.player.setTintFill(0xff5555);
     else this.player.clearTint();
@@ -699,12 +700,12 @@ export class GameScene extends Phaser.Scene {
     this.pendingLevelUps--;
     this.resolvedLevel++;
 
-    // Aprendiz no nível 5: escolhe a profissão
+    // hora de escolher a próxima classe (1ª classe no nível 5, 2ª no nível 15)
     const cur = CLASSES[this.classId];
-    if (cur.choices && this.resolvedLevel >= PROFESSION_LEVEL) {
+    if (cur.choices && this.resolvedLevel >= CLASSES[cur.choices[0]].minLevel) {
       const options: Upgrade[] = cur.choices.map((id) => {
         const def = CLASSES[id];
-        const line = Object.values(LINES).find((l) => l.classes[0] === id)!;
+        const line = LINES[lineOf(id)!];
         return {
           id: `classe-${id}`,
           title: def.name,
@@ -714,15 +715,16 @@ export class GameScene extends Phaser.Scene {
           apply: (g: GameScene) => g.chooseProfession(id),
         };
       });
-      return { level: this.resolvedLevel, promotion: null, options, profession: true };
+      const first = this.classId === 'aprendiz';
+      return {
+        level: this.resolvedLevel, promotion: null, options,
+        choiceTitle: first ? 'ESCOLHA SUA PROFISSÃO' : 'ESCOLHA SUA 2ª CLASSE',
+        choiceSubtitle: first
+          ? `Nível ${this.resolvedLevel}: o Aprendiz está pronto para se especializar`
+          : `Nível ${this.resolvedLevel}: o ${cur.name} pode seguir dois caminhos`,
+      };
     }
-
-    let promotion: ClassDef | null = null;
-    const next = cur.next;
-    if (next && this.resolvedLevel >= CLASSES[next].minLevel) {
-      this.promote(next);
-      promotion = CLASSES[next];
-    }
+    const promotion: ClassDef | null = null;
     return { level: this.resolvedLevel, promotion, options: rollUpgrades(this, 3) };
   }
 
@@ -730,7 +732,7 @@ export class GameScene extends Phaser.Scene {
 
   /** Chamado ao escolher a profissão no nível 5 */
   chooseProfession(id: ClassId) {
-    this.line = (Object.values(LINES).find((l) => l.classes.includes(id))?.id ?? null);
+    this.line = lineOf(id);
     this.promote(id);
   }
 
