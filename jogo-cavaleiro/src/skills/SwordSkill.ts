@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { FX_DEPTH, Skill } from './Skill';
+import { Skill } from './Skill';
 
 /** Golpe em arco na direção em que o herói está virado. */
 export class SwordSkill extends Skill {
@@ -24,18 +24,10 @@ export class SwordSkill extends Skill {
     const p = this.g.player;
     const r = this.range;
     const color = this.g.classId === 'cavaleiro' ? 0xffe9a0 : this.g.classId === 'guarda' ? 0xcfe0ff : 0xffffff;
+    this.g.fx.slash(p.x, p.y, angle, r, color);
 
-    const gfx = this.g.add.graphics({ x: p.x, y: p.y }).setDepth(FX_DEPTH);
-    gfx.fillStyle(color, 0.45);
-    gfx.slice(0, 0, r, angle - this.arc / 2, angle + this.arc / 2, false);
-    gfx.fillPath();
-    gfx.lineStyle(3, color, 0.9);
-    gfx.beginPath();
-    gfx.arc(0, 0, r, angle - this.arc / 2, angle + this.arc / 2, false);
-    gfx.strokePath();
-    this.g.tweens.add({ targets: gfx, alpha: 0, duration: 180, onComplete: () => gfx.destroy() });
-
-    for (const e of this.enemies()) {
+    for (const e of this.g.queryEnemies(p.x, p.y, r, this.near)) {
+      if (!e.active) continue;
       const dx = e.x - p.x;
       const dy = e.y - p.y;
       if (dx * dx + dy * dy > (r + e.def.radius) ** 2) continue;

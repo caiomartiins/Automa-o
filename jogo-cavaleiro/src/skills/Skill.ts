@@ -2,11 +2,13 @@ import type { GameScene } from '../scenes/GameScene';
 import type { Enemy } from '../objects/Enemy';
 import type { SkillId } from '../data/skills';
 
-export const FX_DEPTH = 1_000_000;
+export { FX_DEPTH } from '../fx';
 
 export abstract class Skill {
   abstract readonly id: SkillId;
   level = 1;
+  /** Array reaproveitado nas buscas de inimigos próximos */
+  protected near: Enemy[] = [];
 
   constructor(protected g: GameScene) {}
 
@@ -21,9 +23,4 @@ export abstract class Skill {
   protected onLevelChanged() {}
 
   destroy() {}
-
-  /** Lista dos inimigos vivos */
-  protected enemies(): Enemy[] {
-    return (this.g.enemies.getChildren() as Enemy[]).filter((e) => e.active);
-  }
 }

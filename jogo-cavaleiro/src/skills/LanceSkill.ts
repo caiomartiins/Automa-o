@@ -1,4 +1,4 @@
-import { FX_DEPTH, Skill } from './Skill';
+import { Skill } from './Skill';
 
 /** Estocada longa e perfurante (habilidade do Cavaleiro). */
 export class LanceSkill extends Skill {
@@ -23,20 +23,15 @@ export class LanceSkill extends Skill {
     const p = this.g.player;
     const len = this.length;
     const w = this.width;
-
-    const gfx = this.g.add.graphics({ x: p.x, y: p.y }).setDepth(FX_DEPTH).setRotation(angle);
-    gfx.fillStyle(0xffd04a, 0.35);
-    gfx.fillRect(0, -w / 2, len, w);
-    gfx.fillStyle(0xfff3c4, 0.95);
-    gfx.fillRect(0, -3, len - 18, 6);
-    gfx.fillTriangle(len - 22, -10, len - 22, 10, len, 0);
-    gfx.scaleX = 0.15;
-    this.g.tweens.add({ targets: gfx, scaleX: 1, duration: 90, ease: 'Cubic.Out' });
-    this.g.tweens.add({ targets: gfx, alpha: 0, delay: 120, duration: 200, onComplete: () => gfx.destroy() });
+    this.g.fx.lance(p.x, p.y, angle, len, w);
 
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
-    for (const e of this.enemies()) {
+    // busca só na região em volta da lança
+    const midX = p.x + (cos * len) / 2;
+    const midY = p.y + (sin * len) / 2;
+    for (const e of this.g.queryEnemies(midX, midY, len / 2 + w, this.near)) {
+      if (!e.active) continue;
       const dx = e.x - p.x;
       const dy = e.y - p.y;
       const along = dx * cos + dy * sin;

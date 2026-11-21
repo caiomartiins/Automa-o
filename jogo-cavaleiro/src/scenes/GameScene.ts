@@ -7,16 +7,27 @@ import { BASE_STATS, type Stats } from '../data/stats';
 import type { SkillId } from '../data/skills';
 import { rollUpgrades, type Upgrade } from '../data/upgrades';
 import type { Skill } from '../skills/Skill';
-import { FX_DEPTH } from '../skills/Skill';
 import { createSkill } from '../skills';
 import { isTouch } from '../ui';
+import { SpatialGrid } from '../spatialGrid';
+import { Fx, FX_DEPTH } from '../fx';
 
 /** XP necessária para passar do nível `l` para o `l + 1` */
 export const xpForLevel = (l: number) => Math.floor(4 + (l - 1) * 3 + Math.pow(l - 1, 1.5));
 
-const MAX_ENEMIES_DESKTOP = 400;
-const MAX_ENEMIES_MOBILE = 250;
+const PLAYER_RADIUS = 12;
 const PLAYER_IFRAMES = 500;
+const GRID_CELL = 64;
+const MAX_ENEMY_RADIUS = Math.max(...ENEMIES.map((d) => d.radius));
+
+/**
+ * Limites de desempenho. No celular começam menores e, durante a partida,
+ * diminuem sozinhos se o FPS cair (ver adaptQuality).
+ */
+const PERF = {
+  desktop: { maxEnemies: 400, maxPickups: 600, maxNumbers: 60, minEnemies: 200 },
+  mobile: { maxEnemies: 220, maxPickups: 300, maxNumbers: 25, minEnemies: 110 },
+};
 
 export interface LevelUpData {
   level: number;
@@ -32,9 +43,10 @@ export interface RunResult {
 }
 
 export class GameScene extends Phaser.Scene {
-  player!: Phaser.Physics.Arcade.Sprite;
-  enemies!: Phaser.Physics.Arcade.Group;
+  player!: Phaser.GameObjects.Image;
+  enemies!: Phaser.GameObjects.Group;
   pickups!: Phaser.GameObjects.Group;
+  fx!: Fx;
 
   // estado da partida (zerado em create(), pois a cena é reutilizada ao reiniciar)
   stats!: Stats;
@@ -49,6 +61,11 @@ export class GameScene extends Phaser.Scene {
   elapsed = 0;
   kills = 0;
 
+  /** Inimigos ativos neste frame e grade para achar os próximos rapidamente */
+  private live: Enemy[] = [];
+  private grid = new SpatialGrid<Enemy>(GRID_CELL);
+  private nearBuf: Enemy[] = [];
+
   private resolvedLevel = 1;
   private pendingLevelUps = 0;
   private choosing = false;
@@ -57,8 +74,10 @@ export class GameScene extends Phaser.Scene {
   private nextWaveAt = 60;
   private invulnUntil = 0;
   private hurtUntil = 0;
-  private floatingTexts = 0;
-  private maxEnemies = MAX_ENEMIES_DESKTOP;
+  private frame = 0;
+  private maxEnemies = 0;
+  private minEnemies = 0;
+  private qualityTimer = 0;
 
   private bg!: Phaser.GameObjects.TileSprite;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -74,6 +93,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   create() {
+    const perf = isTouch(this) ? PERF.mobile : PERF.desktop;
     this.stats = { ...BASE_STATS };
     this.hp = this.stats.maxHp;
     this.level = 1;
@@ -85,6 +105,7 @@ export class GameScene extends Phaser.Scene {
     this.facing.set(1, 0);
     this.elapsed = 0;
     this.kills = 0;
+    this.live = [];
     this.resolvedLevel = 1;
     this.pendingLevelUps = 0;
     this.choosing = false;
@@ -93,20 +114,20 @@ export class GameScene extends Phaser.Scene {
     this.nextWaveAt = 60;
     this.invulnUntil = 0;
     this.hurtUntil = 0;
-    this.floatingTexts = 0;
-    this.maxEnemies = isTouch(this) ? MAX_ENEMIES_MOBILE : MAX_ENEMIES_DESKTOP;
+    this.frame = 0;
+    this.maxEnemies = perf.maxEnemies;
+    this.minEnemies = perf.minEnemies;
+    this.qualityTimer = 0;
 
     const { width, height } = this.scale;
     this.bg = this.add.tileSprite(0, 0, width, height, 'grama').setOrigin(0).setScrollFactor(0).setDepth(-1e7);
 
-    this.player = this.physics.add.sprite(0, 0, CLASSES.aprendiz.texture);
-    (this.player.body as Phaser.Physics.Arcade.Body).setCircle(12, 8, 22);
+    this.fx = new Fx(this, perf.maxNumbers);
+    this.player = this.add.image(0, 0, CLASSES.aprendiz.texture);
     this.cameras.main.startFollow(this.player, true, 0.15, 0.15);
 
-    this.enemies = this.physics.add.group({ classType: Enemy, maxSize: this.maxEnemies });
-    this.pickups = this.add.group({ classType: Pickup, maxSize: 600 });
-    this.physics.add.collider(this.enemies, this.enemies);
-    this.physics.add.overlap(this.player, this.enemies, (_p, e) => this.onEnemyTouch(e as unknown as Enemy));
+    this.enemies = this.add.group({ classType: Enemy, maxSize: perf.maxEnemies });
+    this.pickups = this.add.group({ classType: Pickup, maxSize: perf.maxPickups });
 
     const kb = this.input.keyboard!;
     this.cursors = kb.createCursorKeys();
@@ -130,15 +151,24 @@ export class GameScene extends Phaser.Scene {
     if (this.over) return;
     const dt = Math.min(delta, 50);
     this.elapsed += dt;
+    this.frame++;
 
+    this.collectEnemies();
     this.updatePlayer(dt);
     this.skills.forEach((s) => s.update(dt));
-    this.updateEnemies();
+    this.updateEnemies(dt);
     this.updatePickups(dt);
     this.updateSpawner(dt);
+    this.fx.update(dt);
+    this.adaptQuality(dt);
 
     const cam = this.cameras.main;
     this.bg.setTilePosition(cam.scrollX, cam.scrollY);
+  }
+
+  /** Inimigos ativos perto de um ponto (usado pelas habilidades) */
+  queryEnemies(x: number, y: number, r: number, out: Enemy[]): Enemy[] {
+    return this.grid.query(x, y, r + MAX_ENEMY_RADIUS, out);
   }
 
   // ---------------------------------------------------------------- jogador
@@ -156,8 +186,10 @@ export class GameScene extends Phaser.Scene {
       m.normalize();
       this.facing.copy(m);
       if (m.x !== 0) this.player.setFlipX(m.x < 0);
+      const step = (this.stats.speed * dt) / 1000;
+      this.player.x += m.x * step;
+      this.player.y += m.y * step;
     }
-    this.player.setVelocity(m.x * this.stats.speed, m.y * this.stats.speed);
     this.player.setAngle(moving ? Math.sin(this.elapsed / 70) * 7 : 0);
     this.player.setDepth(this.player.y);
 
@@ -169,13 +201,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   private onEnemyTouch(e: Enemy) {
-    if (this.over || !e.active || this.elapsed < this.invulnUntil) return;
+    if (this.over || this.elapsed < this.invulnUntil) return;
     const dmg = Math.max(1, e.def.damage - this.stats.armor);
     this.hp -= dmg;
     this.invulnUntil = this.elapsed + PLAYER_IFRAMES;
     this.hurtUntil = this.elapsed + 100;
     this.cameras.main.shake(90, 0.004);
-    this.floatText(this.player.x, this.player.y - 30, `-${dmg}`, '#ff5c5c');
+    this.fx.number(this.player.x, this.player.y - 30, `-${dmg}`, 0xff5c5c);
     if (this.hp <= 0) this.gameOver();
   }
 
@@ -191,12 +223,16 @@ export class GameScene extends Phaser.Scene {
     });
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
       if (!this.joyOrigin || !p.isDown) return;
-      const v = new Phaser.Math.Vector2(p.x - this.joyOrigin.x, p.y - this.joyOrigin.y);
-      const len = Math.min(v.length(), 50);
-      if (len < 8) { this.joyVec.set(0, 0); return; }
-      v.normalize();
-      this.joyVec.copy(v);
-      this.joyKnob.setPosition(this.joyOrigin.x + v.x * len, this.joyOrigin.y + v.y * len);
+      const dx = p.x - this.joyOrigin.x;
+      const dy = p.y - this.joyOrigin.y;
+      const d = Math.hypot(dx, dy);
+      if (d < 8) {
+        this.joyVec.set(0, 0);
+        return;
+      }
+      const len = Math.min(d, 50);
+      this.joyVec.set(dx / d, dy / d);
+      this.joyKnob.setPosition(this.joyOrigin.x + this.joyVec.x * len, this.joyOrigin.y + this.joyVec.y * len);
     });
     const release = () => {
       this.joyOrigin = null;
@@ -210,33 +246,92 @@ export class GameScene extends Phaser.Scene {
 
   // ---------------------------------------------------------------- inimigos
 
-  private updateEnemies() {
+  private collectEnemies() {
+    this.live.length = 0;
+    this.grid.clear();
+    const all = this.enemies.getChildren() as Enemy[];
+    for (let i = 0; i < all.length; i++) {
+      const e = all[i];
+      if (!e.active) continue;
+      this.live.push(e);
+      this.grid.insert(e);
+    }
+  }
+
+  private updateEnemies(dt: number) {
     const px = this.player.x;
     const py = this.player.y;
+    const s = dt / 1000;
     const cam = this.cameras.main;
     const farSq = (Math.hypot(cam.width, cam.height) * 0.9) ** 2;
+    const sortDepth = this.frame % 3 === 0;
+    const parity = this.frame & 1;
+    const live = this.live;
 
-    for (const e of this.enemies.getChildren() as Enemy[]) {
+    for (let i = 0; i < live.length; i++) {
+      const e = live[i];
       if (!e.active) continue;
       const dx = px - e.x;
       const dy = py - e.y;
+      const d2 = dx * dx + dy * dy;
+
       // inimigos que ficaram muito para trás reaparecem na frente do jogador
-      if (dx * dx + dy * dy > farSq) {
-        const p = this.ringPosition(0);
+      if (d2 > farSq) {
+        const p = this.ringPosition();
         e.setPosition(p.x, p.y);
         continue;
       }
+
+      // contato com o jogador
+      const touch = PLAYER_RADIUS + e.def.radius;
+      if (d2 < touch * touch) this.onEnemyTouch(e);
+
+      // afastamento entre inimigos: metade deles por frame, alternando
+      if ((i & 1) === parity) this.computeSeparation(e);
+
       if (this.elapsed > e.knockUntil) {
-        const a = Math.atan2(dy, dx);
-        e.setVelocity(Math.cos(a) * e.def.speed, Math.sin(a) * e.def.speed);
+        const d = Math.sqrt(d2) || 1;
+        e.vx = (dx / d) * e.def.speed + e.sepX;
+        e.vy = (dy / d) * e.def.speed + e.sepY;
       }
+      e.x += e.vx * s;
+      e.y += e.vy * s;
       e.setFlipX(dx < 0);
-      e.setDepth(e.y);
+      if (sortDepth) e.setDepth(e.y);
       if (e.flashUntil && this.elapsed > e.flashUntil) {
         e.clearTint();
         e.flashUntil = 0;
       }
     }
+  }
+
+  /** Empurra o inimigo para longe dos vizinhos para eles não se empilharem */
+  private computeSeparation(e: Enemy) {
+    const near = this.grid.query(e.x, e.y, e.def.radius + MAX_ENEMY_RADIUS, this.nearBuf);
+    let sx = 0;
+    let sy = 0;
+    for (let j = 0; j < near.length; j++) {
+      const o = near[j];
+      if (o === e) continue;
+      const dx = e.x - o.x;
+      const dy = e.y - o.y;
+      const min = e.def.radius + o.def.radius;
+      const d2 = dx * dx + dy * dy;
+      if (d2 >= min * min) continue;
+      if (d2 < 0.01) {
+        sx += Math.random() - 0.5;
+        sy += Math.random() - 0.5;
+        continue;
+      }
+      const d = Math.sqrt(d2);
+      const push = (min - d) / min;
+      sx += (dx / d) * push;
+      sy += (dy / d) * push;
+    }
+    // elites quase não são empurrados
+    const strength = e.def.elite ? 20 : 140;
+    e.sepX = sx * strength;
+    e.sepY = sy * strength;
   }
 
   private updateSpawner(dt: number) {
@@ -289,6 +384,7 @@ export class GameScene extends Phaser.Scene {
     const e = this.enemies.get(x, y) as Enemy | null;
     if (!e) return;
     e.spawn(def, x, y, hpScale(this.elapsed / 1000));
+    e.setDepth(y);
   }
 
   /** Aplica dano a um inimigo (usado por todas as habilidades) */
@@ -298,7 +394,7 @@ export class GameScene extends Phaser.Scene {
     e.hp -= dmg;
     e.setTintFill(0xffffff);
     e.flashUntil = this.elapsed + 70;
-    this.floatText(e.x, e.y - 20, `${dmg}`, '#ffffff');
+    this.fx.number(e.x, e.y - 20, `${dmg}`, 0xffffff);
 
     if (e.hp <= 0) {
       this.killEnemy(e);
@@ -307,7 +403,8 @@ export class GameScene extends Phaser.Scene {
     const kb = knockback * e.def.knockback;
     if (kb > 0) {
       const a = Math.atan2(e.y - fromY, e.x - fromX);
-      e.setVelocity(Math.cos(a) * kb, Math.sin(a) * kb);
+      e.vx = Math.cos(a) * kb;
+      e.vy = Math.sin(a) * kb;
       e.knockUntil = this.elapsed + 120;
     }
   }
@@ -317,10 +414,7 @@ export class GameScene extends Phaser.Scene {
     const def = e.def;
     e.kill();
     this.kills++;
-
-    const poof = this.add.circle(x, y, def.radius, 0xffffff, 0.5).setDepth(FX_DEPTH);
-    this.tweens.add({ targets: poof, scale: 1.8, alpha: 0, duration: 200, onComplete: () => poof.destroy() });
-
+    this.fx.ring(x, y, def.radius, 1.8, 200, 0xffffff, 0.5);
     this.dropPickup('xp', def.xp, x, y);
     if (Math.random() < (def.elite ? 1 : 0.012)) this.dropPickup('comida', 30, x + 12, y);
   }
@@ -341,8 +435,10 @@ export class GameScene extends Phaser.Scene {
     const py = this.player.y;
     const magnetSq = this.stats.magnet ** 2;
     const step = (450 * dt) / 1000;
+    const all = this.pickups.getChildren() as Pickup[];
 
-    for (const p of this.pickups.getChildren() as Pickup[]) {
+    for (let i = 0; i < all.length; i++) {
+      const p = all[i];
       if (!p.active) continue;
       const dx = px - p.x;
       const dy = py - p.y;
@@ -352,7 +448,7 @@ export class GameScene extends Phaser.Scene {
         if (p.kind === 'xp') this.gainXp(p.value);
         else {
           this.hp = Math.min(this.stats.maxHp, this.hp + p.value);
-          this.floatText(px, py - 30, `+${p.value}`, '#7dff6b');
+          this.fx.number(px, py - 30, `+${p.value}`, 0x7dff6b);
         }
         if (this.choosing) return;
         continue;
@@ -422,34 +518,33 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.flash(500, 255, 230, 150);
 
     // onda de choque da promoção empurra os inimigos próximos
-    const blast = this.add.circle(this.player.x, this.player.y, 30, 0xffe9a0, 0.5).setDepth(FX_DEPTH);
-    this.tweens.add({ targets: blast, scale: 8, alpha: 0, duration: 500, onComplete: () => blast.destroy() });
-    for (const e of this.enemies.getChildren() as Enemy[]) {
-      if (!e.active) continue;
-      if (Phaser.Math.Distance.Between(e.x, e.y, this.player.x, this.player.y) < 240) {
+    this.fx.ring(this.player.x, this.player.y, 30, 8, 500, 0xffe9a0, 0.5);
+    for (const e of this.queryEnemies(this.player.x, this.player.y, 240, this.nearBuf).slice()) {
+      if (e.active && Phaser.Math.Distance.Between(e.x, e.y, this.player.x, this.player.y) < 240) {
         this.damageEnemy(e, 40 * this.stats.might, 500, this.player.x, this.player.y);
       }
     }
   }
 
-  // ---------------------------------------------------------------- utilidades
+  // ---------------------------------------------------------------- desempenho
 
-  private floatText(x: number, y: number, text: string, color: string) {
-    if (this.floatingTexts > (this.maxEnemies === MAX_ENEMIES_DESKTOP ? 60 : 30)) return;
-    this.floatingTexts++;
-    const t = this.add
-      .text(x, y, text, { fontFamily: 'Arial Black, Arial', fontSize: '16px', color, stroke: '#000', strokeThickness: 3 })
-      .setOrigin(0.5)
-      .setDepth(FX_DEPTH + 1);
-    this.tweens.add({
-      targets: t, y: y - 26, alpha: 0, duration: 550,
-      onComplete: () => { t.destroy(); this.floatingTexts--; },
-    });
+  /**
+   * A cada 2 segundos confere o FPS real. Se estiver baixo, reduz o limite de
+   * inimigos e de números de dano até o jogo voltar a rodar liso.
+   */
+  private adaptQuality(dt: number) {
+    this.qualityTimer += dt;
+    if (this.qualityTimer < 2000) return;
+    this.qualityTimer = 0;
+    const fps = this.game.loop.actualFps;
+    if (fps < 45 && this.maxEnemies > this.minEnemies) {
+      this.maxEnemies = Math.max(this.minEnemies, Math.round(this.maxEnemies * 0.85));
+      this.fx.maxNumbers = Math.max(8, this.fx.maxNumbers - 5);
+    }
   }
 
   private gameOver() {
     this.over = true;
-    this.physics.pause();
     this.player.setTint(0x555555);
     const result: RunResult = {
       time: this.elapsed,

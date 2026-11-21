@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { createTextures } from '../textures';
+import { createFxTextures, createTextures } from '../textures';
 import { CLASSES } from '../data/classes';
 import type { RunResult } from './GameScene';
 import { isTouch, text } from '../ui';
@@ -11,6 +11,7 @@ export class BootScene extends Phaser.Scene {
 
   create() {
     createTextures(this);
+    createFxTextures(this);
     this.scene.start('Menu');
   }
 }

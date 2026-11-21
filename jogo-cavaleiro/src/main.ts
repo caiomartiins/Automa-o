@@ -14,10 +14,11 @@ const game = new Phaser.Game({
     width: 1280,
     height: 720,
   },
-  physics: {
-    default: 'arcade',
-    arcade: { debug: false },
+  render: {
+    powerPreference: 'high-performance',
+    antialias: true,
   },
+  // o jogo não usa o motor de física: movimento e colisões são feitos à mão (mais leve)
   input: { activePointers: 2 },
   scene: [BootScene, MenuScene, GameScene, UIScene, LevelUpScene, GameOverScene],
 });

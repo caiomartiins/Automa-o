@@ -19,6 +19,11 @@ export class UIScene extends Phaser.Scene {
   private pauseIcon!: Phaser.GameObjects.Text;
   /** Escala do HUD: maior em telas de toque, onde o jogo aparece reduzido */
   private k = 1;
+  /** Assinatura do último desenho das barras, para só redesenhar quando algo mudar */
+  private lastBars = '';
+  private lastSecond = -1;
+  private lastKills = -1;
+  private lastSkills = '';
 
   constructor() {
     super('UI');
@@ -103,31 +108,55 @@ export class UIScene extends Phaser.Scene {
     if (!g.stats) return;
     const { width } = this.scale;
     const k = this.k;
+    const xpPx = Math.round(width * Math.min(1, g.xp / g.xpNext));
+    const hpPct = Phaser.Math.Clamp(g.hp / g.stats.maxHp, 0, 1);
+    const barW = 260 * k;
+    const hpPx = Math.round((barW - 4) * hpPct);
+    const sig = `${xpPx}|${hpPx}|${g.level}|${Math.ceil(g.hp)}|${g.stats.maxHp}|${g.classId}`;
+    if (sig !== this.lastBars) {
+      this.lastBars = sig;
+      this.drawBars(xpPx, hpPx, hpPct);
+    }
+
+    const s = Math.floor(g.elapsed / 1000);
+    if (s !== this.lastSecond) {
+      this.lastSecond = s;
+      this.timeText.setText(`${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`);
+    }
+    if (g.kills !== this.lastKills) {
+      this.lastKills = g.kills;
+      this.killText.setText(`Abates: ${g.kills}`);
+    }
+    let skills = '';
+    for (const sk of g.skills.values()) skills += sk.id + sk.level;
+    if (skills !== this.lastSkills) {
+      this.lastSkills = skills;
+      this.skillText.setText([...g.skills.values()].map((sk) => `${SKILLS[sk.id].name} Nv${sk.level}`).join('   •   '));
+    }
+  }
+
+  private drawBars(xpPx: number, hpPx: number, hpPct: number) {
+    const g = this.game_;
+    const { width } = this.scale;
+    const k = this.k;
     const b = this.bars;
     b.clear();
 
     // barra de XP (topo)
     b.fillStyle(0x000000, 0.6).fillRect(0, 0, width, 18 * k);
-    b.fillStyle(0x3d8bff).fillRect(0, 0, width * Math.min(1, g.xp / g.xpNext), 18 * k);
+    b.fillStyle(0x3d8bff).fillRect(0, 0, xpPx, 18 * k);
     this.levelText.setText(`Nível ${g.level}`);
 
     // barra de vida
-    const hpPct = Phaser.Math.Clamp(g.hp / g.stats.maxHp, 0, 1);
     const barW = 260 * k;
     const barH = 18 * k;
-    b.fillStyle(0x000000, 0.6).fillRoundedRect(16, 24 * k, barW, barH, 4);
-    b.fillStyle(hpPct > 0.3 ? 0xd63a3a : 0xff7a1a).fillRoundedRect(18, 24 * k + 2, (barW - 4) * hpPct, barH - 4, 3);
+    b.fillStyle(0x000000, 0.6).fillRect(16, 24 * k, barW, barH);
+    b.fillStyle(hpPct > 0.3 ? 0xd63a3a : 0xff7a1a).fillRect(18, 24 * k + 2, hpPx, barH - 4);
     this.hpText.setText(`Vida ${Math.ceil(Math.max(0, g.hp))}/${g.stats.maxHp}`);
 
     // classe atual e próxima promoção
     const cls = CLASSES[g.classId];
     const next = cls.next ? CLASSES[cls.next] : null;
     this.classText.setText(next ? `${cls.name}  →  ${next.name} no Nv ${next.minLevel}` : `${cls.name}  (classe máxima)`);
-
-    const s = Math.floor(g.elapsed / 1000);
-    this.timeText.setText(`${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`);
-    this.killText.setText(`Abates: ${g.kills}`);
-
-    this.skillText.setText([...g.skills.values()].map((sk) => `${SKILLS[sk.id].name} Nv${sk.level}`).join('   •   '));
   }
 }
