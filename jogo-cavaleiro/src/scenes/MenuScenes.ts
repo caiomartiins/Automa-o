@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import { createFxTextures } from '../textures';
 import { createArt } from '../art';
-import { CLASSES, LINES, type LineId } from '../data/classes';
+import { heroScale, preloadSprites, setupSprites } from '../sprites';
+import { CLASSES, LINES, PROFESSION_LEVEL } from '../data/classes';
 import { SKILLS } from '../data/skills';
 import type { RunResult } from './GameScene';
 import { hex, isTouch, onResize, text } from '../ui';
@@ -11,7 +12,12 @@ export class BootScene extends Phaser.Scene {
     super('Boot');
   }
 
+  preload() {
+    preloadSprites(this);
+  }
+
   create() {
+    setupSprites(this);
     createArt(this);
     createFxTextures(this);
     this.scene.start('Menu');
@@ -34,76 +40,76 @@ export class MenuScene extends Phaser.Scene {
     this.add.tileSprite(0, 0, width, height, 'grama').setOrigin(0).setAlpha(0.55);
     this.add.rectangle(0, 0, width, height, 0x0b0f14, 0.35).setOrigin(0);
 
-    const titleY = portrait ? 90 : 62;
-    text(this, width / 2, titleY, 'ASCENSÃO DO CAVALEIRO', Math.min(52, (width - 40) / 13.5), '#ffd04a').setOrigin(0.5);
-    text(this, width / 2, titleY + 46, 'Escolha sua classe', 22).setOrigin(0.5);
+    const titleY = portrait ? 80 : 46;
+    text(this, width / 2, titleY, 'ASCENSÃO DO CAVALEIRO', Math.min(50, (width - 40) / 13.5), '#ffd04a').setOrigin(0.5);
 
-    // cartas das linhagens: lado a lado (deitado) ou empilhadas (em pé)
+    // o Aprendiz, onde todos começam
+    const apY = titleY + (portrait ? 110 : 82);
+    const ap = CLASSES.aprendiz;
+    const apScale = (heroScale(ap.texture) / 0.5) * (portrait ? 0.85 : 0.72);
+    this.add.sprite(width / 2 - 150, apY, ap.texture, 'idle0').setScale(apScale).play(`${ap.texture}-idle`);
+    text(this, width / 2 - 95, apY - 22, 'Todos começam como Aprendiz', 20).setOrigin(0, 0.5);
+    text(this, width / 2 - 95, apY + 6, `No nível ${PROFESSION_LEVEL}, escolha sua profissão:`, 17, '#9fc3ff').setOrigin(0, 0.5);
+
+    // as três profissões (só informação)
     const lines = [LINES.cavaleiro, LINES.mago, LINES.arqueiro];
-    const top = titleY + 80;
-    const gap = 20;
-    const bottomSpace = 70;
+    const top = apY + (portrait ? 70 : 52);
+    const gap = 16;
+    const bottomSpace = 90;
     let cardW: number;
     let cardH: number;
     if (portrait) {
       cardW = Math.min(640, width - 40);
-      cardH = Math.min(360, (height - top - bottomSpace - gap * 2) / 3);
+      cardH = Math.min(330, (height - top - bottomSpace - gap * 2) / 3);
     } else {
       cardW = Math.min(390, (width - 40 - gap * 2) / 3);
-      cardH = Math.min(460, height - top - bottomSpace);
+      cardH = Math.min(345, height - top - bottomSpace);
     }
 
     lines.forEach((line, i) => {
       const cx = portrait ? width / 2 : width / 2 + (i - 1) * (cardW + gap);
       const cy = portrait ? top + cardH / 2 + i * (cardH + gap) : top + cardH / 2;
       const card = this.add.container(cx, cy);
-      const bg = this.add.rectangle(0, 0, cardW, cardH, 0x151a24, 0.92).setStrokeStyle(3, line.color);
-      const title = text(this, 0, -cardH / 2 + 30, line.name.toUpperCase(), 30, hex(line.color)).setOrigin(0.5);
-      const tag = text(this, 0, -cardH / 2 + 62, line.tagline, 16, '#d8d8d8').setOrigin(0.5);
+      const bg = this.add.rectangle(0, 0, cardW, cardH, 0x151a24, 0.9).setStrokeStyle(2, line.color, 0.9);
+      const title = text(this, 0, -cardH / 2 + 26, line.name.toUpperCase(), 26, hex(line.color)).setOrigin(0.5);
+      const tag = text(this, 0, -cardH / 2 + 54, line.tagline, 15, '#d8d8d8').setOrigin(0.5);
       card.add([bg, title, tag]);
 
-      // as três classes da linhagem, com a evolução
-      const heroScale = Math.min(1.05, (cardH - 230) / 160, cardW / 3 / 90);
+      const heroScaleK = Math.min(0.95, (cardH - 200) / 160, cardW / 3 / 90);
       const spacing = Math.min(cardW / 3, 120);
-      const heroY = -cardH / 2 + 90 + (160 * heroScale) / 2;
+      const heroY = -cardH / 2 + 74 + (160 * heroScaleK) / 2;
       line.classes.forEach((id, k) => {
         const c = CLASSES[id];
         const x = (k - 1) * spacing;
-        const hero = this.add.sprite(x, heroY, c.texture, 'idle0').setScale(heroScale).play(`${c.texture}-idle`);
-        const name = text(this, x, heroY + (160 * heroScale) / 2 + 6, c.name, 14, '#ffffff').setOrigin(0.5, 0)
+        const hero = this.add.sprite(x, heroY, c.texture, 'idle0').setScale(heroScaleK).play(`${c.texture}-idle`);
+        const name = text(this, x, heroY + (160 * heroScaleK) / 2 + 4, c.name, 14).setOrigin(0.5, 0)
           .setAlign('center').setWordWrapWidth(spacing - 6);
-        const lvl = text(this, x, heroY + (160 * heroScale) / 2 + 24 + (name.height > 24 ? 16 : 0), k === 0 ? 'Início' : `Nv ${c.minLevel}`, 12, '#9fc3ff').setOrigin(0.5, 0);
+        const lvl = text(this, x, name.y + name.height + 1, `Nv ${c.minLevel}`, 12, '#9fc3ff').setOrigin(0.5, 0);
         card.add([hero, name, lvl]);
-        if (k < 2) card.add(text(this, x + spacing / 2, heroY, '→', 22, hex(line.color)).setOrigin(0.5));
+        if (k < 2) card.add(text(this, x + spacing / 2, heroY, '→', 20, hex(line.color)).setOrigin(0.5));
       });
-      // habilidades que a linhagem ganha ao evoluir
       const skills = line.classes.map((id) => SKILLS[CLASSES[id].grantsSkill!].name).join('  →  ');
-      card.add(text(this, 0, cardH / 2 - 62, skills, 14, '#bfc6d6').setOrigin(0.5).setAlign('center').setWordWrapWidth(cardW - 30));
-      const hint = text(this, 0, cardH / 2 - 22, touch ? 'Tocar para jogar' : `[${i + 1}] Jogar`, 16, '#8a8fa3').setOrigin(0.5);
-      card.add(hint);
-
-      bg.setInteractive({ useHandCursor: true })
-        .on('pointerover', () => bg.setFillStyle(0x222a3a, 0.95))
-        .on('pointerout', () => bg.setFillStyle(0x151a24, 0.92))
-        .on('pointerup', () => this.start(line.id));
+      card.add(text(this, 0, cardH / 2 - 26, skills, 13, '#bfc6d6').setOrigin(0.5).setAlign('center').setWordWrapWidth(cardW - 24));
     });
 
-    text(this, width / 2, height - 30, touch
+    const start = text(this, width / 2, height - 52, touch ? 'Toque para começar' : 'Clique ou aperte ESPAÇO para começar', touch ? 30 : 24).setOrigin(0.5);
+    this.tweens.add({ targets: start, alpha: 0.35, yoyo: true, repeat: -1, duration: 700 });
+    text(this, width / 2, height - 18, touch
       ? 'Toque e arraste para andar  •  Ataques são automáticos'
-      : 'WASD / Setas para andar  •  Ataques são automáticos  •  P pausa', touch ? 18 : 16, '#c8c8c8')
+      : 'WASD / Setas para andar  •  Ataques são automáticos  •  P pausa', touch ? 16 : 14, '#c8c8c8')
       .setOrigin(0.5).setAlign('center').setWordWrapWidth(width - 40);
 
     const kb = this.input.keyboard!;
-    kb.once('keydown-ONE', () => this.start('cavaleiro'));
-    kb.once('keydown-TWO', () => this.start('mago'));
-    kb.once('keydown-THREE', () => this.start('arqueiro'));
+    kb.once('keydown-SPACE', () => this.start());
+    kb.once('keydown-ENTER', () => this.start());
+    this.input.once('pointerup', () => this.start());
     onResize(this, () => this.scene.restart());
   }
 
-  private start(line: LineId) {
+  private start() {
     if (this.started) return;
     this.started = true;
-    this.scene.start('Game', { line });
+    this.scene.start('Game');
   }
 }
 
@@ -134,7 +140,7 @@ export class GameOverScene extends Phaser.Scene {
     const touch = isTouch(this);
     const again = text(this, width / 2, oy + 510, touch ? 'Jogar de novo' : 'Jogar de novo [ESPAÇO]', touch ? 32 : 26).setOrigin(0.5);
     this.tweens.add({ targets: again, alpha: 0.45, yoyo: true, repeat: -1, duration: 700 });
-    const menu = text(this, width / 2, oy + 590, touch ? 'Escolher outra classe' : 'Escolher outra classe [M]', touch ? 24 : 20, '#9fc3ff').setOrigin(0.5);
+    const menu = text(this, width / 2, oy + 590, touch ? 'Voltar ao menu' : 'Voltar ao menu [M]', touch ? 24 : 20, '#9fc3ff').setOrigin(0.5);
 
     // pequena espera para o jogador não reiniciar sem querer
     this.time.delayedCall(600, () => {
@@ -144,10 +150,10 @@ export class GameOverScene extends Phaser.Scene {
         gone = true;
         this.scene.start(target, data);
       };
-      again.setInteractive({ useHandCursor: true }).on('pointerup', () => go('Game', { line: r.line }));
+      again.setInteractive({ useHandCursor: true }).on('pointerup', () => go('Game'));
       menu.setInteractive({ useHandCursor: true }).on('pointerup', () => go('Menu'));
-      this.input.keyboard!.once('keydown-SPACE', () => go('Game', { line: r.line }));
-      this.input.keyboard!.once('keydown-ENTER', () => go('Game', { line: r.line }));
+      this.input.keyboard!.once('keydown-SPACE', () => go('Game'));
+      this.input.keyboard!.once('keydown-ENTER', () => go('Game'));
       this.input.keyboard!.once('keydown-M', () => go('Menu'));
     });
     onResize(this, () => this.scene.restart(this.result));

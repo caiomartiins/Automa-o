@@ -2,9 +2,10 @@ import Phaser from 'phaser';
 import { Enemy } from '../objects/Enemy';
 import { Pickup } from '../objects/Pickup';
 import { BOSSES, BOSS_INTERVAL, ENEMIES, MAX_ENEMY_RADIUS, hpScale, type EnemyDef } from '../data/enemies';
-import { CLASSES, LINES, type ClassDef, type ClassId, type LineId } from '../data/classes';
+import { CLASSES, LINES, PROFESSION_LEVEL, type ClassDef, type ClassId, type LineId } from '../data/classes';
+import { heroScale, needsShadow } from '../sprites';
 import { BASE_STATS, type Stats } from '../data/stats';
-import type { SkillId } from '../data/skills';
+import { SKILLS, type SkillId } from '../data/skills';
 import { rollUpgrades, type Upgrade } from '../data/upgrades';
 import type { Skill } from '../skills/Skill';
 import { createSkill } from '../skills';
@@ -34,6 +35,8 @@ export interface LevelUpData {
   level: number;
   promotion: ClassDef | null;
   options: Upgrade[];
+  /** true na tela de escolha de profissão */
+  profession?: boolean;
 }
 
 export interface RunResult {
@@ -41,7 +44,7 @@ export interface RunResult {
   level: number;
   className: string;
   kills: number;
-  line: LineId;
+  line: LineId | null;
 }
 
 export class GameScene extends Phaser.Scene {
@@ -78,7 +81,9 @@ export class GameScene extends Phaser.Scene {
   private bossCount = 0;
   /** Chefe vivo no momento (a barra de vida aparece no HUD) */
   boss: Enemy | null = null;
-  line: LineId = 'cavaleiro';
+  /** Linhagem escolhida no nível 5 (null enquanto ainda é Aprendiz) */
+  line: LineId | null = null;
+  private shadow!: Phaser.GameObjects.Image;
   projectiles!: Projectiles;
   private invulnUntil = 0;
   private hurtUntil = 0;
@@ -108,8 +113,8 @@ export class GameScene extends Phaser.Scene {
     super('Game');
   }
 
-  init(data: { line?: LineId }) {
-    this.line = data?.line ?? 'cavaleiro';
+  init() {
+    this.line = null;
   }
 
   create() {
@@ -119,7 +124,7 @@ export class GameScene extends Phaser.Scene {
     this.level = 1;
     this.xp = 0;
     this.xpNext = xpForLevel(1);
-    this.classId = LINES[this.line].classes[0];
+    this.classId = 'aprendiz';
     // bônus da classe inicial (ex.: magos começam com menos vida)
     for (const [k, v] of Object.entries(CLASSES[this.classId].statBonus) as [keyof Stats, number][]) this.stats[k] += v;
     this.hp = this.stats.maxHp;
@@ -155,7 +160,8 @@ export class GameScene extends Phaser.Scene {
 
     this.fx = new Fx(this, perf.maxNumbers);
     const startTex = CLASSES[this.classId].texture;
-    this.player = this.add.sprite(0, 0, startTex, 'idle0').setScale(0.5);
+    this.shadow = this.add.image(0, 0, 'fx-sombra').setAlpha(0.45);
+    this.player = this.add.sprite(0, 0, startTex, 'idle0').setScale(heroScale(startTex));
     this.player.play(`${startTex}-idle`);
     this.projectiles = new Projectiles(this);
     this.sparks = this.add.particles(0, 0, 'fx-spark', {
@@ -214,6 +220,15 @@ export class GameScene extends Phaser.Scene {
 
   /** Chamado pela espada: mostra a pose de ataque por um instante */
   playerAttacked() {
+    const tex = CLASSES[this.classId].texture;
+    const anim = this.anims.get(`${tex}-attack`);
+    if (anim) {
+      // sprite com animação de ataque de verdade: toca ela inteira
+      if (this.elapsed < this.attackUntil) return;
+      this.player.play(anim.key);
+      this.attackUntil = this.elapsed + anim.duration;
+      return;
+    }
     this.attackUntil = this.elapsed + 150;
   }
 
@@ -299,7 +314,7 @@ export class GameScene extends Phaser.Scene {
     // animação: pose de ataque por um instante, senão andando ou parado
     const tex = CLASSES[this.classId].texture;
     if (this.elapsed < this.attackUntil) {
-      if (this.player.frame.name !== 'atk') {
+      if (!this.anims.exists(`${tex}-attack`) && this.player.frame.name !== 'atk') {
         this.player.stop();
         this.player.setFrame('atk');
       }
@@ -308,6 +323,8 @@ export class GameScene extends Phaser.Scene {
       if (!this.player.anims.isPlaying || this.player.anims.currentAnim?.key !== anim) this.player.play(anim);
     }
     this.player.setDepth(this.player.y);
+    // sombra no chão para os sprites que não têm sombra desenhada
+    this.shadow.setVisible(needsShadow(tex)).setPosition(this.player.x, this.player.y + 33).setDepth(this.player.y - 1);
 
     if (this.elapsed < this.hurtUntil) this.player.setTintFill(0xff5555);
     else this.player.clearTint();
@@ -682,8 +699,26 @@ export class GameScene extends Phaser.Scene {
     this.pendingLevelUps--;
     this.resolvedLevel++;
 
+    // Aprendiz no nível 5: escolhe a profissão
+    const cur = CLASSES[this.classId];
+    if (cur.choices && this.resolvedLevel >= PROFESSION_LEVEL) {
+      const options: Upgrade[] = cur.choices.map((id) => {
+        const def = CLASSES[id];
+        const line = Object.values(LINES).find((l) => l.classes[0] === id)!;
+        return {
+          id: `classe-${id}`,
+          title: def.name,
+          desc: def.description,
+          color: line.color,
+          icon: def.texture,
+          apply: (g: GameScene) => g.chooseProfession(id),
+        };
+      });
+      return { level: this.resolvedLevel, promotion: null, options, profession: true };
+    }
+
     let promotion: ClassDef | null = null;
-    const next = CLASSES[this.classId].next;
+    const next = cur.next;
     if (next && this.resolvedLevel >= CLASSES[next].minLevel) {
       this.promote(next);
       promotion = CLASSES[next];
@@ -693,9 +728,17 @@ export class GameScene extends Phaser.Scene {
 
   // ---------------------------------------------------------------- classes e habilidades
 
+  /** Chamado ao escolher a profissão no nível 5 */
+  chooseProfession(id: ClassId) {
+    this.line = (Object.values(LINES).find((l) => l.classes.includes(id))?.id ?? null);
+    this.promote(id);
+  }
+
   addSkill(id: SkillId) {
     const existing = this.skills.get(id);
-    if (existing) existing.levelUp();
+    if (existing) {
+      if (existing.level < SKILLS[id].maxLevel) existing.levelUp();
+    }
     else this.skills.set(id, createSkill(id, this));
   }
 
@@ -704,7 +747,8 @@ export class GameScene extends Phaser.Scene {
     this.classId = id;
     for (const [k, v] of Object.entries(def.statBonus) as [keyof Stats, number][]) this.stats[k] += v;
     this.hp = this.stats.maxHp;
-    this.player.setTexture(def.texture, 'idle0');
+    this.player.setTexture(def.texture, 'idle0').setScale(heroScale(def.texture));
+    this.attackUntil = 0;
     this.player.play(`${def.texture}-idle`);
     this.sparkBudget = 40;
     this.burst(this.player.x, this.player.y, 40);
@@ -739,7 +783,9 @@ export class GameScene extends Phaser.Scene {
 
   private gameOver() {
     this.over = true;
-    this.player.setTint(0x555555);
+    const dieAnim = `${CLASSES[this.classId].texture}-die`;
+    if (this.anims.exists(dieAnim)) this.player.play(dieAnim);
+    else this.player.setTint(0x555555);
     const result: RunResult = {
       time: this.elapsed,
       level: this.level,

@@ -41,6 +41,14 @@ export function createFxTextures(scene: Phaser.Scene) {
     g.fillCircle(16, 16, 16);
   });
 
+  // sombra oval no chão (para sprites sem sombra desenhada)
+  make(scene, 'fx-sombra', 44, 14, (g) => {
+    for (let i = 6; i >= 1; i--) {
+      g.fillStyle(0x000000, 0.12);
+      g.fillEllipse(22, 7, 7 * i + 2, 2 * i + 2);
+    }
+  });
+
   // faísca suave para as partículas
   make(scene, 'fx-spark', 12, 12, (g) => {
     g.fillStyle(0xffffff, 0.3);

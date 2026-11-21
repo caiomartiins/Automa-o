@@ -527,7 +527,7 @@ function drawHero(c: Ctx, L: HeroLook, p: Pose) {
 }
 
 const HEROES: Record<string, HeroLook> = {
-  'hero-aprendiz': {
+  'hero-espadachim': {
     skin: '#f7d3b0', hair: '#8a5a32', eye: '#4f8f3a', tunic: '#b98a52', trim: '#e9d9b6',
     pants: '#6e5a45', boots: '#6b4226', blade: '#c9cfd6', bladeLength: 14,
   },

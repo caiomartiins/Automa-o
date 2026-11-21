@@ -8,6 +8,8 @@ export interface Upgrade {
   desc: string;
   color: number;
   apply: (g: GameScene) => void;
+  /** Personagem mostrado na carta (escolha de profissão) */
+  icon?: string;
 }
 
 interface PassiveDef {

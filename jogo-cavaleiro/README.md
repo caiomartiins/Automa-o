@@ -17,17 +17,20 @@ npm run build    # gera a pasta dist/ pronta para publicar (itch.io, GitHub Page
 - **P / ESC**: pausar
 - **L**: sobe um nível na hora (só no `npm run dev`, para testes)
 
-## Linhagens de classes
+## Classes
 
-Você escolhe a linhagem no menu. A promoção acontece nos níveis 10 e 20.
+Todos começam como **Aprendiz** (sprite desenhado à mão, em `src/assets/aprendiz.png`). No **nível 5** o jogador escolhe a profissão, e as promoções seguintes acontecem nos níveis 10 e 20.
 
-| Linhagem | Início | Nível 10 | Nível 20 |
-|---|---|---|---|
-| **Cavaleiro** | Aprendiz: Golpe de Espada | Guarda: Escudo Giratório | Cavaleiro: Investida de Lança |
-| **Mago** | Aprendiz de Magia: Bola de Fogo | Mago: Corrente de Raios | Arquimago: Chuva de Meteoros |
-| **Arqueiro** | Recruta: Flecha | Caçador: Chuva de Flechas | Patrulheiro: Tiro Certeiro |
+| Profissão (Nv 5) | Nível 10 | Nível 20 |
+|---|---|---|
+| Espadachim: Golpe de Espada +1 | Guarda: Escudo Giratório | Cavaleiro: Investida de Lança |
+| Iniciado Arcano: Bola de Fogo | Mago: Corrente de Raios | Arquimago: Chuva de Meteoros |
+| Arqueiro: Flecha | Caçador: Chuva de Flechas | Patrulheiro: Tiro Certeiro |
 
 Cada habilidade vai até o nível 5. Também existem 8 melhorias passivas (Força, Agilidade, Alcance, Vitalidade, Regeneração, Botas, Ímã, Armadura).
+
+## Sprites desenhados à mão
+Ficam em `src/assets/` e são registrados em `src/sprites.ts`. Formato: PNG com fundo transparente, quadros de 128x128 lado a lado, personagem virado para a direita e pés na altura 122. Os quadros com nome (`idle0`, `walk0`, `atk0`, `die0`...) viram as animações `parado`, `andar`, `ataque` e `morte`.
 
 ## Inimigos e chefes
 Gosma, Morcego, Cogumelo Andante, Esqueleto, Fantasma, Orc e Cavaleiro Negro (elite) aparecem conforme o tempo passa. A cada minuto vem uma horda. A cada 5 minutos aparece um chefe (Rei Gosma, depois Lorde Esqueleto, e assim por diante), com barra de vida no topo da tela.

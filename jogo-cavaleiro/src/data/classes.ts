@@ -4,7 +4,8 @@ import type { SkillId } from './skills';
 export type LineId = 'cavaleiro' | 'mago' | 'arqueiro';
 
 export type ClassId =
-  | 'aprendiz' | 'guarda' | 'cavaleiro'
+  | 'aprendiz'
+  | 'espadachim' | 'guarda' | 'cavaleiro'
   | 'aprendiz-magia' | 'mago' | 'arquimago'
   | 'recruta' | 'cacador' | 'patrulheiro';
 
@@ -22,14 +23,26 @@ export interface ClassDef {
   grantsSkill?: SkillId;
   /** Próxima classe da linhagem */
   next?: ClassId;
+  /** Profissões que o jogador pode escolher (só o Aprendiz) */
+  choices?: ClassId[];
 }
 
+/** Nível em que o Aprendiz escolhe a profissão */
+export const PROFESSION_LEVEL = 5;
+
 export const CLASSES: Record<ClassId, ClassDef> = {
-  // ---- Linhagem do Cavaleiro: corpo a corpo, resistente
+  // ---- Todos começam como Aprendiz e escolhem a profissão no nível 5
   aprendiz: {
     id: 'aprendiz', name: 'Aprendiz', texture: 'hero-aprendiz', minLevel: 1,
-    description: 'Um jovem recruta com uma espada de treino.',
-    statBonus: {}, grantsSkill: 'espada', next: 'guarda',
+    description: 'Um jovem aventureiro começando a jornada.',
+    statBonus: {}, grantsSkill: 'espada', choices: ['espadachim', 'aprendiz-magia', 'recruta'],
+  },
+
+  // ---- Linhagem do Cavaleiro: corpo a corpo, resistente
+  espadachim: {
+    id: 'espadachim', name: 'Espadachim', texture: 'hero-espadachim', minLevel: PROFESSION_LEVEL,
+    description: 'Mestre da espada. Golpe de Espada +1 nível, +20 Vida, +1 Armadura.',
+    statBonus: { maxHp: 20, armor: 1 }, grantsSkill: 'espada', next: 'guarda',
   },
   guarda: {
     id: 'guarda', name: 'Guarda', texture: 'hero-guarda', minLevel: 10,
@@ -44,9 +57,9 @@ export const CLASSES: Record<ClassId, ClassDef> = {
 
   // ---- Linhagem do Mago: dano em área à distância, pouca vida
   'aprendiz-magia': {
-    id: 'aprendiz-magia', name: 'Aprendiz de Magia', texture: 'hero-aprendiz-magia', minLevel: 1,
-    description: 'Estudante de magia que lança bolas de fogo.',
-    statBonus: { maxHp: -20 }, grantsSkill: 'fogo', next: 'mago',
+    id: 'aprendiz-magia', name: 'Iniciado Arcano', texture: 'hero-aprendiz-magia', minLevel: PROFESSION_LEVEL,
+    description: 'Estuda magia e lança bolas de fogo que explodem em área. +10% Dano, -10 Vida.',
+    statBonus: { maxHp: -10, might: 0.1 }, grantsSkill: 'fogo', next: 'mago',
   },
   mago: {
     id: 'mago', name: 'Mago', texture: 'hero-mago', minLevel: 10,
@@ -61,9 +74,9 @@ export const CLASSES: Record<ClassId, ClassDef> = {
 
   // ---- Linhagem do Arqueiro: rápido, ataques à distância
   recruta: {
-    id: 'recruta', name: 'Recruta Arqueiro', texture: 'hero-recruta', minLevel: 1,
-    description: 'Ágil e certeiro com um arco curto.',
-    statBonus: { maxHp: -10, speed: 15 }, grantsSkill: 'flecha', next: 'cacador',
+    id: 'recruta', name: 'Arqueiro', texture: 'hero-recruta', minLevel: PROFESSION_LEVEL,
+    description: 'Ágil e certeiro: atira flechas no inimigo mais próximo. +15 Velocidade.',
+    statBonus: { speed: 15 }, grantsSkill: 'flecha', next: 'cacador',
   },
   cacador: {
     id: 'cacador', name: 'Caçador', texture: 'hero-cacador', minLevel: 10,
@@ -88,7 +101,7 @@ export interface LineDef {
 export const LINES: Record<LineId, LineDef> = {
   cavaleiro: {
     id: 'cavaleiro', name: 'Cavaleiro', tagline: 'Corpo a corpo e muita resistência',
-    classes: ['aprendiz', 'guarda', 'cavaleiro'], color: 0xffd04a,
+    classes: ['espadachim', 'guarda', 'cavaleiro'], color: 0xffd04a,
   },
   mago: {
     id: 'mago', name: 'Mago', tagline: 'Magias em área, mas pouca vida',

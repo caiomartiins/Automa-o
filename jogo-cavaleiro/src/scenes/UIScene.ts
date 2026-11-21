@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import type { GameScene } from './GameScene';
-import { CLASSES } from '../data/classes';
+import { CLASSES, PROFESSION_LEVEL } from '../data/classes';
 import { SKILLS } from '../data/skills';
 import { isPortrait, isTouch, onResize, text } from '../ui';
 
@@ -200,6 +200,9 @@ export class UIScene extends Phaser.Scene {
     // classe atual e próxima promoção
     const cls = CLASSES[g.classId];
     const next = cls.next ? CLASSES[cls.next] : null;
-    this.classText.setText(next ? `${cls.name}  →  ${next.name} no Nv ${next.minLevel}` : `${cls.name}  (classe máxima)`);
+    this.classText.setText(
+      cls.choices ? `${cls.name}  →  profissão no Nv ${PROFESSION_LEVEL}`
+        : next ? `${cls.name}  →  ${next.name} no Nv ${next.minLevel}` : `${cls.name}  (classe máxima)`,
+    );
   }
 }
