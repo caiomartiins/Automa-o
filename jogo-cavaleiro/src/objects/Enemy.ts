@@ -29,7 +29,8 @@ export class Enemy extends Phaser.GameObjects.Sprite {
     // a arte é desenhada em 2x; elites e chefes aparecem maiores
     this.setScale(0.5 * (def.scale ?? 1));
     this.restoreTint();
-    this.play({ key: `${def.texture}-move`, startFrame: Phaser.Math.Between(0, 3) });
+    const anim = this.scene.anims.get(`${def.texture}-move`);
+    this.play({ key: anim.key, startFrame: Phaser.Math.Between(0, anim.frames.length - 1) });
     this.hp = this.maxHp = Math.ceil(def.hp * hpMult);
     this.vx = this.vy = this.sepX = this.sepY = 0;
     this.knockUntil = this.flashUntil = this.shieldHitAt = 0;

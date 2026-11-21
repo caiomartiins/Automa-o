@@ -36,6 +36,13 @@ export const ENEMIES: EnemyDef[] = [
   },
 ];
 
+/** Bafome: primeiro chefe de verdade, aparece quando o jogador chega ao nível 10 */
+export const BAFOME: EnemyDef = {
+  id: 'bafome', name: 'Bafome', texture: 'en-bafome', hp: 1800, speed: 60, damage: 26, xp: 160, radius: 34,
+  from: 0, weight: 0, knockback: 0, scale: 2.9, boss: true,
+};
+export const BAFOME_LEVEL = 10;
+
 /** Chefes: um a cada 5 minutos, alternando (com mais vida a cada volta) */
 export const BOSSES: EnemyDef[] = [
   {
@@ -54,4 +61,4 @@ export const BOSS_INTERVAL = 300;
 export const hpScale = (seconds: number) => 1 + seconds / 150;
 
 /** Maior raio de colisão entre todos os inimigos (usado nas buscas espaciais) */
-export const MAX_ENEMY_RADIUS = Math.max(...[...ENEMIES, ...BOSSES].map((d) => d.radius));
+export const MAX_ENEMY_RADIUS = Math.max(...[...ENEMIES, ...BOSSES, BAFOME].map((d) => d.radius));

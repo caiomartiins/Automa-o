@@ -33,7 +33,14 @@ O Golpe de Espada do Aprendiz continua com todos. Cada habilidade vai até o ní
 Todos os heróis usam sprites recortados das imagens enviadas. A fonte em PNG fica em `sprites/` e o jogo usa as versões WebP de `src/assets/`, registradas em `src/sprites.ts`. Os monstros ainda usam a arte gerada em `src/art.ts`.
 
 ## Inimigos e chefes
-Gosma, Morcego, Cogumelo Andante, Esqueleto, Fantasma, Orc e Cavaleiro Negro (elite) aparecem conforme o tempo passa. A cada minuto vem uma horda. A cada 5 minutos aparece um chefe (Rei Gosma, depois Lorde Esqueleto, e assim por diante), com barra de vida no topo da tela.
+Gosma, Morcego, Cogumelo Andante, Esqueleto, Fantasma, Orc e Cavaleiro Negro (elite) aparecem conforme o tempo passa. A cada minuto vem uma horda.
+
+**Bafome** (sprite próprio, IA em `src/boss.ts`) aparece quando o jogador chega ao **nível 10**. Ataques, sempre com aviso antes:
+- **Golpe Crescente:** de perto, um círculo roxo avisa e logo depois vem o golpe de foice em volta dele.
+- **Rugido Demoníaco:** 3 esferas sombrias voam na direção do jogador.
+- **Gêiser das Trevas:** marcas no chão (uma embaixo do jogador) e, logo depois, sobem espinhos.
+
+Além dele, a cada 5 minutos aparece um chefe de tempo (Rei Gosma, depois Lorde Esqueleto...).
 
 ## Estrutura
 

@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import { Enemy } from '../objects/Enemy';
 import { Pickup } from '../objects/Pickup';
-import { BOSSES, BOSS_INTERVAL, ENEMIES, MAX_ENEMY_RADIUS, hpScale, type EnemyDef } from '../data/enemies';
+import { BAFOME, BAFOME_LEVEL, BOSSES, BOSS_INTERVAL, ENEMIES, MAX_ENEMY_RADIUS, hpScale, type EnemyDef } from '../data/enemies';
+import { BafomeAI } from '../boss';
 import { CLASSES, LINES, lineOf, type ClassDef, type ClassId, type LineId } from '../data/classes';
 import { feetOffset, heroScale, needsShadow } from '../sprites';
 import { BASE_STATS, type Stats } from '../data/stats';
@@ -80,6 +81,8 @@ export class GameScene extends Phaser.Scene {
   private nextWaveAt = 60;
   private nextBossAt = BOSS_INTERVAL;
   private bossCount = 0;
+  private bafomeSpawned = false;
+  private bossAI: BafomeAI | null = null;
   /** Chefe vivo no momento (a barra de vida aparece no HUD) */
   boss: Enemy | null = null;
   /** Linhagem escolhida no nível 5 (null enquanto ainda é Aprendiz) */
@@ -144,6 +147,8 @@ export class GameScene extends Phaser.Scene {
     this.nextBossAt = BOSS_INTERVAL;
     this.bossCount = 0;
     this.boss = null;
+    this.bafomeSpawned = false;
+    this.bossAI = null;
     this.invulnUntil = 0;
     this.hurtUntil = 0;
     this.frame = 0;
@@ -206,6 +211,7 @@ export class GameScene extends Phaser.Scene {
     if (this.frame % 8 === 1) this.updateDecor();
 
     this.collectEnemies();
+    this.updateBafome(dt);
     this.updatePlayer(dt);
     this.skills.forEach((s) => s.update(dt));
     this.projectiles.update(dt);
@@ -335,8 +341,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   private onEnemyTouch(e: Enemy) {
+    this.hurtPlayer(e.def.damage);
+  }
+
+  /** Dano no jogador (contato, ataques do chefe). `heavy` ignora parte da armadura. */
+  hurtPlayer(amount: number, heavy = false) {
     if (this.over || this.elapsed < this.invulnUntil) return;
-    const dmg = Math.max(1, e.def.damage - this.stats.armor);
+    const dmg = Math.max(1, Math.round(amount - this.stats.armor * (heavy ? 0.5 : 1)));
     this.hp -= dmg;
     this.invulnUntil = this.elapsed + PLAYER_IFRAMES;
     this.hurtUntil = this.elapsed + 100;
@@ -551,6 +562,21 @@ export class GameScene extends Phaser.Scene {
     return e;
   }
 
+  /** Bafome entra em cena quando o jogador chega ao nível 10 */
+  private updateBafome(dt: number) {
+    if (this.bossAI && !this.bossAI.update(dt)) this.bossAI = null;
+    if (this.bafomeSpawned || this.level < BAFOME_LEVEL || this.choosing) return;
+    this.bafomeSpawned = true;
+    const p = this.ringPosition();
+    const e = this.spawnEnemy(BAFOME, p.x, p.y, true);
+    if (!e) return;
+    this.boss = e;
+    this.bossAI = new BafomeAI(this, e);
+    this.cameras.main.shake(500, 0.008);
+    this.cameras.main.flash(300, 80, 0, 90);
+    this.events.emit('announce', 'O BAFOME DESPERTOU!');
+  }
+
   /** Os `n` inimigos mais próximos de (x, y), até `maxDist` */
   nearestEnemies(x: number, y: number, n: number, maxDist: number): Enemy[] {
     const maxSq = maxDist * maxDist;
@@ -613,8 +639,13 @@ export class GameScene extends Phaser.Scene {
     this.fx.ring(x, y, def.radius, 1.8, 200, 0xffffff, 0.5);
     this.burst(x, y, def.elite || def.boss ? 12 : 4);
     if (def.boss) {
-      // chefe derrotado: chuva de gemas e comida
+      // chefe derrotado: animação de morte, chuva de gemas e comida
       if (this.boss === e) this.boss = null;
+      const dieAnim = `${def.texture}-die`;
+      if (this.anims.exists(dieAnim)) {
+        const corpse = this.add.sprite(x, y, def.texture).setScale(e.scaleX).setFlipX(e.flipX).setDepth(y).play(dieAnim);
+        this.tweens.add({ targets: corpse, alpha: 0, delay: 1800, duration: 700, onComplete: () => corpse.destroy() });
+      }
       this.cameras.main.flash(300, 255, 240, 200);
       for (let k = 0; k < 8; k++) {
         const a = (k / 8) * Math.PI * 2;

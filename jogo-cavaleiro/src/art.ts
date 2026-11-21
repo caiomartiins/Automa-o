@@ -909,6 +909,33 @@ function drawProjectiles(scene: Phaser.Scene) {
     paint(c, () => rr(c, 2, 3, 4, 15, 1.5), '#7a3e1e', 0.8);
     paint(c, ell(c, 4, 10.5, 1.2, 1.2), '#e0b43a', 0);
   });
+  single(scene, 'fx-orbe', 40, 40, (c) => {
+    c.save();
+    c.shadowColor = '#b040ff';
+    c.shadowBlur = 8;
+    const g = c.createRadialGradient(17, 17, 1, 20, 20, 17);
+    g.addColorStop(0, '#1a0a22');
+    g.addColorStop(0.55, '#3a1450');
+    g.addColorStop(1, '#9a4ad0');
+    paint(c, ell(c, 20, 20, 15, 15), g, 1.2, '#12061a');
+    c.restore();
+    c.strokeStyle = 'rgba(210,160,255,0.7)';
+    c.lineWidth = 1.2;
+    c.beginPath();
+    c.arc(20, 20, 10, -0.5, 1.8);
+    c.stroke();
+  });
+  single(scene, 'fx-geiser', 70, 80, (c) => {
+    const spikes: [number, number, number][] = [[14, 46, 7], [26, 70, 9], [37, 78, 10], [48, 62, 8], [58, 40, 6], [8, 28, 5], [65, 26, 5]];
+    for (const [x, h, w] of spikes) {
+      paint(c, () => {
+        c.moveTo(x - w, 80);
+        c.lineTo(x + w * 0.15, 80 - h);
+        c.lineTo(x + w, 80);
+        c.closePath();
+      }, vgrad(c, 80 - h, 80, '#c8a0e8', '#1e0a2a'), 1, '#0c0410');
+    }
+  });
   single(scene, 'fx-meteoro', 36, 60, (c) => {
     // caindo de cima para baixo, com rastro de fogo
     const trail = c.createLinearGradient(0, 0, 0, 44);

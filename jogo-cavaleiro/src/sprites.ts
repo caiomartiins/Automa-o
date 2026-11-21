@@ -11,6 +11,7 @@ import professorUrl from './assets/professor.webp?inline';
 import arqueiroUrl from './assets/arqueiro.webp?inline';
 import atiradorUrl from './assets/atirador.webp?inline';
 import cacadorSombrasUrl from './assets/cacador-sombras.webp?inline';
+import bafomeUrl from './assets/bafome.webp?inline';
 
 /**
  * Personagens com arte em PNG (spritesheet de quadros 128x128, pés na linha 122,
@@ -51,6 +52,16 @@ const SPRITE_SCALE = 0.72;
 const FEET_Y = 122;
 
 const SHEETS: SheetDef[] = [
+  {
+    key: 'en-bafome', url: bafomeUrl, cellW: 160, cellH: 128, scale: SPRITE_SCALE,
+    frames: ['idle0', 'idle1', 'idle2', 'walk0', 'walk1', 'walk2', 'atk0', 'atk1', 'atk2', 'cast0', 'cast1', 'cast2', 'hurt0', 'hurt1', 'die0', 'die1', 'die2'],
+    anims: [
+      { name: 'move', frames: ['walk0', 'walk1', 'walk2'], rate: 6, repeat: -1 },
+      { name: 'slash', frames: ['cast2'], rate: 2, repeat: 0 },
+      { name: 'roar', frames: ['cast0', 'cast1'], rate: 5, repeat: 0 },
+      { name: 'die', frames: ['die1', 'die2'], rate: 2.5, repeat: 0 },
+    ],
+  },
   hero('hero-espadachim', espadachimUrl, 2, 4, 2, 2),
   hero('hero-cavaleiro', cavaleiroUrl, 3, 5, 3, 2),
   hero('hero-paladino', paladinoUrl, 3, 6, 3, 2),
