@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import type { GameScene } from './scenes/GameScene';
 import type { Enemy } from './objects/Enemy';
 import { FX_DEPTH } from './fx';
+import type { SkillId } from './data/skills';
 
 export interface ShotOptions {
   speed: number;
@@ -16,6 +17,8 @@ export interface ShotOptions {
   /** Se > 0, explode nesse raio ao acertar (bola de fogo) */
   explode?: number;
   scale?: number;
+  /** Habilidade que disparou (para elemento, atributos e estados) */
+  src?: SkillId;
 }
 
 interface Shot extends ShotOptions {
@@ -63,12 +66,12 @@ export class Projectiles {
           const r = p.radius + e.def.radius;
           if (dx * dx + dy * dy > r * r) continue;
           if (p.explode) {
-            this.g.explode(p.img.x, p.img.y, p.explode, p.damage, p.knockback, 0xff8a3a);
+            this.g.explode(p.img.x, p.img.y, p.explode, p.damage, p.knockback, 0xff8a3a, p.src);
             done = true;
             break;
           }
           p.hit.add(e);
-          this.g.damageEnemy(e, p.damage, p.knockback, p.img.x - p.vx, p.img.y - p.vy);
+          this.g.damageEnemy(e, p.damage, p.knockback, p.img.x - p.vx, p.img.y - p.vy, p.src);
           if (--p.pierce <= 0) {
             done = true;
             break;

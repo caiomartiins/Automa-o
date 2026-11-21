@@ -28,7 +28,7 @@ export class ArrowRainSkill extends Skill {
       }
       for (const e of this.g.queryEnemies(z.x, z.y, this.radius, this.near)) {
         if (e.active && (e.x - z.x) ** 2 + (e.y - z.y) ** 2 <= (this.radius + e.def.radius) ** 2) {
-          this.g.damageEnemy(e, this.damage, 30, z.x, z.y);
+          this.g.damageEnemy(e, this.damage, 30, z.x, z.y, this.id);
         }
       }
       if (z.ticks <= 0) this.zones.splice(i, 1);

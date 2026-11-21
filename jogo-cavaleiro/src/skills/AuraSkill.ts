@@ -29,7 +29,7 @@ export class AuraSkill extends Skill {
     this.g.hp = Math.min(this.g.stats.maxHp, this.g.hp + this.heal);
     for (const e of this.g.queryEnemies(p.x, p.y, r, this.near)) {
       if (e.active && (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= (r + e.def.radius) ** 2) {
-        this.g.damageEnemy(e, this.damage, 70, p.x, p.y);
+        this.g.damageEnemy(e, this.damage, 70, p.x, p.y, this.id);
       }
     }
   }

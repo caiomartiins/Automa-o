@@ -49,7 +49,7 @@ export class ShieldSkill extends Skill {
         const dy = e.y - s.y;
         if (dx * dx + dy * dy < hit * hit) {
           e.shieldHitAt = now + 400;
-          this.g.damageEnemy(e, this.damage, 220, p.x, p.y);
+          this.g.damageEnemy(e, this.damage, 220, p.x, p.y, this.id);
         }
       }
     }

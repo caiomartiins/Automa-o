@@ -43,7 +43,7 @@ export class SniperSkill extends Skill {
       const along = dx * cos + dy * sin;
       const perp = Math.abs(-dx * sin + dy * cos);
       if (along >= -e.def.radius && along <= len + e.def.radius && perp <= w / 2 + e.def.radius) {
-        this.g.damageEnemy(e, this.damage, 260, p.x, p.y);
+        this.g.damageEnemy(e, this.damage, 260, p.x, p.y, this.id);
       }
     }
   }

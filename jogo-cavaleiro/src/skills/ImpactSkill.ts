@@ -24,10 +24,10 @@ export class ImpactSkill extends Skill {
     const y = p.y + this.g.facing.y * 34 + 12;
     const r = this.radius;
     const dmg = this.damage;
-    this.g.explode(x, y, r, dmg, 380, 0xffd04a);
+    this.g.explode(x, y, r, dmg, 380, 0xffd04a, this.id);
     this.g.cameras.main.shake(110, 0.005);
     if (this.level >= 3) {
-      this.g.time.delayedCall(230, () => this.g.explode(x, y, r * 1.45, dmg * 0.5, 260, 0xffb040));
+      this.g.time.delayedCall(230, () => this.g.explode(x, y, r * 1.45, dmg * 0.5, 260, 0xffb040, this.id));
     }
   }
 }

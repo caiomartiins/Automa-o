@@ -26,7 +26,7 @@ export class FireballSkill extends Skill {
       const spread = i >= targets.length ? (i % 2 ? 0.25 : -0.25) : 0;
       const angle = Math.atan2(t.y - p.y, t.x - p.x) + spread;
       this.g.projectiles.fire('proj-fogo', p.x, p.y - 6, angle, {
-        speed: 360, damage: this.damage, pierce: 1, radius: 8, life: 1600, knockback: 120, explode: this.blast,
+        src: this.id, speed: 360, damage: this.damage, pierce: 1, radius: 8, life: 1600, knockback: 120, explode: this.blast,
       });
     }
   }

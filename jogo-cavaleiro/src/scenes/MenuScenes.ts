@@ -4,6 +4,8 @@ import { createArt } from '../art';
 import { heroScale, preloadSprites, setupSprites } from '../sprites';
 import { CLASSES, LINES, PROFESSION_LEVEL } from '../data/classes';
 import { SKILLS } from '../data/skills';
+import { MAPS } from '../data/rpg';
+import { loadSave, writeSave } from '../save';
 import type { RunResult } from './GameScene';
 import { hex, isTouch, onResize, text } from '../ui';
 
@@ -55,7 +57,7 @@ export class MenuScene extends Phaser.Scene {
     const lines = [LINES.espadachim, LINES.mago, LINES.arqueiro];
     const top = apY + (portrait ? 70 : 52);
     const gap = 16;
-    const bottomSpace = 90;
+    const bottomSpace = portrait ? 220 : 150;
     let cardW: number;
     let cardH: number;
     if (portrait) {
@@ -75,7 +77,7 @@ export class MenuScene extends Phaser.Scene {
       const tag = text(this, 0, -cardH / 2 + 54, line.tagline, 15, '#d8d8d8').setOrigin(0.5);
       card.add([bg, title, tag]);
 
-      const heroScaleK = Math.min(0.95, (cardH - 200) / 160, cardW / 3 / 90);
+      const heroScaleK = Math.min(0.95, (cardH - (portrait ? 175 : 200)) / 160, cardW / 3 / 90);
       const spacing = Math.min(cardW / 3, 120);
       const heroY = -cardH / 2 + 74 + (160 * heroScaleK) / 2;
       line.classes.forEach((id, k) => {
@@ -93,9 +95,36 @@ export class MenuScene extends Phaser.Scene {
       card.add(text(this, 0, cardH / 2 - 26, skills, 13, '#bfc6d6').setOrigin(0.5).setAlign('center').setWordWrapWidth(cardW - 24));
     });
 
-    const start = text(this, width / 2, height - 52, touch ? 'Toque para começar' : 'Clique ou aperte ESPAÇO para começar', touch ? 30 : 24).setOrigin(0.5);
-    this.tweens.add({ targets: start, alpha: 0.35, yoyo: true, repeat: -1, duration: 700 });
-    text(this, width / 2, height - 18, touch
+    // ---- mapa, loja e botão de jogar
+    const save = loadSave();
+    let mapIdx = Math.max(0, MAPS.findIndex((m) => m.id === save.map));
+    const rowY = height - (portrait ? 190 : 110);
+    const mapX = portrait ? width / 2 : width / 2 - 170;
+    const mapBg = this.add.rectangle(mapX, rowY, 320, 44, 0x151a24, 0.92).setStrokeStyle(2, 0x9fc3ff, 0.8);
+    const mapText = text(this, mapX, rowY, '', 19, '#9fc3ff').setOrigin(0.5);
+    const showMap = () => mapText.setText(`◀  ${MAPS[mapIdx].name}  ▶`);
+    showMap();
+    mapBg.setInteractive({ useHandCursor: true }).on('pointerup', (p: Phaser.Input.Pointer) => {
+      mapIdx = (mapIdx + (p.x < mapX - 40 ? MAPS.length - 1 : 1)) % MAPS.length;
+      save.map = MAPS[mapIdx].id;
+      writeSave(save);
+      showMap();
+    });
+    const shopX = portrait ? width / 2 : width / 2 + 170;
+    const shopY = portrait ? rowY + 60 : rowY;
+    const shopBg = this.add.rectangle(shopX, shopY, 320, 44, 0x2a2210, 0.92).setStrokeStyle(2, 0xffd04a, 0.8);
+    text(this, shopX, shopY, `Loja e Ferreiro   ${save.zeny} z`, 19, '#ffd04a').setOrigin(0.5);
+    shopBg.setInteractive({ useHandCursor: true }).on('pointerup', () => {
+      if (this.started) return;
+      this.started = true;
+      this.scene.start('Shop');
+    });
+    const playY = height - (portrait ? 50 : 52);
+    const playBg = this.add.rectangle(width / 2, playY, 260, 50, 0x1f6a2a, 0.95).setStrokeStyle(3, 0x9aff8a);
+    const start = text(this, width / 2, playY, touch ? 'JOGAR' : 'JOGAR  [ESPAÇO]', 26).setOrigin(0.5);
+    playBg.setInteractive({ useHandCursor: true }).on('pointerup', () => this.start());
+    this.tweens.add({ targets: [start, playBg], scale: 1.05, yoyo: true, repeat: -1, duration: 700 });
+    if (!portrait) text(this, width / 2, height - 14, touch
       ? 'Toque e arraste para andar  •  Ataques são automáticos'
       : 'WASD / Setas para andar  •  Ataques são automáticos  •  P pausa', touch ? 16 : 14, '#c8c8c8')
       .setOrigin(0.5).setAlign('center').setWordWrapWidth(width - 40);
@@ -103,7 +132,7 @@ export class MenuScene extends Phaser.Scene {
     const kb = this.input.keyboard!;
     kb.once('keydown-SPACE', () => this.start());
     kb.once('keydown-ENTER', () => this.start());
-    this.input.once('pointerup', () => this.start());
+
     onResize(this, () => this.scene.restart());
   }
 
@@ -135,7 +164,7 @@ export class GameOverScene extends Phaser.Scene {
     text(
       this, width / 2, oy + 330,
       `Tempo sobrevivido: ${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s\n` +
-      `Nível alcançado: ${r.level}\nClasse: ${r.className}\nInimigos derrotados: ${r.kills}`,
+      `Nível alcançado: ${r.level}\nClasse: ${r.className}\nInimigos derrotados: ${r.kills}\nCartas: ${r.cards}\nZeny ganhos: ${r.zeny}  (total: ${r.zenyTotal})`,
       24,
     ).setOrigin(0.5).setAlign('center').setLineSpacing(10);
     const touch = isTouch(this);

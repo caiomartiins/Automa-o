@@ -3,6 +3,8 @@ export type SkillId =
   | 'fogo' | 'raio' | 'meteoro' | 'livro'
   | 'flecha' | 'chuva' | 'tiro';
 
+import type { DamageKind, Element, Size, StatusId } from './rpg';
+
 export interface SkillDef {
   id: SkillId;
   name: string;
@@ -10,12 +12,18 @@ export interface SkillDef {
   /** levelDesc[n] descreve o que o nível n+1 faz (índice 0 = ao ganhar a habilidade) */
   levelDesc: string[];
   color: number;
+  element: Element;
+  kind: DamageKind;
+  /** Estado que a habilidade pode aplicar e a chance */
+  status?: { id: StatusId; chance: number };
+  /** Multiplicador de dano por tamanho do alvo */
+  sizeMod?: Partial<Record<Size, number>>;
 }
 
 export const SKILLS: Record<SkillId, SkillDef> = {
   // ---- Cavaleiro
   espada: {
-    id: 'espada', name: 'Golpe de Espada', maxLevel: 5, color: 0xd8d8e8,
+    id: 'espada', name: 'Golpe de Espada', maxLevel: 5, color: 0xd8d8e8, element: 'neutro', kind: 'melee', status: { id: 'sangrando', chance: 0.1 }, sizeMod: { grande: 0.85 },
     levelDesc: [
       'Golpe em arco na direção em que você anda.',
       '+5 dano, ataques mais rápidos, +alcance.',
@@ -25,7 +33,7 @@ export const SKILLS: Record<SkillId, SkillDef> = {
     ],
   },
   escudo: {
-    id: 'escudo', name: 'Escudo Giratório', maxLevel: 5, color: 0x5a8cff,
+    id: 'escudo', name: 'Escudo Giratório', maxLevel: 5, color: 0x5a8cff, element: 'neutro', kind: 'melee', status: { id: 'atordoado', chance: 0.08 },
     levelDesc: [
       'Um escudo gira ao seu redor ferindo inimigos.',
       '+1 escudo, +4 dano.',
@@ -35,7 +43,7 @@ export const SKILLS: Record<SkillId, SkillDef> = {
     ],
   },
   lanca: {
-    id: 'lanca', name: 'Investida de Lança', maxLevel: 5, color: 0xffd04a,
+    id: 'lanca', name: 'Investida de Lança', maxLevel: 5, color: 0xffd04a, element: 'neutro', kind: 'melee', status: { id: 'sangrando', chance: 0.2 }, sizeMod: { grande: 1.25 },
     levelDesc: [
       'Estocada longa que atravessa todos os inimigos.',
       '+15 dano, recarga menor.',
@@ -46,7 +54,7 @@ export const SKILLS: Record<SkillId, SkillDef> = {
   },
 
   impacto: {
-    id: 'impacto', name: 'Golpe Devastador', maxLevel: 5, color: 0xffc04a,
+    id: 'impacto', name: 'Golpe Devastador', maxLevel: 5, color: 0xffc04a, element: 'terra', kind: 'melee', status: { id: 'atordoado', chance: 0.3 }, sizeMod: { pequeno: 0.8, grande: 1.3 },
     levelDesc: [
       'Golpe com o espadão que explode no chão à sua frente.',
       '+20 dano, área maior.',
@@ -56,7 +64,7 @@ export const SKILLS: Record<SkillId, SkillDef> = {
     ],
   },
   aura: {
-    id: 'aura', name: 'Aura Sagrada', maxLevel: 5, color: 0xfff0a0,
+    id: 'aura', name: 'Aura Sagrada', maxLevel: 5, color: 0xfff0a0, element: 'sagrado', kind: 'magic',
     levelDesc: [
       'Uma aura ao seu redor fere os inimigos e cura você aos poucos.',
       '+3 dano, área maior, cura mais.',
@@ -68,7 +76,7 @@ export const SKILLS: Record<SkillId, SkillDef> = {
 
   // ---- Mago
   fogo: {
-    id: 'fogo', name: 'Bola de Fogo', maxLevel: 5, color: 0xff8a3a,
+    id: 'fogo', name: 'Bola de Fogo', maxLevel: 5, color: 0xff8a3a, element: 'fogo', kind: 'magic', status: { id: 'queimando', chance: 0.35 },
     levelDesc: [
       'Lança bolas de fogo no inimigo mais próximo. Explodem em área.',
       '+1 bola de fogo, +6 dano.',
@@ -78,7 +86,7 @@ export const SKILLS: Record<SkillId, SkillDef> = {
     ],
   },
   raio: {
-    id: 'raio', name: 'Corrente de Raios', maxLevel: 5, color: 0x7ad8ff,
+    id: 'raio', name: 'Corrente de Raios', maxLevel: 5, color: 0x7ad8ff, element: 'vento', kind: 'magic', status: { id: 'atordoado', chance: 0.2 },
     levelDesc: [
       'Um raio atinge um inimigo e salta para outros próximos.',
       '+1 salto, +8 dano.',
@@ -88,7 +96,7 @@ export const SKILLS: Record<SkillId, SkillDef> = {
     ],
   },
   meteoro: {
-    id: 'meteoro', name: 'Chuva de Meteoros', maxLevel: 5, color: 0xff5a3a,
+    id: 'meteoro', name: 'Chuva de Meteoros', maxLevel: 5, color: 0xff5a3a, element: 'fogo', kind: 'magic', status: { id: 'queimando', chance: 0.5 },
     levelDesc: [
       'Meteoros caem sobre os inimigos causando grande dano em área.',
       '+1 meteoro, +25 dano.',
@@ -99,7 +107,7 @@ export const SKILLS: Record<SkillId, SkillDef> = {
   },
 
   livro: {
-    id: 'livro', name: 'Livros Voadores', maxLevel: 5, color: 0xc98a4a,
+    id: 'livro', name: 'Livros Voadores', maxLevel: 5, color: 0xc98a4a, element: 'fantasma', kind: 'magic', status: { id: 'atordoado', chance: 0.1 },
     levelDesc: [
       'Arremessa livros pesados que atravessam os inimigos.',
       '+1 livro, +7 dano.',
@@ -111,7 +119,7 @@ export const SKILLS: Record<SkillId, SkillDef> = {
 
   // ---- Arqueiro
   flecha: {
-    id: 'flecha', name: 'Flecha', maxLevel: 5, color: 0xc9a46a,
+    id: 'flecha', name: 'Flecha', maxLevel: 5, color: 0xc9a46a, element: 'neutro', kind: 'ranged', status: { id: 'sangrando', chance: 0.08 }, sizeMod: { grande: 0.9 },
     levelDesc: [
       'Atira flechas no inimigo mais próximo.',
       '+1 flecha, +4 dano.',
@@ -121,7 +129,7 @@ export const SKILLS: Record<SkillId, SkillDef> = {
     ],
   },
   chuva: {
-    id: 'chuva', name: 'Saraivada das Sombras', maxLevel: 5, color: 0x9a7ad0,
+    id: 'chuva', name: 'Saraivada das Sombras', maxLevel: 5, color: 0x9a7ad0, element: 'sombrio', kind: 'ranged', status: { id: 'envenenado', chance: 0.25 },
     levelDesc: [
       'Flechas sombrias caem sobre um grupo de inimigos.',
       '+3 dano por flecha, área maior.',
@@ -131,7 +139,7 @@ export const SKILLS: Record<SkillId, SkillDef> = {
     ],
   },
   tiro: {
-    id: 'tiro', name: 'Tiro Perfurante', maxLevel: 5, color: 0xffe36a,
+    id: 'tiro', name: 'Tiro Perfurante', maxLevel: 5, color: 0xffe36a, element: 'vento', kind: 'ranged', status: { id: 'sangrando', chance: 0.3 }, sizeMod: { grande: 1.2 },
     levelDesc: [
       'Flecha gigante que atravessa tudo em linha reta.',
       '+20 dano, recarga menor.',

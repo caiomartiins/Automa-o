@@ -1109,6 +1109,254 @@ function drawDecor(scene: Phaser.Scene) {
   });
 }
 
+// ------------------------------------------------------------------ itens de RPG
+
+function drawItems(scene: Phaser.Scene) {
+  const potion = (key: string, liquid: string) =>
+    single(scene, key, 16, 20, (c) => {
+      groundShadow(c, 8, 18.5, 6, 1.6, 0.3);
+      paint(c, () => {
+        c.moveTo(6, 2);
+        c.lineTo(10, 2);
+        c.lineTo(10, 6);
+        c.quadraticCurveTo(15, 9, 14.5, 13.5);
+        c.quadraticCurveTo(14, 18.5, 8, 18.5);
+        c.quadraticCurveTo(2, 18.5, 1.5, 13.5);
+        c.quadraticCurveTo(1, 9, 6, 6);
+        c.closePath();
+      }, vgrad(c, 6, 18, shade(liquid, 0.25), shade(liquid, -0.35)), 1);
+      paint(c, () => rr(c, 5.5, 0.5, 5, 3, 1), '#9a6a3a', 0.8);
+      c.fillStyle = 'rgba(255,255,255,0.6)';
+      c.beginPath();
+      c.ellipse(5.5, 11, 1.3, 3, 0.3, 0, TAU);
+      c.fill();
+    });
+  potion('item-pocao1', '#e8403a');
+  potion('item-pocao2', '#ff9a2a');
+  potion('item-pocao3', '#f4f0ff');
+
+  single(scene, 'item-asa', 22, 18, (c) => {
+    groundShadow(c, 11, 16.5, 8, 1.6, 0.3);
+    paint(c, () => {
+      c.moveTo(3, 13);
+      c.quadraticCurveTo(2, 3, 13, 1.5);
+      c.quadraticCurveTo(21, 1, 20, 5);
+      c.quadraticCurveTo(15, 5, 14, 8);
+      c.quadraticCurveTo(10, 9, 9, 12);
+      c.quadraticCurveTo(6, 13, 3, 13);
+      c.closePath();
+    }, vgrad(c, 1, 13, '#ffffff', '#9fd0ff'), 1, '#3a5a8a');
+    c.strokeStyle = 'rgba(58,90,138,0.6)';
+    c.lineWidth = 0.7;
+    for (const t of [0.35, 0.55, 0.75]) {
+      c.beginPath();
+      c.moveTo(4, 12);
+      c.lineTo(4 + 14 * t, 2 + 6 * t);
+      c.stroke();
+    }
+  });
+
+  single(scene, 'item-pena', 14, 22, (c) => {
+    groundShadow(c, 7, 20.5, 5, 1.4, 0.3);
+    paint(c, () => {
+      c.moveTo(7, 1);
+      c.quadraticCurveTo(13.5, 7, 8, 17);
+      c.quadraticCurveTo(1, 9, 7, 1);
+      c.closePath();
+    }, vgrad(c, 1, 17, '#fff6c0', '#e0a030'), 1, '#7a5010');
+    c.strokeStyle = '#7a5010';
+    c.lineWidth = 0.8;
+    c.beginPath();
+    c.moveTo(7, 3);
+    c.lineTo(7.5, 21);
+    c.stroke();
+  });
+
+  single(scene, 'item-zeny', 14, 14, (c) => {
+    groundShadow(c, 7, 12.5, 5, 1.3, 0.3);
+    paint(c, ell(c, 7, 6.5, 5.5, 5.5), vgrad(c, 1, 12, '#fff2a0', '#c89020'), 1, '#6a4a08');
+    paint(c, ell(c, 7, 6.5, 3.2, 3.2), '#f0c040', 0.6, '#8a6010');
+    c.fillStyle = '#8a6010';
+    c.font = 'bold 5px Arial';
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.fillText('Z', 7, 6.8);
+  });
+
+  single(scene, 'item-carta', 16, 20, (c) => {
+    groundShadow(c, 8, 19, 6, 1.4, 0.3);
+    c.save();
+    c.shadowColor = '#ffe36a';
+    c.shadowBlur = 5;
+    paint(c, () => rr(c, 1.5, 1, 13, 17, 2), vgrad(c, 1, 18, '#fff8e0', '#e8d8a8'), 1, '#6a5020');
+    c.restore();
+    paint(c, () => rr(c, 3.5, 3, 9, 8, 1), vgrad(c, 3, 11, '#9ad0ff', '#4a7ac0'), 0.6, '#3a4a6a');
+    c.fillStyle = '#8a6a3a';
+    c.fillRect(4, 13, 8, 1);
+    c.fillRect(4, 15, 6, 1);
+  });
+
+  single(scene, 'item-ovo', 14, 18, (c) => {
+    groundShadow(c, 7, 16.5, 5.5, 1.4, 0.3);
+    paint(c, ell(c, 7, 9, 5.5, 7), vgrad(c, 2, 16, '#fffaf0', '#e0d0b0'), 1, '#6a5a40');
+    c.fillStyle = '#f08ab0';
+    for (const [x, y, r] of [[5, 7, 1.2], [9, 10, 1.4], [6, 12.5, 1]]) {
+      c.beginPath();
+      c.arc(x, y, r, 0, TAU);
+      c.fill();
+    }
+  });
+}
+
+// ------------------------------------------------------------------ chãos e decoração dos mapas
+
+/** Chão ladrilhável com manchas e pontos, em uma paleta */
+function drawGround(scene: Phaser.Scene, key: string, base: string, blotches: string[], dots: string[], extra?: (c: Ctx, rnd: Phaser.Math.RandomDataGenerator, wrap: (f: (dx: number, dy: number) => void) => void) => void) {
+  if (scene.textures.exists(key)) return;
+  const S = 256;
+  const tex = scene.textures.createCanvas(key, S, S);
+  if (!tex) return;
+  const c = tex.getContext();
+  c.fillStyle = base;
+  c.fillRect(0, 0, S, S);
+  const rnd = new Phaser.Math.RandomDataGenerator([key]);
+  const wrap = (draw: (dx: number, dy: number) => void) => {
+    for (const dx of [-S, 0, S]) for (const dy of [-S, 0, S]) draw(dx, dy);
+  };
+  for (let i = 0; i < 16; i++) {
+    const x = rnd.between(0, S);
+    const y = rnd.between(0, S);
+    const r = rnd.between(24, 60);
+    const col = rnd.pick(blotches);
+    wrap((dx, dy) => {
+      const g = c.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r);
+      g.addColorStop(0, col);
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = g;
+      c.fillRect(x + dx - r, y + dy - r, r * 2, r * 2);
+    });
+  }
+  for (let i = 0; i < 380; i++) {
+    const x = rnd.between(0, S);
+    const y = rnd.between(0, S);
+    const sz = rnd.realInRange(0.8, 2.2);
+    c.fillStyle = rnd.pick(dots);
+    wrap((dx, dy) => c.fillRect(x + dx, y + dy, sz, sz));
+  }
+  extra?.(c, rnd, wrap);
+  tex.refresh();
+}
+
+function drawMapGrounds(scene: Phaser.Scene) {
+  drawGround(scene, 'chao-areia', '#d8b870', ['rgba(240,210,140,0.35)', 'rgba(170,130,70,0.25)'], ['#c8a058', '#e8cc88', '#b08a48'], (c, rnd, wrap) => {
+    // ondulações de duna
+    c.strokeStyle = 'rgba(160,120,60,0.25)';
+    c.lineWidth = 1.5;
+    for (let i = 0; i < 14; i++) {
+      const x = rnd.between(0, 256);
+      const y = rnd.between(0, 256);
+      wrap((dx, dy) => {
+        c.beginPath();
+        c.moveTo(x + dx - 18, y + dy);
+        c.quadraticCurveTo(x + dx, y + dy - 6, x + dx + 18, y + dy);
+        c.stroke();
+      });
+    }
+  });
+  drawGround(scene, 'chao-caverna', '#3a3640', ['rgba(80,70,100,0.35)', 'rgba(20,18,26,0.4)'], ['#4a4650', '#2a2630', '#5a5468'], (c, rnd, wrap) => {
+    // rachaduras
+    c.strokeStyle = 'rgba(15,12,20,0.6)';
+    c.lineWidth = 1.2;
+    for (let i = 0; i < 10; i++) {
+      const x = rnd.between(0, 256);
+      const y = rnd.between(0, 256);
+      const pts = [[0, 0], [rnd.between(-14, 14), rnd.between(6, 16)], [rnd.between(-20, 20), rnd.between(18, 30)]];
+      wrap((dx, dy) => {
+        c.beginPath();
+        pts.forEach(([px, py], k) => (k ? c.lineTo(x + dx + px, y + dy + py) : c.moveTo(x + dx + px, y + dy + py)));
+        c.stroke();
+      });
+    }
+  });
+  drawGround(scene, 'chao-ruinas', '#6a7a5a', ['rgba(90,110,70,0.35)', 'rgba(60,60,55,0.3)'], ['#5a6a4a', '#7a8a6a', '#4a5a3a'], (c) => {
+    // lajotas de pedra antigas
+    for (let gy = 0; gy < 256; gy += 64) {
+      for (let gx = 0; gx < 256; gx += 64) {
+        const off = (gy / 64) % 2 ? 32 : 0;
+        c.fillStyle = 'rgba(150,150,135,0.32)';
+        c.fillRect(gx + off + 3, gy + 3, 58, 58);
+        c.strokeStyle = 'rgba(40,40,35,0.35)';
+        c.lineWidth = 1.5;
+        c.strokeRect(gx + off + 3, gy + 3, 58, 58);
+      }
+    }
+  });
+
+  single(scene, 'deco-cacto', 22, 34, (c) => {
+    groundShadow(c, 11, 32, 9, 2.2, 0.35);
+    const g = vgrad(c, 2, 32, '#6ab05a', '#2e6a2a');
+    paint(c, () => rr(c, 7.5, 2, 7, 30, 3.5), g, 1.1, '#1a3a16');
+    paint(c, () => rr(c, 1.5, 11, 5, 11, 2.5), g, 1, '#1a3a16');
+    paint(c, () => rr(c, 15.5, 8, 5, 12, 2.5), g, 1, '#1a3a16');
+    paint(c, ell(c, 11, 2.5, 2.2, 2.2), '#ff7ab0', 0.6, '#7a2a4a');
+  });
+  single(scene, 'deco-ossos', 22, 14, (c) => {
+    groundShadow(c, 11, 12.5, 9, 1.6, 0.25);
+    for (const [x0, y0, x1, y1] of [[3, 9, 18, 5], [5, 4, 17, 11]]) {
+      bone(c, x0, y0, x1, y1, 1.8, '#efe8d6');
+      for (const [x, y] of [[x0, y0], [x1, y1]]) paint(c, ell(c, x, y, 1.8, 1.8), '#efe8d6', 0.8, '#3a2e22');
+    }
+  });
+  single(scene, 'deco-cristal', 20, 26, (c) => {
+    groundShadow(c, 10, 24, 8, 2, 0.35);
+    c.save();
+    c.shadowColor = '#b080ff';
+    c.shadowBlur = 6;
+    for (const [x, h, w, col] of [[6, 16, 4, '#9a7aff'], [11, 22, 5, '#c8a8ff'], [15, 12, 3.5, '#8a6ae0']] as const) {
+      paint(c, () => {
+        c.moveTo(x - w, 24);
+        c.lineTo(x - w * 0.6, 24 - h * 0.8);
+        c.lineTo(x, 24 - h);
+        c.lineTo(x + w * 0.6, 24 - h * 0.8);
+        c.lineTo(x + w, 24);
+        c.closePath();
+      }, vgrad(c, 24 - h, 24, '#ffffff', col), 0.9, '#3a2a6a');
+    }
+    c.restore();
+  });
+  single(scene, 'deco-coluna', 22, 44, (c) => {
+    groundShadow(c, 11, 42, 10, 2.4, 0.35);
+    const g = (() => {
+      const gr = c.createLinearGradient(4, 0, 18, 0);
+      gr.addColorStop(0, '#d8d4c8');
+      gr.addColorStop(1, '#8a867a');
+      return gr;
+    })();
+    paint(c, () => rr(c, 2, 36, 18, 6, 1.5), '#a8a498', 1, '#3a3a34');
+    paint(c, () => {
+      c.moveTo(5, 36);
+      c.lineTo(5, 12);
+      c.lineTo(9, 8);
+      c.lineTo(12, 13);
+      c.lineTo(17, 10);
+      c.lineTo(17, 36);
+      c.closePath();
+    }, g, 1, '#3a3a34');
+    c.strokeStyle = 'rgba(60,60,52,0.5)';
+    c.lineWidth = 0.8;
+    for (const x of [8.5, 11.5, 14.5]) {
+      c.beginPath();
+      c.moveTo(x, 14);
+      c.lineTo(x, 35);
+      c.stroke();
+    }
+    c.fillStyle = 'rgba(90,130,70,0.7)';
+    c.beginPath();
+    c.ellipse(7, 30, 3, 2, 0, 0, TAU);
+    c.fill();
+  });
+}
+
 // ------------------------------------------------------------------ montagem
 
 export const DECOR_KEYS = ['deco-tuft', 'deco-flores', 'deco-pedra', 'deco-arbusto', 'deco-cogumelo'] as const;
@@ -1162,6 +1410,8 @@ export function createArt(scene: Phaser.Scene) {
 
   drawGrass(scene);
   drawDecor(scene);
+  drawItems(scene);
+  drawMapGrounds(scene);
 
   // animações
   const anims = scene.anims;

@@ -17,15 +17,24 @@ export class SwordSkill extends Skill {
     this.timer = this.cooldown;
     const angle = this.g.facing.angle();
     this.g.playerAttacked();
+    if (this.g.mods.swordSpin) {
+      // Carta Bafome: o golpe acerta tudo em volta
+      this.swing(angle, Math.PI * 2);
+      return;
+    }
     this.swing(angle);
     if (this.level >= 5) this.swing(angle + Math.PI);
   }
 
-  private swing(angle: number) {
+  private swing(angle: number, arc = this.arc) {
     const p = this.g.player;
     const r = this.range;
     const color = this.g.classId === 'cavaleiro' || this.g.classId === 'paladino' ? 0xffe9a0 : this.g.classId === 'espadachim' ? 0xcfe0ff : 0xffffff;
-    this.g.fx.slash(p.x, p.y, angle, r, color);
+    if (arc >= Math.PI * 2) {
+      this.g.fx.ring(p.x, p.y, r * 0.5, 2, 220, color, 0.4);
+    } else {
+      this.g.fx.slash(p.x, p.y, angle, r, color);
+    }
 
     for (const e of this.g.queryEnemies(p.x, p.y, r, this.near)) {
       if (!e.active) continue;
@@ -33,7 +42,7 @@ export class SwordSkill extends Skill {
       const dy = e.y - p.y;
       if (dx * dx + dy * dy > (r + e.def.radius) ** 2) continue;
       const diff = Phaser.Math.Angle.Wrap(Math.atan2(dy, dx) - angle);
-      if (Math.abs(diff) <= this.arc / 2) this.g.damageEnemy(e, this.damage, 140, p.x, p.y);
+      if (Math.abs(diff) <= arc / 2) this.g.damageEnemy(e, this.damage, 140, p.x, p.y, this.id);
     }
   }
 }

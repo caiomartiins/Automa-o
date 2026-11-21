@@ -13,8 +13,13 @@ import { createSkill } from '../skills';
 import { isTouch, onResize } from '../ui';
 import { SpatialGrid } from '../spatialGrid';
 import { Fx, FX_DEPTH } from '../fx';
-import { DECOR_KEYS } from '../art';
 import { Projectiles } from '../projectiles';
+import {
+  ATTR_FOCUS, ATTR_IDS, ATTR_POINTS_PER_LEVEL, DROPS, MAPS, PETS, REFINE_DMG, STATUS, cardOf, elementMult, emptyMods,
+  type Attr, type Attrs, type MapDef, type Mods, type PetDef, type RpgHost, type StatusId,
+} from '../data/rpg';
+import { loadSave, writeSave } from '../save';
+import type { ItemKind } from '../data/rpg';
 
 /** XP necessária para passar do nível `l` para o `l + 1` */
 export const xpForLevel = (l: number) => Math.floor(4 + (l - 1) * 3 + Math.pow(l - 1, 1.5));
@@ -47,9 +52,16 @@ export interface RunResult {
   className: string;
   kills: number;
   line: LineId | null;
+  zeny: number;
+  zenyTotal: number;
+  cards: number;
 }
 
-export class GameScene extends Phaser.Scene {
+/** Experiência para o próximo nível de classe */
+export const jobForLevel = (j: number) => 10 + j * 8;
+export const MAX_JOB = 50;
+
+export class GameScene extends Phaser.Scene implements RpgHost {
   player!: Phaser.GameObjects.Sprite;
   enemies!: Phaser.GameObjects.Group;
   pickups!: Phaser.GameObjects.Group;
@@ -67,6 +79,27 @@ export class GameScene extends Phaser.Scene {
   facing = new Phaser.Math.Vector2(1, 0);
   elapsed = 0;
   kills = 0;
+
+  // ---- sistemas de RPG
+  mods: Mods = emptyMods();
+  attrs: Attrs = { for: 1, agi: 1, vit: 1, int: 1, des: 1, sor: 1 };
+  /** Pontos de atributo ainda não distribuídos */
+  attrPoints = 0;
+  /** Cartas coletadas (id do monstro), na ordem */
+  cards: string[] = [];
+  items = { asa: 0, pena: 0 };
+  zenyRun = 0;
+  jobLevel = 1;
+  jobXp = 0;
+  pet: PetDef | null = null;
+  map!: MapDef;
+  /** Estados do jogador */
+  curseUntil = 0;
+  poisonUntil = 0;
+  private nextPoisonTick = 0;
+  private petSprite: Phaser.GameObjects.Sprite | null = null;
+  private petAttackAt = 0;
+  private darkness!: Phaser.GameObjects.Rectangle;
 
   /** Inimigos ativos neste frame e grade para achar os próximos rapidamente */
   private live: Enemy[] = [];
@@ -159,10 +192,38 @@ export class GameScene extends Phaser.Scene {
     this.sparkMax = isTouch(this) ? 6 : 12;
     this.decor = new Map();
     this.decorPool = [];
+    this.mods = emptyMods();
+    this.attrs = { for: 1, agi: 1, vit: 1, int: 1, des: 1, sor: 1 };
+    this.attrPoints = 0;
+    this.cards = [];
+    this.items = { asa: 0, pena: 0 };
+    this.zenyRun = 0;
+    this.jobLevel = 1;
+    this.jobXp = 0;
+    this.pet = null;
+    this.petSprite = null;
+    this.curseUntil = this.poisonUntil = this.nextPoisonTick = 0;
+
+    // progresso entre partidas: loja, refino, mascote e mapa escolhido
+    const save = loadSave();
+    const up = (id: string) => save.up[id] ?? 0;
+    this.map = MAPS.find((m) => m.id === save.map) ?? MAPS[0];
+    this.stats.maxHp += 10 * up('vida');
+    this.hp = this.stats.maxHp;
+    this.mods.dmgAll += 0.05 * up('dano') + save.refine * REFINE_DMG;
+    this.stats.magnet *= 1 + 0.15 * up('ima');
+    this.mods.zeny += 0.1 * up('zeny');
+    this.items.asa += up('asa') ? 2 : 0;
+    this.items.pena += up('pena') ? 1 : 0;
+    this.attrPoints += 2 * up('pontos');
 
     const { width, height } = this.scale;
-    this.bg = this.add.tileSprite(0, 0, width, height, 'grama').setOrigin(0).setScrollFactor(0).setDepth(-1e7);
-    onResize(this, () => this.bg.setSize(this.scale.width, this.scale.height));
+    this.bg = this.add.tileSprite(0, 0, width, height, this.map.ground).setOrigin(0).setScrollFactor(0).setDepth(-1e7);
+    this.darkness = this.add.rectangle(0, 0, width, height, 0x05040a, this.map.darkness).setOrigin(0).setScrollFactor(0).setDepth(FX_DEPTH - 5);
+    onResize(this, () => {
+      this.bg.setSize(this.scale.width, this.scale.height);
+      this.darkness.setSize(this.scale.width, this.scale.height);
+    });
 
     this.fx = new Fx(this, perf.maxNumbers);
     const startTex = CLASSES[this.classId].texture;
@@ -190,6 +251,8 @@ export class GameScene extends Phaser.Scene {
     this.setupJoystick();
 
     this.addSkill(CLASSES[this.classId].grantsSkill!);
+    if (save.pet && PETS[save.pet]) this.equipPet(save.pet, false);
+    kb.on('keydown-Q', () => this.useWing());
 
     // Atalho de teste: L sobe um nível (só no modo de desenvolvimento)
     if (import.meta.env.DEV) kb.on('keydown-L', () => this.gainXp(this.xpNext - this.xp));
@@ -197,6 +260,7 @@ export class GameScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.skills.forEach((s) => s.destroy());
       kb.removeAllListeners('keydown-L');
+      kb.removeAllListeners('keydown-Q');
     });
 
     this.scene.launch('UI');
@@ -213,6 +277,7 @@ export class GameScene extends Phaser.Scene {
     this.collectEnemies();
     this.updateBafome(dt);
     this.updatePlayer(dt);
+    this.updatePet(dt);
     this.skills.forEach((s) => s.update(dt));
     this.projectiles.update(dt);
     this.updateEnemies(dt);
@@ -279,14 +344,13 @@ export class GameScene extends Phaser.Scene {
         const imgs: Phaser.GameObjects.Image[] = [];
         const n = rnd() < 0.3 ? 0 : 1 + Math.floor(rnd() * 3);
         for (let j = 0; j < n; j++) {
-          const r = rnd();
-          const type = r < 0.38 ? DECOR_KEYS[0] : r < 0.62 ? DECOR_KEYS[1] : r < 0.78 ? DECOR_KEYS[2] : r < 0.92 ? DECOR_KEYS[3] : DECOR_KEYS[4];
+          const type = pickWeighted(this.map.decor, rnd());
           const x = (cx + rnd()) * C;
           const y = (cy + rnd()) * C;
           const img = this.decorPool.pop() ?? this.add.image(0, 0, type);
           img.setTexture(type).setPosition(x, y).setScale(0.5).setFlipX(rnd() < 0.5).setVisible(true);
           // arbustos ficam "em pé" (o herói passa na frente ou atrás); o resto fica no chão
-          img.setDepth(type === 'deco-arbusto' ? y + 8 : -200000);
+          img.setDepth(TALL_DECOR.has(type) ? y + 8 : -200000);
           imgs.push(img);
         }
         this.decor.set(k, imgs);
@@ -314,7 +378,8 @@ export class GameScene extends Phaser.Scene {
       m.normalize();
       this.facing.copy(m);
       if (m.x !== 0) this.player.setFlipX(m.x < 0);
-      const step = (this.stats.speed * dt) / 1000;
+      const slow = this.elapsed < this.curseUntil ? 0.6 : 1;
+      const step = (this.stats.speed * slow * dt) / 1000;
       this.player.x += m.x * step;
       this.player.y += m.y * step;
     }
@@ -334,26 +399,98 @@ export class GameScene extends Phaser.Scene {
     this.shadow.setVisible(needsShadow(tex)).setPosition(this.player.x, this.player.y + feetOffset(tex) - 2).setDepth(this.player.y - 1);
 
     if (this.elapsed < this.hurtUntil) this.player.setTintFill(0xff5555);
+    else if (this.elapsed < this.curseUntil) this.player.setTint(0xb080ff);
+    else if (this.elapsed < this.poisonUntil) this.player.setTint(0xa0ff8a);
     else this.player.clearTint();
+
+    // veneno: perde vida aos poucos
+    if (this.elapsed < this.poisonUntil && this.elapsed >= this.nextPoisonTick) {
+      this.nextPoisonTick = this.elapsed + 1000;
+      this.hp = Math.max(1, this.hp - 4);
+      this.fx.number(this.player.x, this.player.y - 30, '-4', 0x7aff6a);
+    }
     this.player.setAlpha(this.elapsed < this.invulnUntil ? 0.6 + 0.4 * Math.sin(this.elapsed / 30) : 1);
 
     this.hp = Math.min(this.stats.maxHp, this.hp + (this.stats.regen * dt) / 1000);
   }
 
   private onEnemyTouch(e: Enemy) {
-    this.hurtPlayer(e.def.damage);
+    if (e.isStopped(this.elapsed)) return;
+    const hit = this.hurtPlayer(e.def.damage);
+    // cogumelos podem envenenar
+    if (hit && e.def.id === 'cogumelo' && Math.random() < 0.2) this.afflictPlayer('veneno', 3000);
+  }
+
+  /** Aplica maldição (lentidão) ou veneno no jogador; VIT dá chance de resistir */
+  afflictPlayer(kind: 'maldicao' | 'veneno', ms: number) {
+    if (Math.random() < Math.min(0.5, this.attrs.vit * 0.01)) {
+      this.fx.number(this.player.x, this.player.y - 44, '0', 0xdddddd);
+      return;
+    }
+    if (kind === 'maldicao') this.curseUntil = this.elapsed + ms;
+    else this.poisonUntil = this.elapsed + ms;
+    this.events.emit('toast', kind === 'maldicao' ? 'Amaldiçoado! (mais lento)' : 'Envenenado!', kind === 'maldicao' ? '#c8a0ff' : '#9aff7a');
   }
 
   /** Dano no jogador (contato, ataques do chefe). `heavy` ignora parte da armadura. */
-  hurtPlayer(amount: number, heavy = false) {
-    if (this.over || this.elapsed < this.invulnUntil) return;
+  hurtPlayer(amount: number, heavy = false): boolean {
+    if (this.over || this.elapsed < this.invulnUntil) return false;
+    // esquiva (AGI, mascote) e cartas que anulam o golpe
+    if (Math.random() < this.evadeChance()) {
+      this.invulnUntil = this.elapsed + 250;
+      this.fx.number(this.player.x, this.player.y - 34, '0', 0xdddddd);
+      return false;
+    }
+    if (Math.random() < this.mods.ignoreHit) {
+      this.invulnUntil = this.elapsed + PLAYER_IFRAMES;
+      this.fx.ring(this.player.x, this.player.y, 22, 1.6, 250, 0xc8c8ff, 0.5);
+      return false;
+    }
     const dmg = Math.max(1, Math.round(amount - this.stats.armor * (heavy ? 0.5 : 1)));
     this.hp -= dmg;
     this.invulnUntil = this.elapsed + PLAYER_IFRAMES;
     this.hurtUntil = this.elapsed + 100;
     this.cameras.main.shake(90, 0.004);
     this.fx.number(this.player.x, this.player.y - 30, `-${dmg}`, 0xff5c5c);
-    if (this.hp <= 0) this.gameOver();
+    if (this.hp <= 0) {
+      if (this.items.pena > 0) this.revive();
+      else this.gameOver();
+    }
+    return true;
+  }
+
+  evadeChance() {
+    return Math.min(0.4, this.attrs.agi * 0.003 + this.mods.evade);
+  }
+
+  critChance() {
+    return Math.min(0.6, this.attrs.sor * 0.005 + this.mods.crit);
+  }
+
+  /** Pena da Ressurreição: volta com metade da vida */
+  private revive() {
+    this.items.pena--;
+    this.hp = this.stats.maxHp * 0.5;
+    this.invulnUntil = this.elapsed + 2500;
+    this.cameras.main.flash(600, 255, 255, 220);
+    this.fx.ring(this.player.x, this.player.y, 30, 8, 600, 0xfff0a0, 0.6);
+    for (const e of this.queryEnemies(this.player.x, this.player.y, 220, this.nearBuf).slice()) {
+      if (e.active && !e.def.boss) this.damageEnemy(e, 0, 600, this.player.x, this.player.y);
+    }
+    this.events.emit('announce', 'A Pena da Ressurreição te trouxe de volta!');
+  }
+
+  /** Asa de Teletransporte: some e reaparece longe da horda */
+  useWing() {
+    if (this.over || this.items.asa <= 0 || this.choosing || !this.scene.isActive()) return;
+    this.items.asa--;
+    this.fx.ring(this.player.x, this.player.y, 20, 3, 300, 0x9fe6ff, 0.6);
+    const a = Math.random() * Math.PI * 2;
+    this.player.x += Math.cos(a) * 520;
+    this.player.y += Math.sin(a) * 520;
+    this.cameras.main.centerOn(this.player.x, this.player.y);
+    this.invulnUntil = this.elapsed + 1200;
+    this.fx.ring(this.player.x, this.player.y, 20, 3, 300, 0x9fe6ff, 0.6);
   }
 
   private setupJoystick() {
@@ -434,17 +571,24 @@ export class GameScene extends Phaser.Scene {
       // afastamento entre inimigos: metade deles por frame, alternando
       if ((i & 1) === parity) this.computeSeparation(e);
 
+      if (e.hasStatus) this.tickStatus(e);
       if (this.elapsed > e.knockUntil) {
-        const d = Math.sqrt(d2) || 1;
-        e.vx = (dx / d) * e.def.speed + e.sepX;
-        e.vy = (dy / d) * e.def.speed + e.sepY;
+        if (e.isStopped(this.elapsed)) {
+          e.vx = e.vy = 0;
+        } else {
+          const d = Math.sqrt(d2) || 1;
+          const speed = e.def.speed * (e.statusUntil.envenenado > this.elapsed ? STATUS.envenenado.slow! : 1);
+          e.vx = (dx / d) * speed + e.sepX;
+          e.vy = (dy / d) * speed + e.sepY;
+        }
       }
+      if (!e.active) continue;
       e.x += e.vx * s;
       e.y += e.vy * s;
       e.setFlipX(dx < 0);
       if (sortDepth) e.setDepth(e.y);
       if (e.flashUntil && this.elapsed > e.flashUntil) {
-        e.restoreTint();
+        e.restoreTint(this.elapsed);
         e.flashUntil = 0;
       }
     }
@@ -524,10 +668,11 @@ export class GameScene extends Phaser.Scene {
 
   private pickEnemy(t: number): EnemyDef {
     const pool = ENEMIES.filter((d) => t >= d.from);
-    const total = pool.reduce((s, d) => s + d.weight, 0);
+    const w = (d: EnemyDef) => d.weight * (this.map.weights[d.id] ?? 1);
+    const total = pool.reduce((s, d) => s + w(d), 0);
     let r = Math.random() * total;
     for (const d of pool) {
-      r -= d.weight;
+      r -= w(d);
       if (r <= 0) return d;
     }
     return pool[0];
@@ -597,26 +742,50 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Explosão em área: fere todos os inimigos no raio (bola de fogo, meteoro) */
-  explode(x: number, y: number, radius: number, damage: number, knockback: number, color: number) {
+  explode(x: number, y: number, radius: number, damage: number, knockback: number, color: number, src?: SkillId) {
     this.fx.ring(x, y, radius * 0.35, 2.8, 260, color, 0.55);
     this.burst(x, y, 6);
     const hits = this.queryEnemies(x, y, radius, this.nearBuf).slice();
     for (const e of hits) {
       if (e.active && (e.x - x) ** 2 + (e.y - y) ** 2 <= (radius + e.def.radius) ** 2) {
-        this.damageEnemy(e, damage, knockback, x, y);
+        this.damageEnemy(e, damage, knockback, x, y, src);
       }
     }
   }
 
   /** Aplica dano a um inimigo (usado por todas as habilidades) */
-  damageEnemy(e: Enemy, amount: number, knockback: number, fromX: number, fromY: number) {
+  damageEnemy(e: Enemy, amount: number, knockback: number, fromX: number, fromY: number, src?: SkillId) {
     if (!e.active) return;
-    const dmg = Math.max(1, Math.round(amount * Phaser.Math.FloatBetween(0.9, 1.1)));
-    e.hp -= dmg;
-    e.setTintFill(0xffffff);
-    e.flashUntil = this.elapsed + 70;
-    this.fx.number(e.x, e.y - 20, `${dmg}`, 0xffffff);
-    this.burst(e.x, e.y, 2);
+    if (amount > 0) {
+      // ---- fórmula de dano: atributos, elemento, raça, tamanho, refino, nível de classe e crítico
+      const sk = src ? SKILLS[src] : null;
+      let mult = (1 + this.mods.dmgAll) * (1 + (this.jobLevel - 1) * 0.02);
+      let elemMult = 1;
+      if (sk) {
+        const attrBonus = sk.kind === 'melee' ? this.attrs.for * 0.02 : sk.kind === 'ranged' ? this.attrs.des * 0.025 : this.attrs.int * 0.025;
+        mult *= 1 + attrBonus + this.mods.kindDmg[sk.kind];
+        elemMult = elementMult(sk.element, e.def.element);
+        mult *= elemMult * (1 + (this.mods.elemDmg[sk.element] ?? 0));
+        mult *= sk.sizeMod?.[e.def.size] ?? 1;
+      }
+      mult *= 1 + (this.mods.raceDmg[e.def.race] ?? 0);
+      const crit = Math.random() < this.critChance();
+      if (crit) mult *= 1.8;
+      const dmg = Math.max(1, Math.round(amount * mult * Phaser.Math.FloatBetween(0.9, 1.1)));
+      e.hp -= dmg;
+      e.setTintFill(0xffffff);
+      e.flashUntil = this.elapsed + 70;
+      // cor do número: crítico em dourado, fraqueza em laranja, resistência em cinza
+      const color = crit ? 0xffd23b : elemMult > 1 ? 0xffa040 : elemMult < 1 ? 0x9a9a9a : 0xffffff;
+      this.fx.number(e.x, e.y - 20, crit ? `${dmg}!` : `${dmg}`, color);
+      this.burst(e.x, e.y, crit ? 5 : 2);
+
+      // estados alterados
+      if (e.hp > 0) {
+        if (sk?.status && Math.random() < sk.status.chance) this.applyStatus(e, sk.status.id, dmg);
+        if (this.mods.freezeChance && Math.random() < this.mods.freezeChance) this.applyStatus(e, 'congelado', dmg);
+      }
+    }
 
     if (e.hp <= 0) {
       this.killEnemy(e);
@@ -629,6 +798,48 @@ export class GameScene extends Phaser.Scene {
       e.vy = Math.sin(a) * kb;
       e.knockUntil = this.elapsed + 120;
     }
+  }
+
+  /** Aplica um estado alterado num inimigo (chefes sofrem bem menos com os que paralisam) */
+  applyStatus(e: Enemy, id: StatusId, hitDamage: number) {
+    const st = STATUS[id];
+    const dur = st.stops && (e.def.boss || e.def.elite) ? st.duration * 0.25 : st.duration;
+    e.statusUntil[id] = Math.max(e.statusUntil[id], this.elapsed + dur);
+    if (st.dot) e.statusDot[id] = Math.max(e.statusDot[id], Math.max(1, Math.round(hitDamage * st.dot)));
+    if (!e.hasStatus) e.nextDot = this.elapsed + 500;
+    e.hasStatus = true;
+    if (!e.flashUntil) e.restoreTint(this.elapsed);
+  }
+
+  /** Dano contínuo dos estados e fim dos estados */
+  private tickStatus(e: Enemy) {
+    const now = this.elapsed;
+    if (now < e.nextDot) return;
+    e.nextDot = now + 500;
+    let active = false;
+    let total = 0;
+    let color = 0xffffff;
+    for (const id of ['queimando', 'envenenado', 'sangrando', 'atordoado', 'congelado'] as StatusId[]) {
+      if (e.statusUntil[id] <= now) continue;
+      active = true;
+      if (STATUS[id].dot) {
+        total += e.statusDot[id];
+        color = STATUS[id].tint;
+      }
+    }
+    if (total > 0) {
+      e.hp -= total;
+      this.fx.number(e.x + 10, e.y - 8, `${total}`, color);
+      if (e.hp <= 0) {
+        this.killEnemy(e);
+        return;
+      }
+    }
+    if (!active) {
+      e.hasStatus = false;
+      for (const id of Object.keys(e.statusDot) as StatusId[]) e.statusDot[id] = 0;
+    }
+    if (!e.flashUntil) e.restoreTint(now);
   }
 
   private killEnemy(e: Enemy) {
@@ -652,22 +863,178 @@ export class GameScene extends Phaser.Scene {
         this.dropPickup('xp', Math.ceil(def.xp / 8), x + Math.cos(a) * 40, y + Math.sin(a) * 40);
       }
       this.dropPickup('comida', 60, x, y);
+      this.dropPickup('zeny', 60 + Math.floor(Math.random() * 60), x - 30, y + 10);
+      if (cardOf(def.id)) this.dropPickup('carta', 0, x + 30, y + 10, def.id);
+      if (def.id === 'bafome') this.dropPickup('pena', 1, x, y + 36);
+      this.gainJob(50);
       this.events.emit('announce', `${def.name} foi derrotado!`);
       return;
     }
+    this.gainJob(def.elite ? 5 : 1);
+    if (this.mods.killHeal) this.hp = Math.min(this.stats.maxHp, this.hp + this.mods.killHeal);
     this.dropPickup('xp', def.xp, x, y);
     if (Math.random() < (def.elite ? 1 : 0.012)) this.dropPickup('comida', 30, x + 12, y);
+    this.rollDrops(def, x, y);
   }
 
   // ---------------------------------------------------------------- itens e XP
 
-  private dropPickup(kind: 'xp' | 'comida', value: number, x: number, y: number) {
+  /** Sorteia zeny, poções, asas, penas, cartas e ovos (a Sorte aumenta as chances) */
+  private rollDrops(def: EnemyDef, x: number, y: number) {
+    const luck = 1 + this.attrs.sor * 0.02 + this.mods.drop;
+    const elite = def.elite ? 10 : 1;
+    const r = () => Math.random();
+    const off = () => Phaser.Math.Between(-14, 14);
+    if (r() < DROPS.zeny * (def.elite ? 3 : 1)) this.dropPickup('zeny', def.elite ? 15 + Math.floor(r() * 15) : 1 + Math.floor(r() * 3), x + off(), y + off());
+    if (r() < DROPS.pocao1 * luck * elite) this.dropPickup('pocao1', 0, x + off(), y + off());
+    if (r() < DROPS.pocao2 * luck * elite) this.dropPickup('pocao2', 0, x + off(), y + off());
+    if (r() < DROPS.pocao3 * luck * elite) this.dropPickup('pocao3', 0, x + off(), y + off());
+    if (r() < DROPS.asa * luck * elite) this.dropPickup('asa', 1, x + off(), y + off());
+    if (r() < DROPS.pena * luck * elite) this.dropPickup('pena', 1, x + off(), y + off());
+    if (cardOf(def.id) && r() < DROPS.carta * luck * (def.elite ? 12 : 1)) this.dropPickup('carta', 0, x, y, def.id);
+    if (PETS[def.id] && r() < DROPS.ovo * luck) this.dropPickup('ovo', 0, x + off(), y + off(), def.id);
+  }
+
+  private dropPickup(kind: ItemKind, value: number, x: number, y: number, extra = '') {
     const p = this.pickups.get(x, y) as Pickup | null;
     if (!p) {
       if (kind === 'xp') this.gainXp(value);
+      else if (kind !== 'comida') this.collect(kind, value, extra);
       return;
     }
-    p.place(kind, value, x, y);
+    p.place(kind, value, x, y, extra);
+  }
+
+  /** Efeito de pegar um item do chão */
+  private collect(kind: ItemKind, value: number, extra: string) {
+    const px = this.player.x;
+    const py = this.player.y;
+    const heal = (n: number) => {
+      const v = Math.round(Math.min(n, this.stats.maxHp - this.hp));
+      this.hp += v;
+      this.fx.number(px, py - 30, `+${v}`, 0x7dff6b);
+    };
+    switch (kind) {
+      case 'xp': this.gainXp(value * (1 + this.mods.xp)); break;
+      case 'comida': heal(value); break;
+      case 'pocao1': heal(30); break;
+      case 'pocao2': heal(70); break;
+      case 'pocao3': heal(this.stats.maxHp * 0.4); break;
+      case 'asa':
+        this.items.asa++;
+        this.events.emit('toast', 'Asa de Teletransporte! (Q ou botão para usar)', '#9fe6ff');
+        break;
+      case 'pena':
+        this.items.pena++;
+        this.events.emit('toast', 'Pena da Ressurreição!', '#fff0a0');
+        break;
+      case 'zeny': {
+        const z = Math.max(1, Math.round(value * (1 + this.mods.zeny)));
+        this.zenyRun += z;
+        this.fx.number(px, py - 36, `+${z}z`, 0xffd23b);
+        break;
+      }
+      case 'carta': this.collectCard(extra); break;
+      case 'ovo': this.equipPet(extra, true); break;
+    }
+  }
+
+  collectCard(monster: string) {
+    const card = cardOf(monster);
+    if (!card) return;
+    this.cards.push(monster);
+    card.apply(this);
+    this.cameras.main.flash(250, 255, 220, 120);
+    this.events.emit('announce', `${card.name}: ${card.desc}`);
+  }
+
+  // ---------------------------------------------------------------- atributos
+
+  /** Soma pontos num atributo e aplica os efeitos que mudam atributos fixos */
+  addAttr(a: Attr, n: number) {
+    this.attrs[a] += n;
+    if (a === 'agi') this.stats.haste += 0.012 * n;
+    if (a === 'vit') {
+      this.stats.maxHp += 5 * n;
+      this.hp += 5 * n;
+      this.stats.regen += 0.03 * n;
+    }
+  }
+
+  /** Gasta um ponto escolhido pelo jogador */
+  spendAttr(a: Attr) {
+    if (this.attrPoints <= 0) return false;
+    this.attrPoints--;
+    this.addAttr(a, 1);
+    return true;
+  }
+
+  /** Distribui os pontos que sobraram conforme o foco da classe */
+  autoSpendAttrs() {
+    const focus = ATTR_FOCUS[this.line ?? 'aprendiz'];
+    const ids = ATTR_IDS.filter((a) => focus[a]);
+    const total = ids.reduce((s, a) => s + focus[a]!, 0);
+    while (this.attrPoints > 0) {
+      let r = Math.random() * total;
+      const pick = ids.find((a) => (r -= focus[a]!) <= 0) ?? ids[0];
+      this.spendAttr(pick);
+    }
+  }
+
+  // ---------------------------------------------------------------- nível de classe
+
+  gainJob(n: number) {
+    if (this.jobLevel >= MAX_JOB) return;
+    this.jobXp += n;
+    while (this.jobXp >= jobForLevel(this.jobLevel) && this.jobLevel < MAX_JOB) {
+      this.jobXp -= jobForLevel(this.jobLevel);
+      this.jobLevel++;
+      if (this.jobLevel % 5 === 0) this.events.emit('toast', `Nível de classe ${this.jobLevel}! (+${(this.jobLevel - 1) * 2}% de dano)`, '#9fc3ff');
+    }
+  }
+
+  // ---------------------------------------------------------------- mascote
+
+  equipPet(id: string, announce: boolean) {
+    const def = PETS[id];
+    if (!def) return;
+    if (this.pet) {
+      const b = this.pet.bonus;
+      if (b.magnet) this.stats.magnet /= 1 + b.magnet;
+      if (b.regen) this.stats.regen -= b.regen;
+      if (b.evade) this.mods.evade -= b.evade;
+    }
+    this.petSprite?.destroy();
+    this.pet = def;
+    const b = def.bonus;
+    if (b.magnet) this.stats.magnet *= 1 + b.magnet;
+    if (b.regen) this.stats.regen += b.regen;
+    if (b.evade) this.mods.evade += b.evade;
+    this.petSprite = this.add.sprite(this.player.x - 30, this.player.y - 20, def.texture).setScale(0.3).play(`${def.texture}-move`);
+    const save = loadSave();
+    save.pet = id;
+    writeSave(save);
+    if (announce) this.events.emit('announce', `Novo mascote: ${def.name}! ${def.desc}`);
+  }
+
+  private updatePet(dt: number) {
+    const s = this.petSprite;
+    if (!s || !this.pet) return;
+    const tx = this.player.x - this.facing.x * 38;
+    const ty = this.player.y - 24 - this.facing.y * 20;
+    const k = Math.min(1, dt / 160);
+    s.x += (tx - s.x) * k;
+    s.y += (ty - s.y) * k + Math.sin(this.elapsed / 180) * 0.15;
+    s.setFlipX(this.player.flipX).setDepth(s.y);
+    const atk = this.pet.attack;
+    if (atk && this.elapsed >= this.petAttackAt) {
+      const target = this.nearestEnemies(s.x, s.y, 1, 260)[0];
+      if (target) {
+        this.petAttackAt = this.elapsed + atk.every;
+        this.fx.bolt([{ x: s.x, y: s.y }, { x: target.x, y: target.y }], 0xc8a0ff);
+        this.damageEnemy(target, (atk.damage + this.level * 1.5) * this.stats.might, 40, s.x, s.y);
+      }
+    }
   }
 
   private updatePickups(dt: number) {
@@ -685,11 +1052,7 @@ export class GameScene extends Phaser.Scene {
       const d2 = dx * dx + dy * dy;
       if (d2 < 20 * 20) {
         p.release();
-        if (p.kind === 'xp') this.gainXp(p.value);
-        else {
-          this.hp = Math.min(this.stats.maxHp, this.hp + p.value);
-          this.fx.number(px, py - 30, `+${p.value}`, 0x7dff6b);
-        }
+        this.collect(p.kind, p.value, p.extra);
         if (this.choosing) return;
         continue;
       }
@@ -710,6 +1073,7 @@ export class GameScene extends Phaser.Scene {
       this.level++;
       this.xpNext = xpForLevel(this.level);
       this.pendingLevelUps++;
+      this.attrPoints += ATTR_POINTS_PER_LEVEL;
     }
     if (this.pendingLevelUps > 0 && !this.choosing) {
       this.choosing = true;
@@ -778,6 +1142,8 @@ export class GameScene extends Phaser.Scene {
   private promote(id: ClassId) {
     const def = CLASSES[id];
     this.classId = id;
+    this.jobLevel = 1;
+    this.jobXp = 0;
     for (const [k, v] of Object.entries(def.statBonus) as [keyof Stats, number][]) this.stats[k] += v;
     this.hp = this.stats.maxHp;
     this.player.setTexture(def.texture, 'idle0').setScale(heroScale(def.texture));
@@ -819,12 +1185,20 @@ export class GameScene extends Phaser.Scene {
     const dieAnim = `${CLASSES[this.classId].texture}-die`;
     if (this.anims.exists(dieAnim)) this.player.play(dieAnim);
     else this.player.setTint(0x555555);
+    const save = loadSave();
+    save.zeny += this.zenyRun;
+    if (this.elapsed > save.best.time) save.best.time = this.elapsed;
+    if (this.level > save.best.level) save.best.level = this.level;
+    writeSave(save);
     const result: RunResult = {
       time: this.elapsed,
       level: this.level,
       className: CLASSES[this.classId].name,
       kills: this.kills,
       line: this.line,
+      zeny: this.zenyRun,
+      zenyTotal: save.zeny,
+      cards: this.cards.length,
     };
     this.time.delayedCall(800, () => {
       this.scene.stop('UI');
@@ -844,4 +1218,18 @@ function cellRandom(cx: number, cy: number) {
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+}
+
+/** Decorações "em pé" (o herói passa na frente ou atrás) */
+const TALL_DECOR = new Set(['deco-arbusto', 'deco-cacto', 'deco-coluna', 'deco-cristal']);
+
+/** Escolhe um item de uma lista [valor, peso] usando um número de 0 a 1 */
+function pickWeighted(list: [string, number][], r: number) {
+  const total = list.reduce((s, [, w]) => s + w, 0);
+  let acc = r * total;
+  for (const [v, w] of list) {
+    acc -= w;
+    if (acc <= 0) return v;
+  }
+  return list[list.length - 1][0];
 }

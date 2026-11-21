@@ -116,7 +116,7 @@ export class BafomeAI {
         const spike = g.add.image(s.x, s.y + 18, 'fx-geiser').setOrigin(0.5, 1).setDepth(s.y + 20).setScale(0.5, 0.05);
         g.tweens.add({ targets: spike, scaleY: 0.5, duration: 120, ease: 'Back.Out' });
         g.tweens.add({ targets: spike, alpha: 0, delay: 450, duration: 300, onComplete: () => spike.destroy() });
-        if (Phaser.Math.Distance.Between(s.x, s.y, g.player.x, g.player.y) < r + 10) g.hurtPlayer(28, true);
+        if (Phaser.Math.Distance.Between(s.x, s.y, g.player.x, g.player.y) < r + 10 && g.hurtPlayer(28, true)) g.afflictPlayer('maldicao', 3000);
       }
       g.cameras.main.shake(140, 0.005);
     });

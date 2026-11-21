@@ -19,7 +19,7 @@ export class MeteorSkill extends Skill {
     for (let i = this.pending.length - 1; i >= 0; i--) {
       const m = this.pending[i];
       if (now < m.at) continue;
-      this.g.explode(m.x, m.y, this.radius, this.damage, 260, 0xff5a2a);
+      this.g.explode(m.x, m.y, this.radius, this.damage, 260, 0xff5a2a, this.id);
       this.g.cameras.main.shake(120, 0.005);
       this.pending.splice(i, 1);
     }

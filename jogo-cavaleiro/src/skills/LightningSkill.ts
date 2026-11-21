@@ -35,7 +35,7 @@ export class LightningSkill extends Skill {
       points.push({ x: cur.x, y: cur.y });
       const cx: number = cur.x;
       const cy: number = cur.y;
-      this.g.damageEnemy(cur, this.damage, 60, p.x, p.y);
+      this.g.damageEnemy(cur, this.damage, 60, p.x, p.y, this.id);
       // próximo alvo: o mais perto ainda não atingido
       let best: Enemy | null = null;
       let bestD = range * range;

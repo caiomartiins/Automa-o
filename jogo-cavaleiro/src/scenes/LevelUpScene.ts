@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import type { GameScene, LevelUpData } from './GameScene';
 import { hex, isPortrait, isTouch, onResize, text } from '../ui';
 import { heroScale } from '../sprites';
+import { ATTRS, ATTR_IDS, type Attr } from '../data/rpg';
 
 /** Tela de escolha de melhoria (e de promoção de classe) */
 export class LevelUpScene extends Phaser.Scene {
@@ -18,12 +19,15 @@ export class LevelUpScene extends Phaser.Scene {
   }
 
   create() {
-    const { width, height } = this.scale;
+    const { width, height: fullH } = this.scale;
     const { promotion, options, level, choiceTitle, choiceSubtitle } = this.data_;
     const portrait = isPortrait(this);
     const touch = isTouch(this);
     const big = touch ? 1.3 : 1;
-    this.add.rectangle(0, 0, width, height, 0x05060a, 0.88).setOrigin(0);
+    this.add.rectangle(0, 0, width, fullH, 0x05060a, 0.88).setOrigin(0);
+    // a parte de baixo fica para a barra de atributos
+    const height = fullH - (portrait ? 170 : 84);
+    this.buildAttrBar(width, fullH, portrait);
 
     // ---- tamanho das cartas: lado a lado (deitado) ou empilhadas (em pé)
     const gap = portrait ? 22 : 30;
@@ -113,6 +117,44 @@ export class LevelUpScene extends Phaser.Scene {
     onResize(this, () => this.scene.restart(this.data_));
   }
 
+  /** Pontos de atributo do nível: o jogador distribui tocando nos botões */
+  private buildAttrBar(width: number, fullH: number, portrait: boolean) {
+    const game = this.scene.get('Game') as GameScene;
+    const rows = portrait ? 2 : 1;
+    const perRow = 6 / rows;
+    const bw = Math.min(portrait ? 210 : 150, (width - 40 - (perRow - 1) * 10) / perRow);
+    const bh = portrait ? 54 : 46;
+    const top = fullH - rows * (bh + 10) - 34;
+    const label = text(this, width / 2, top, '', 16, '#ffe36a').setOrigin(0.5);
+    const btns: { id: Attr; t: Phaser.GameObjects.Text; bg: Phaser.GameObjects.Rectangle }[] = [];
+    const refresh = () => {
+      label.setText(game.attrPoints > 0
+        ? `Pontos de atributo: ${game.attrPoints}  (os que sobrarem vão para o foco da classe)`
+        : 'Atributos distribuídos');
+      for (const b of btns) {
+        b.t.setText(`${ATTRS[b.id].short} ${game.attrs[b.id]}${game.attrPoints > 0 ? '  +' : ''}`);
+        b.bg.setAlpha(game.attrPoints > 0 ? 1 : 0.55);
+      }
+    };
+    ATTR_IDS.forEach((id, i) => {
+      const row = Math.floor(i / perRow);
+      const col = i % perRow;
+      const x = width / 2 + (col - (perRow - 1) / 2) * (bw + 10);
+      const y = top + 24 + row * (bh + 10) + bh / 2;
+      const bg = this.add.rectangle(x, y, bw, bh, 0x1c1f2b, 0.95).setStrokeStyle(2, ATTRS[id].color);
+      const t = text(this, x, y, '', portrait ? 22 : 18, hex(ATTRS[id].color)).setOrigin(0.5);
+      bg.setInteractive({ useHandCursor: true })
+        .on('pointerup', () => {
+          if (game.spendAttr(id)) {
+            this.tweens.add({ targets: t, scale: { from: 1.25, to: 1 }, duration: 160 });
+            refresh();
+          }
+        });
+      btns.push({ id, t, bg });
+    });
+    refresh();
+  }
+
   private choose(i: number) {
     const opt = this.data_.options[i];
     if (this.done || !opt) return;
@@ -121,6 +163,7 @@ export class LevelUpScene extends Phaser.Scene {
     opt.apply(game);
 
     const next = game.nextLevelUp();
+    if (!next) game.autoSpendAttrs();
     if (next) {
       this.scene.restart(next);
     } else {

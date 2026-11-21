@@ -26,7 +26,7 @@ export class BookSkill extends Skill {
       const spread = i >= targets.length ? (i % 2 ? 0.22 : -0.22) : 0;
       const angle = Math.atan2(t.y - p.y, t.x - p.x) + spread;
       this.g.projectiles.fire('proj-livro', p.x, p.y - 8, angle, {
-        speed: 400, damage: this.damage, pierce: this.pierce, radius: 11, life: 1400, knockback: 160,
+        src: this.id, speed: 400, damage: this.damage, pierce: this.pierce, radius: 11, life: 1400, knockback: 160,
       });
     }
   }

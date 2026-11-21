@@ -1,5 +1,8 @@
 import Phaser from 'phaser';
 import type { EnemyDef } from '../data/enemies';
+import { STATUS, type StatusId } from '../data/rpg';
+
+const STATUS_PRIORITY: StatusId[] = ['congelado', 'atordoado', 'queimando', 'envenenado', 'sangrando'];
 
 /**
  * Inimigo reutilizável (object pooling): nunca é destruído, só desativado.
@@ -18,6 +21,12 @@ export class Enemy extends Phaser.GameObjects.Sprite {
   knockUntil = 0;
   flashUntil = 0;
   shieldHitAt = 0;
+  /** Até quando cada estado dura (tempo da partida, em ms) e o dano por tique */
+  statusUntil: Record<StatusId, number> = { queimando: 0, envenenado: 0, sangrando: 0, atordoado: 0, congelado: 0 };
+  statusDot: Record<StatusId, number> = { queimando: 0, envenenado: 0, sangrando: 0, atordoado: 0, congelado: 0 };
+  nextDot = 0;
+  /** Tem algum estado ativo (para atualizar a cor só quando preciso) */
+  hasStatus = false;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     super(scene, x, y, 'en-gosma');
@@ -25,20 +34,36 @@ export class Enemy extends Phaser.GameObjects.Sprite {
 
   spawn(def: EnemyDef, x: number, y: number, hpMult: number) {
     this.def = def;
-    this.setTexture(def.texture).setPosition(x, y).setActive(true).setVisible(true).setAlpha(1).clearTint();
+    this.setTexture(def.texture).setPosition(x, y).setActive(true).setVisible(true).setAlpha(1);
     // a arte é desenhada em 2x; elites e chefes aparecem maiores
     this.setScale(0.5 * (def.scale ?? 1));
-    this.restoreTint();
     const anim = this.scene.anims.get(`${def.texture}-move`);
     this.play({ key: anim.key, startFrame: Phaser.Math.Between(0, anim.frames.length - 1) });
     this.hp = this.maxHp = Math.ceil(def.hp * hpMult);
     this.vx = this.vy = this.sepX = this.sepY = 0;
     this.knockUntil = this.flashUntil = this.shieldHitAt = 0;
+    for (const k of STATUS_PRIORITY) this.statusUntil[k] = this.statusDot[k] = 0;
+    this.nextDot = 0;
+    this.hasStatus = false;
+    this.restoreTint(-1);
   }
 
-  /** Volta à cor normal (depois de piscar branco ao levar dano) */
-  restoreTint() {
+  /** Está parado por atordoamento ou congelamento? */
+  isStopped(now: number) {
+    return this.statusUntil.atordoado > now || this.statusUntil.congelado > now;
+  }
+
+  /** Volta à cor normal ou à cor do estado ativo mais importante */
+  restoreTint(now: number) {
     this.clearTint();
+    if (now >= 0) {
+      for (const k of STATUS_PRIORITY) {
+        if (this.statusUntil[k] > now) {
+          this.setTint(STATUS[k].tint);
+          return;
+        }
+      }
+    }
     if (this.def?.tint !== undefined) this.setTint(this.def.tint);
   }
 

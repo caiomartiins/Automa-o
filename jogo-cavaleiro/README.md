@@ -32,6 +32,26 @@ O Golpe de Espada do Aprendiz continua com todos. Cada habilidade vai até o ní
 ## Sprites desenhados à mão
 Todos os heróis usam sprites recortados das imagens enviadas. A fonte em PNG fica em `sprites/` e o jogo usa as versões WebP de `src/assets/`, registradas em `src/sprites.ts`. Os monstros ainda usam a arte gerada em `src/art.ts`.
 
+## Sistemas de RPG (`src/data/rpg.ts`)
+
+- **Atributos:** FOR, AGI, VIT, INT, DES e SOR. São 3 pontos por nível, distribuídos na tela de nível; o que sobrar vai para o foco da classe.
+  - FOR, DES e INT aumentam o dano corpo a corpo, à distância e mágico.
+  - AGI aumenta a velocidade de ataque e a esquiva.
+  - VIT aumenta a vida, a regeneração e a resistência a estados.
+  - SOR aumenta o crítico e a chance de itens.
+- **Elementos:** Neutro, Fogo, Água, Terra, Vento, Sagrado, Sombrio, Fantasma e Morto-vivo, com tabela de fraquezas. Os números de dano ficam laranja na fraqueza, cinza na resistência e dourados no crítico.
+- **Raças e tamanhos:** cada monstro tem os seus. Algumas habilidades e cartas dão bônus por raça ou tamanho.
+- **Estados alterados:**
+  - Nos monstros: queimando, envenenado (mais lento), sangrando, atordoado e congelado.
+  - No jogador: maldição do Bafome (mais lento) e veneno do cogumelo.
+- **Cartas de monstro:** cada monstro tem uma carta rara, e os chefes sempre soltam a deles. A Carta Bafome deixa o Golpe de Espada em 360°.
+- **Itens:** poções (vermelha, laranja e branca), Asa de Teletransporte (tecla Q ou botão), Pena da Ressurreição e zeny.
+- **Nível de classe:** sobe derrotando monstros, recomeça a cada promoção e dá +2% de dano por nível.
+- **Mascotes:** ovos caem dos monstros ou são comprados na loja. Gosminha, Morceguinho (ataca), Fantasminha e Cogumelinho.
+- **Mapas:** Campos Verdes, Deserto Escaldante, Caverna Sombria e Ruínas Esquecidas, escolhidos no menu. Cada um tem seu chão, decoração e monstros mais comuns.
+- **Loja e Ferreiro** (entre partidas, com o zeny guardado no navegador): melhorias permanentes, ovo de mascote e refino da arma de +1 a +10. A partir do +5 o refino pode falhar e a arma volta a +0.
+- **Janela de status:** aparece ao pausar e mostra atributos, cartas, habilidades, equipamento e mascote.
+
 ## Inimigos e chefes
 Gosma, Morcego, Cogumelo Andante, Esqueleto, Fantasma, Orc e Cavaleiro Negro (elite) aparecem conforme o tempo passa. A cada minuto vem uma horda.
 
