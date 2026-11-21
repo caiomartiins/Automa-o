@@ -17,15 +17,20 @@ npm run build    # gera a pasta dist/ pronta para publicar (itch.io, GitHub Page
 - **P / ESC**: pausar
 - **L**: sobe um nível na hora (só no `npm run dev`, para testes)
 
-## Linhagem de classes
+## Linhagens de classes
 
-| Classe | Nível | Ganha |
-|---|---|---|
-| Aprendiz | 1 | Golpe de Espada (arco na direção em que você anda) |
-| Guarda | 10 | Escudo Giratório, +30 Vida, +2 Armadura |
-| Cavaleiro | 20 | Investida de Lança (estocada perfurante), +50 Vida, +3 Armadura, +25% Dano, +20 Velocidade |
+Você escolhe a linhagem no menu. A promoção acontece nos níveis 10 e 20.
+
+| Linhagem | Início | Nível 10 | Nível 20 |
+|---|---|---|---|
+| **Cavaleiro** | Aprendiz: Golpe de Espada | Guarda: Escudo Giratório | Cavaleiro: Investida de Lança |
+| **Mago** | Aprendiz de Magia: Bola de Fogo | Mago: Corrente de Raios | Arquimago: Chuva de Meteoros |
+| **Arqueiro** | Recruta: Flecha | Caçador: Chuva de Flechas | Patrulheiro: Tiro Certeiro |
 
 Cada habilidade vai até o nível 5. Também existem 8 melhorias passivas (Força, Agilidade, Alcance, Vitalidade, Regeneração, Botas, Ímã, Armadura).
+
+## Inimigos e chefes
+Gosma, Morcego, Cogumelo Andante, Esqueleto, Fantasma, Orc e Cavaleiro Negro (elite) aparecem conforme o tempo passa. A cada minuto vem uma horda. A cada 5 minutos aparece um chefe (Rei Gosma, depois Lorde Esqueleto, e assim por diante), com barra de vida no topo da tela.
 
 ## Estrutura
 
@@ -35,7 +40,9 @@ src/
   skills/      ← lógica de cada habilidade (Espada, Escudo, Lança)
   objects/     ← Enemy e Pickup (reutilizados com object pooling)
   scenes/      ← Game (jogo), UI (HUD), LevelUp, Menu/GameOver
-  textures.ts  ← gráficos placeholder desenhados por código
+  art.ts       ← arte dos personagens, itens e cenário (desenhada por código)
+  projectiles.ts ← flechas e bolas de fogo
+  fx.ts        ← efeitos visuais reaproveitados
 ```
 
 - **Nova classe ou linhagem**: adicione em `src/data/classes.ts`. Se ela tiver uma habilidade nova, crie a habilidade em `src/skills/` e registre em `src/skills/index.ts` e `src/data/skills.ts`.

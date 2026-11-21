@@ -158,6 +158,17 @@ interface HeroLook {
   helmColor?: string;
   circlet?: string;
   cape?: string;
+  /** Arma na mão (padrão: espada) */
+  weapon?: 'sword' | 'staff' | 'bow';
+  /** Cor do orbe do cajado */
+  orb?: string;
+  bowColor?: string;
+  /** Chapéu de mago ou capuz de arqueiro */
+  hat?: 'wizard' | 'hood';
+  hatColor?: string;
+  hatStar?: boolean;
+  /** Túnica longa (magos) */
+  robe?: boolean;
 }
 
 interface Pose {
@@ -192,6 +203,63 @@ function heroArm(c: Ctx, x: number, y: number, angle: number, sleeve: string, sk
   c.restore();
 }
 
+/** Cajado no referencial da arma (+y aponta para a ponta) */
+function drawStaff(c: Ctx, orb: string, trim: string) {
+  paint(c, () => rr(c, -1.4, -14, 2.8, 41, 1.3), vgrad(c, -14, 27, '#a87444', '#5a3a1e'), 0.9);
+  paint(c, () => {
+    c.moveTo(-3.5, 25);
+    c.quadraticCurveTo(-5, 30, -2, 33);
+    c.lineTo(0, 30);
+    c.lineTo(2, 33);
+    c.quadraticCurveTo(5, 30, 3.5, 25);
+    c.closePath();
+  }, trim, 0.8);
+  c.save();
+  c.shadowColor = orb;
+  c.shadowBlur = 8;
+  const g = c.createRadialGradient(-1, 30, 0.5, 0, 31, 4.5);
+  g.addColorStop(0, '#ffffff');
+  g.addColorStop(0.35, shade(orb, 0.3));
+  g.addColorStop(1, shade(orb, -0.2));
+  paint(c, ell(c, 0, 31, 4.2, 4.2), g, 0.8);
+  c.restore();
+}
+
+/** Arco no referencial da arma (+y ao longo do arco; -x é para a frente) */
+function drawBow(c: Ctx, wood: string, drawn: boolean) {
+  const pull = drawn ? 6 : 0;
+  c.beginPath();
+  c.moveTo(0, -13);
+  c.lineTo(pull, 0);
+  c.lineTo(0, 13);
+  c.strokeStyle = 'rgba(240,235,220,0.9)';
+  c.lineWidth = 0.7;
+  c.stroke();
+  c.beginPath();
+  c.moveTo(0, -14);
+  c.quadraticCurveTo(-9, 0, 0, 14);
+  c.strokeStyle = OUT;
+  c.lineWidth = 3.4;
+  c.stroke();
+  c.strokeStyle = wood;
+  c.lineWidth = 2;
+  c.stroke();
+  if (drawn) {
+    c.beginPath();
+    c.moveTo(pull, 0);
+    c.lineTo(-14, 0);
+    c.strokeStyle = '#7a5530';
+    c.lineWidth = 1.2;
+    c.stroke();
+    paint(c, () => {
+      c.moveTo(-17, 0);
+      c.lineTo(-13, -1.8);
+      c.lineTo(-13, 1.8);
+      c.closePath();
+    }, '#d8dde4', 0.6);
+  }
+}
+
 function drawHero(c: Ctx, L: HeroLook, p: Pose) {
   const b = p.bob;
   groundShadow(c, 32, 73, 17, 4.5, 0.38);
@@ -216,6 +284,24 @@ function drawHero(c: Ctx, L: HeroLook, p: Pose) {
   // pernas
   heroLeg(c, 28 - p.leg * 3, 56 + b, L, p.leg > 0 ? -0.6 : 0);
   heroLeg(c, 35 + p.leg * 3, 56 + b, L, p.leg < 0 ? -0.6 : 0);
+
+  // túnica longa (cobre as pernas, só as botas aparecem)
+  if (L.robe) {
+    paint(c, () => {
+      c.moveTo(21, 50 + b);
+      c.lineTo(43, 50 + b);
+      c.quadraticCurveTo(46, 60, 48 + p.leg * 1.2, 69);
+      c.lineTo(16 + p.leg * 1.2, 69);
+      c.quadraticCurveTo(18, 60, 21, 50 + b);
+      c.closePath();
+    }, vgrad(c, 50, 69, shade(L.tunic, 0.05), shade(L.tunic, -0.4)));
+    c.beginPath();
+    c.moveTo(17 + p.leg * 1.2, 67);
+    c.lineTo(47 + p.leg * 1.2, 67);
+    c.strokeStyle = L.trim;
+    c.lineWidth = 1.8;
+    c.stroke();
+  }
 
   // corpo
   paint(c, () => {
@@ -276,8 +362,13 @@ function drawHero(c: Ctx, L: HeroLook, p: Pose) {
     c.lineWidth = 1.4;
     c.stroke();
   } else {
-    // cabelo de trás
-    paint(c, ell(c, hx - 2, hy - 1.5, 15.5, 14.5), vgrad(c, hy - 16, hy + 12, shade(L.hair, 0.15), shade(L.hair, -0.35)));
+    // cabelo de trás (ou o capuz)
+    if (L.hat === 'hood') {
+      const hc = L.hatColor ?? '#3f6e3a';
+      paint(c, ell(c, hx - 2.5, hy, 17, 16.5), vgrad(c, hy - 17, hy + 16, shade(hc, 0.15), shade(hc, -0.4)));
+    } else {
+      paint(c, ell(c, hx - 2, hy - 1.5, 15.5, 14.5), vgrad(c, hy - 16, hy + 12, shade(L.hair, 0.15), shade(L.hair, -0.35)));
+    }
     // rosto
     paint(c, ell(c, hx + 1, hy + 2, 12.5, 11.5), vgrad(c, hy - 9, hy + 13, shade(L.skin, 0.12), shade(L.skin, -0.1)));
     eye(c, hx + 7, hy + 3, 2.5, 3.5, L.eye);
@@ -324,6 +415,50 @@ function drawHero(c: Ctx, L: HeroLook, p: Pose) {
     c.lineWidth = 1.5;
     c.stroke();
 
+    if (L.hat === 'wizard') {
+      const hc = L.hatColor ?? '#2f3f99';
+      paint(c, ell(c, hx, hy - 7, 19.5, 4.8), vgrad(c, hy - 12, hy - 2, shade(hc, 0.1), shade(hc, -0.35)));
+      paint(c, () => {
+        c.moveTo(hx - 12.5, hy - 8.5);
+        c.quadraticCurveTo(hx - 5, hy - 24, hx - 16, hy - 35);
+        c.quadraticCurveTo(hx + 4, hy - 27, hx + 12.5, hy - 8.5);
+        c.quadraticCurveTo(hx, hy - 5.5, hx - 12.5, hy - 8.5);
+        c.closePath();
+      }, vgrad(c, hy - 35, hy - 8, shade(hc, 0.3), shade(hc, -0.25)));
+      paint(c, () => {
+        c.moveTo(hx - 12, hy - 11);
+        c.quadraticCurveTo(hx, hy - 8.5, hx + 12, hy - 11);
+        c.lineTo(hx + 11.5, hy - 14);
+        c.quadraticCurveTo(hx, hy - 11.5, hx - 11, hy - 14);
+        c.closePath();
+      }, '#e8c04a', 0.8);
+      if (L.hatStar) {
+        c.save();
+        c.translate(hx - 4, hy - 21);
+        c.beginPath();
+        for (let k = 0; k < 10; k++) {
+          const r = k % 2 ? 1.5 : 3.6;
+          const a = (k / 10) * TAU - Math.PI / 2;
+          c.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+        }
+        c.closePath();
+        c.fillStyle = '#ffe36a';
+        c.fill();
+        c.restore();
+      }
+    }
+    if (L.hat === 'hood') {
+      const hc = L.hatColor ?? '#3f6e3a';
+      paint(c, () => {
+        c.moveTo(hx - 16.5, hy + 9);
+        c.quadraticCurveTo(hx - 19, hy - 19, hx, hy - 19);
+        c.quadraticCurveTo(hx + 16, hy - 19, hx + 17, hy - 3);
+        c.lineTo(hx + 13, hy - 6);
+        c.quadraticCurveTo(hx + 1, hy - 14, hx - 10, hy - 5);
+        c.quadraticCurveTo(hx - 12.5, hy + 2, hx - 11, hy + 9);
+        c.closePath();
+      }, vgrad(c, hy - 19, hy + 9, shade(hc, 0.3), shade(hc, -0.25)));
+    }
     if (L.helm === 'cap') {
       const metal = L.helmColor ?? '#9aa6b5';
       paint(c, () => {
@@ -347,8 +482,9 @@ function drawHero(c: Ctx, L: HeroLook, p: Pose) {
   }
 
   // braço da frente com a arma
+  const weapon = L.weapon ?? 'sword';
   const af = p.atk ? -1.5 : -0.35 - p.arm * 0.35;
-  const tw = p.atk ? -0.12 : -1.1;
+  const tw = weapon === 'bow' ? -Math.PI / 2 : weapon === 'staff' ? (p.atk ? -0.6 : -1.45) : p.atk ? -0.12 : -1.1;
   c.save();
   c.translate(39, 43 + b);
   c.rotate(af);
@@ -356,6 +492,9 @@ function drawHero(c: Ctx, L: HeroLook, p: Pose) {
   c.save();
   c.translate(0, 11);
   c.rotate(tw - Math.PI / 2 - af);
+  if (weapon === 'staff') drawStaff(c, L.orb ?? '#ff9a3a', L.trim);
+  else if (weapon === 'bow') drawBow(c, L.bowColor ?? '#9a6a3a', !!p.atk);
+  else {
   const bl = L.bladeLength;
   paint(c, () => rr(c, -1.3, -6, 2.6, 6, 1), '#6b4424', 0.8);
   paint(c, () => rr(c, -4.8, -0.6, 9.6, 2.6, 1.2), L.trim, 0.8);
@@ -372,11 +511,12 @@ function drawHero(c: Ctx, L: HeroLook, p: Pose) {
     g.addColorStop(1, shade(L.blade, -0.3));
     return g;
   })(), 0.9);
+  }
   c.restore();
   paint(c, ell(c, 0, 11, 3, 3), L.skin);
   c.restore();
 
-  if (p.atk) {
+  if (p.atk && weapon === 'sword') {
     // rastro de movimento do golpe
     c.beginPath();
     c.arc(39, 50 + b, 22, -1.2, 0.2);
@@ -398,6 +538,34 @@ const HEROES: Record<string, HeroLook> = {
   'hero-cavaleiro': {
     skin: '#f7d6b5', hair: '#e6be6a', eye: '#3d7fd6', tunic: '#f2f0ea', trim: '#d6a84a',
     pants: '#4a4458', boots: '#6b4a2e', blade: '#f3f7ff', bladeLength: 22, armor: '#dfe3ea', circlet: '#e0b43a', cape: '#b3262e',
+  },
+  'hero-aprendiz-magia': {
+    skin: '#f7d3b0', hair: '#c45aa0', eye: '#a040c0', tunic: '#8f7ad8', trim: '#f0e6ff',
+    pants: '#4a3f6a', boots: '#5a3a5a', blade: '#ccc', bladeLength: 0, weapon: 'staff', orb: '#ff9a3a', robe: true,
+  },
+  'hero-mago': {
+    skin: '#f5d0ad', hair: '#9fb4e0', eye: '#3a6ac0', tunic: '#3a4fb0', trim: '#e8c04a',
+    pants: '#2a2f5a', boots: '#3a2a4a', blade: '#ccc', bladeLength: 0, weapon: 'staff', orb: '#7ad8ff', robe: true,
+    hat: 'wizard', hatColor: '#2f3f99',
+  },
+  'hero-arquimago': {
+    skin: '#f7d6b5', hair: '#f0f0f0', eye: '#b040ff', tunic: '#4b1f6f', trim: '#e8c04a',
+    pants: '#2a1a3a', boots: '#3a2030', blade: '#ccc', bladeLength: 0, weapon: 'staff', orb: '#d070ff', robe: true,
+    hat: 'wizard', hatColor: '#3a1658', hatStar: true, cape: '#22123a',
+  },
+  'hero-recruta': {
+    skin: '#f7d3b0', hair: '#e07a2a', eye: '#3a8a5a', tunic: '#6a9a40', trim: '#e9d9b6',
+    pants: '#5a4a35', boots: '#6b4226', blade: '#ccc', bladeLength: 0, weapon: 'bow', bowColor: '#a8743e',
+  },
+  'hero-cacador': {
+    skin: '#f0c9a4', hair: '#5a3a22', eye: '#4f8f3a', tunic: '#8a6a3a', trim: '#c9a46a',
+    pants: '#4a4030', boots: '#4a3020', blade: '#ccc', bladeLength: 0, weapon: 'bow', bowColor: '#8a5a2e',
+    hat: 'hood', hatColor: '#3f6e3a',
+  },
+  'hero-patrulheiro': {
+    skin: '#f7d6b5', hair: '#c8a050', eye: '#2f8a6a', tunic: '#2f5a3a', trim: '#e0b43a',
+    pants: '#2a3a2a', boots: '#4a3020', blade: '#ccc', bladeLength: 0, weapon: 'bow', bowColor: '#6a4a2a',
+    armor: '#a08060', hat: 'hood', hatColor: '#24452c', cape: '#24452c',
   },
   'en-cavaleiro-negro': {
     skin: '#d9c3b0', hair: '#2a2a33', eye: '#ff3030', tunic: '#2b2733', trim: '#7a2020',
@@ -641,6 +809,157 @@ function drawOrc(c: Ctx, i: number) {
   paint(c, ell(c, 44, 34 + b, 5, 5), skin, 1.2, '#1e2c12');
 }
 
+function drawGhost(c: Ctx, i: number) {
+  const bob = [0, -1.5, -2.5, -1.5][i];
+  const ph = (i / 4) * TAU;
+  groundShadow(c, 22, 47, 9, 2.2, 0.18);
+  const top = 6 + bob;
+  const bottom = 40 + bob;
+  const g = c.createRadialGradient(17, top + 10, 1, 22, top + 16, 22);
+  g.addColorStop(0, 'rgba(255,255,255,0.97)');
+  g.addColorStop(1, 'rgba(190,175,235,0.9)');
+  paint(c, () => {
+    c.moveTo(8, bottom - 4);
+    c.quadraticCurveTo(6, top, 22, top);
+    c.quadraticCurveTo(38, top, 36, bottom - 4);
+    for (let k = 0; k <= 4; k++) {
+      const x = 36 - k * 7;
+      c.quadraticCurveTo(x - 3.5, bottom + 3 + Math.sin(ph + k) * 2, x - 7, bottom - 3);
+    }
+    c.closePath();
+  }, g, 1.1, '#4a3a7a');
+  paint(c, ell(c, 7.5, top + 20, 3, 4.5, 0.6), 'rgba(235,230,255,0.95)', 1, '#4a3a7a');
+  c.fillStyle = '#2a1e3a';
+  c.beginPath();
+  c.ellipse(26, top + 13, 2.6, 3.8, 0, 0, TAU);
+  c.ellipse(18, top + 13, 2.2, 3.4, 0, 0, TAU);
+  c.ellipse(22.5, top + 21, 2.2, 2.8, 0, 0, TAU);
+  c.fill();
+  c.fillStyle = 'rgba(255,120,180,0.35)';
+  c.beginPath();
+  c.ellipse(29, top + 18, 2.4, 1.3, 0, 0, TAU);
+  c.fill();
+}
+
+function drawMushroomMonster(c: Ctx, i: number) {
+  const leg = [1, 0, -1, 0][i];
+  const b = [0, -1, 0, -1][i];
+  groundShadow(c, 22, 47, 13, 3.4, 0.35);
+  for (const [x, sgn] of [[17, -1], [27, 1]] as const) {
+    paint(c, ell(c, x + leg * 2.5 * sgn, 45, 4, 2.6), '#8a5a3a', 1, '#3a2418');
+  }
+  paint(c, () => rr(c, 13, 25 + b, 18, 19, 7), vgrad(c, 25, 44, '#fbf3e2', '#d6c7a8'), 1.1, '#5a4030');
+  // rosto zangado no caule
+  eye(c, 26, 32 + b, 2, 2.8, '#3a2418');
+  eye(c, 19, 32 + b, 1.8, 2.6, '#3a2418');
+  c.beginPath();
+  c.moveTo(16.5, 27.5 + b);
+  c.lineTo(21, 29.5 + b);
+  c.moveTo(29, 27.5 + b);
+  c.lineTo(24.5, 29.5 + b);
+  c.strokeStyle = '#3a2418';
+  c.lineWidth = 1.3;
+  c.stroke();
+  c.beginPath();
+  c.moveTo(20, 38.5 + b);
+  c.quadraticCurveTo(22.5, 37 + b, 25, 38.5 + b);
+  c.stroke();
+  // chapéu
+  paint(c, () => {
+    c.moveTo(2, 25 + b);
+    c.quadraticCurveTo(3, 4 + b, 22, 4 + b);
+    c.quadraticCurveTo(41, 4 + b, 42, 25 + b);
+    c.quadraticCurveTo(22, 30 + b, 2, 25 + b);
+    c.closePath();
+  }, vgrad(c, 4, 28, '#ff6a5a', '#a82024'), 1.2, '#4a1012');
+  c.fillStyle = '#fff6ea';
+  for (const [x, y, r] of [[12, 13, 3], [24, 9, 2.4], [32, 17, 2.8], [19, 20, 1.8]]) {
+    c.beginPath();
+    c.arc(x, y + b, r, 0, TAU);
+    c.fill();
+  }
+  c.fillStyle = 'rgba(255,255,255,0.45)';
+  c.beginPath();
+  c.ellipse(10, 9 + b, 4, 1.8, -0.5, 0, TAU);
+  c.fill();
+}
+
+function drawProjectiles(scene: Phaser.Scene) {
+  single(scene, 'proj-fogo', 28, 20, (c) => {
+    // apontando para a direita, com cauda de chamas
+    const tail = c.createLinearGradient(0, 10, 18, 10);
+    tail.addColorStop(0, 'rgba(255,80,20,0)');
+    tail.addColorStop(1, 'rgba(255,140,40,0.9)');
+    c.fillStyle = tail;
+    c.beginPath();
+    c.moveTo(1, 10);
+    c.quadraticCurveTo(10, 2, 19, 4.5);
+    c.lineTo(19, 15.5);
+    c.quadraticCurveTo(10, 18, 1, 10);
+    c.fill();
+    c.save();
+    c.shadowColor = '#ff7a20';
+    c.shadowBlur = 6;
+    const g = c.createRadialGradient(20, 9, 0.5, 19, 10, 7);
+    g.addColorStop(0, '#ffffff');
+    g.addColorStop(0.35, '#ffe36a');
+    g.addColorStop(1, '#ff5a1a');
+    c.fillStyle = g;
+    c.beginPath();
+    c.arc(19, 10, 6.5, 0, TAU);
+    c.fill();
+    c.restore();
+  });
+  single(scene, 'proj-flecha', 30, 8, (c) => {
+    c.beginPath();
+    c.moveTo(3, 4);
+    c.lineTo(25, 4);
+    c.strokeStyle = OUT;
+    c.lineWidth = 2.4;
+    c.stroke();
+    c.strokeStyle = '#a8743e';
+    c.lineWidth = 1.2;
+    c.stroke();
+    paint(c, () => {
+      c.moveTo(29.5, 4);
+      c.lineTo(23, 0.8);
+      c.lineTo(23, 7.2);
+      c.closePath();
+    }, '#e8edf2', 0.8);
+    paint(c, () => {
+      c.moveTo(1, 0.8);
+      c.lineTo(7, 4);
+      c.lineTo(1, 7.2);
+      c.lineTo(4, 4);
+      c.closePath();
+    }, '#f2f2f2', 0.7);
+  });
+  single(scene, 'fx-meteoro', 36, 60, (c) => {
+    // caindo de cima para baixo, com rastro de fogo
+    const trail = c.createLinearGradient(0, 0, 0, 44);
+    trail.addColorStop(0, 'rgba(255,90,20,0)');
+    trail.addColorStop(1, 'rgba(255,160,40,0.95)');
+    c.fillStyle = trail;
+    c.beginPath();
+    c.moveTo(12, 0);
+    c.lineTo(24, 0);
+    c.lineTo(29, 44);
+    c.lineTo(7, 44);
+    c.closePath();
+    c.fill();
+    c.save();
+    c.shadowColor = '#ff6a20';
+    c.shadowBlur = 8;
+    paint(c, ell(c, 18, 46, 11, 11), vgrad(c, 35, 57, '#8a5a40', '#3a2018'), 1.2);
+    c.restore();
+    c.fillStyle = '#ffb040';
+    c.beginPath();
+    c.arc(14, 48, 2.2, 0, TAU);
+    c.arc(22, 43, 1.6, 0, TAU);
+    c.fill();
+  });
+}
+
 // ------------------------------------------------------------------ itens, chão e decoração
 
 function drawGem(c: Ctx, color: string) {
@@ -801,6 +1120,9 @@ export function createArt(scene: Phaser.Scene) {
   sheet(scene, 'en-morcego', 52, 44, MONSTER_FRAMES, (c, _f, i) => drawBat(c, i));
   sheet(scene, 'en-esqueleto', 48, 62, MONSTER_FRAMES, (c, _f, i) => drawSkeleton(c, i));
   sheet(scene, 'en-orc', 60, 66, MONSTER_FRAMES, (c, _f, i) => drawOrc(c, i));
+  sheet(scene, 'en-fantasma', 44, 50, MONSTER_FRAMES, (c, _f, i) => drawGhost(c, i));
+  sheet(scene, 'en-cogumelo', 44, 50, MONSTER_FRAMES, (c, _f, i) => drawMushroomMonster(c, i));
+  drawProjectiles(scene);
 
   // itens
   single(scene, 'gem1', 12, 16, (c) => drawGem(c, '#3d8bff'));
@@ -842,7 +1164,7 @@ export function createArt(scene: Phaser.Scene) {
   // animações
   const anims = scene.anims;
   const frames = (key: string, names: string[]) => names.map((frame) => ({ key, frame }));
-  for (const key of ['hero-aprendiz', 'hero-guarda', 'hero-cavaleiro']) {
+  for (const key of Object.keys(HEROES).filter((k) => k.startsWith('hero-'))) {
     if (anims.exists(`${key}-idle`)) continue;
     anims.create({ key: `${key}-idle`, frames: frames(key, ['idle0', 'idle1']), frameRate: 2.5, repeat: -1 });
     anims.create({ key: `${key}-walk`, frames: frames(key, ['walk0', 'walk1', 'walk2', 'walk3']), frameRate: 9, repeat: -1 });
@@ -852,6 +1174,8 @@ export function createArt(scene: Phaser.Scene) {
     ['en-morcego', MONSTER_FRAMES, 12],
     ['en-esqueleto', MONSTER_FRAMES, 7],
     ['en-orc', MONSTER_FRAMES, 6],
+    ['en-fantasma', MONSTER_FRAMES, 6],
+    ['en-cogumelo', MONSTER_FRAMES, 8],
     ['en-cavaleiro-negro', ['walk0', 'walk1', 'walk2', 'walk3'], 6],
   ];
   for (const [key, names, rate] of move) {

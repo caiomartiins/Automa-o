@@ -4,11 +4,25 @@ import type { Skill } from './Skill';
 import { SwordSkill } from './SwordSkill';
 import { ShieldSkill } from './ShieldSkill';
 import { LanceSkill } from './LanceSkill';
+import { FireballSkill } from './FireballSkill';
+import { LightningSkill } from './LightningSkill';
+import { MeteorSkill } from './MeteorSkill';
+import { ArrowSkill } from './ArrowSkill';
+import { ArrowRainSkill } from './ArrowRainSkill';
+import { SniperSkill } from './SniperSkill';
+
+const FACTORIES: Record<SkillId, new (g: GameScene) => Skill> = {
+  espada: SwordSkill,
+  escudo: ShieldSkill,
+  lanca: LanceSkill,
+  fogo: FireballSkill,
+  raio: LightningSkill,
+  meteoro: MeteorSkill,
+  flecha: ArrowSkill,
+  chuva: ArrowRainSkill,
+  tiro: SniperSkill,
+};
 
 export function createSkill(id: SkillId, g: GameScene): Skill {
-  switch (id) {
-    case 'espada': return new SwordSkill(g);
-    case 'escudo': return new ShieldSkill(g);
-    case 'lanca': return new LanceSkill(g);
-  }
+  return new FACTORIES[id](g);
 }

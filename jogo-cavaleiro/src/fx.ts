@@ -2,8 +2,8 @@ import Phaser from 'phaser';
 
 export const FX_DEPTH = 1_000_000;
 
-type Obj = Phaser.GameObjects.Image | Phaser.GameObjects.BitmapText;
-type Kind = 'fade' | 'lance' | 'ring' | 'number';
+type Obj = Phaser.GameObjects.Image | Phaser.GameObjects.BitmapText | Phaser.GameObjects.Graphics;
+type Kind = 'fade' | 'lance' | 'ring' | 'number' | 'fall';
 
 interface Item {
   obj: Obj;
@@ -54,9 +54,10 @@ export class Fx {
   }
 
   /** Estocada de lança (textura com 256 x 40) */
-  lance(x: number, y: number, angle: number, length: number, width: number) {
+  lance(x: number, y: number, angle: number, length: number, width: number, tint?: number) {
     const { img, pool } = this.image('fx-lance', 0);
     img.setPosition(x, y).setRotation(angle);
+    if (tint !== undefined) img.setTint(tint);
     img.scaleY = width / 40;
     this.push(img, 'lance', 320, pool, { s1: length / 256 });
   }
@@ -67,6 +68,41 @@ export class Fx {
     const s0 = radius / 16;
     img.setPosition(x, y).setScale(s0).setTint(color).setAlpha(alpha);
     this.push(img, 'ring', life, pool, { s0, s1: s0 * grow, alpha });
+  }
+
+  /** Raio em zigue-zague passando pelos pontos (corrente de raios) */
+  bolt(points: { x: number; y: number }[], color = 0x9fe6ff) {
+    if (points.length < 2) return;
+    const pool = this.pool('bolt');
+    const g = (pool.pop() as Phaser.GameObjects.Graphics | undefined) ?? this.scene.add.graphics();
+    g.clear().setActive(true).setVisible(true).setAlpha(1).setDepth(FX_DEPTH);
+    for (const [w, col, a] of [[6, color, 0.35], [2.5, 0xffffff, 1]] as const) {
+      g.lineStyle(w, col, a);
+      g.beginPath();
+      g.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) {
+        const p0 = points[i - 1];
+        const p1 = points[i];
+        // dois desvios aleatórios entre cada par de pontos
+        for (const t of [0.33, 0.66]) {
+          const nx = -(p1.y - p0.y);
+          const ny = p1.x - p0.x;
+          const len = Math.hypot(nx, ny) || 1;
+          const off = (Math.random() - 0.5) * 22;
+          g.lineTo(p0.x + (p1.x - p0.x) * t + (nx / len) * off, p0.y + (p1.y - p0.y) * t + (ny / len) * off);
+        }
+        g.lineTo(p1.x, p1.y);
+      }
+      g.strokePath();
+    }
+    this.push(g, 'fade', 200, pool, { alpha: 1 });
+  }
+
+  /** Objeto caindo do céu até (x, y) em `life` ms (meteoro) */
+  fall(x: number, y: number, key: string, life: number, scale = 1) {
+    const { img, pool } = this.image(key);
+    img.setOrigin(0.5, 1).setPosition(x, y - 320).setScale(scale * 0.5);
+    this.push(img, 'fall', life, pool, { y0: y, s0: scale * 0.5 });
   }
 
   /** Número flutuante de dano ou cura */
@@ -107,6 +143,10 @@ export class Fx {
         case 'ring':
           o.setScale(it.s0 + (it.s1 - it.s0) * k);
           o.setAlpha(it.alpha * (1 - k));
+          break;
+        case 'fall':
+          o.y = it.y0 - 320 * (1 - k * k);
+          o.setAlpha(Math.min(1, k * 4));
           break;
         case 'number':
           o.y = it.y0 - 26 * k;

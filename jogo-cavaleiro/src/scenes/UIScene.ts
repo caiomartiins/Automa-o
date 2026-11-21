@@ -24,6 +24,9 @@ export class UIScene extends Phaser.Scene {
   private lastSecond = -1;
   private lastKills = -1;
   private lastSkills = '';
+  private bossBar!: Phaser.GameObjects.Graphics;
+  private bossName!: Phaser.GameObjects.Text;
+  private lastBoss = '';
 
   constructor() {
     super('UI');
@@ -38,8 +41,11 @@ export class UIScene extends Phaser.Scene {
     this.lastSecond = -1;
     this.lastKills = -1;
     this.lastSkills = '';
+    this.lastBoss = '';
 
     this.bars = this.add.graphics();
+    this.bossBar = this.add.graphics();
+    this.bossName = text(this, width / 2, 0, '', 16 * k, '#ffd75a').setOrigin(0.5, 1).setVisible(false);
     this.levelText = text(this, width / 2, 9 * k, '', 14 * k).setOrigin(0.5);
     this.hpText = text(this, 26, 24 * k + 9 * k, '', 13 * k).setOrigin(0, 0.5);
     this.classText = text(this, 16, 50 * k, '', 18 * k);
@@ -132,6 +138,8 @@ export class UIScene extends Phaser.Scene {
       this.drawBars(xpPx, hpPx, hpPct);
     }
 
+    this.updateBossBar();
+
     const s = Math.floor(g.elapsed / 1000);
     if (s !== this.lastSecond) {
       this.lastSecond = s;
@@ -147,6 +155,27 @@ export class UIScene extends Phaser.Scene {
       this.lastSkills = skills;
       this.skillText.setText([...g.skills.values()].map((sk) => `${SKILLS[sk.id].name} Nv${sk.level}`).join('   •   '));
     }
+  }
+
+  private updateBossBar() {
+    const boss = this.game_.boss;
+    const alive = !!boss && boss.active;
+    const pct = alive ? Phaser.Math.Clamp(boss!.hp / boss!.maxHp, 0, 1) : 0;
+    const sig = alive ? `${boss!.def.id}|${Math.round(pct * 300)}` : '';
+    if (sig === this.lastBoss) return;
+    this.lastBoss = sig;
+    const b = this.bossBar;
+    b.clear();
+    this.bossName.setVisible(alive);
+    if (!alive) return;
+    const { width } = this.scale;
+    const k = this.k;
+    const w = Math.min(520, width - 60);
+    const y = this.timeText.y + this.timeText.height + 26 * k;
+    this.bossName.setText(boss!.def.name).setPosition(width / 2, y - 2);
+    b.fillStyle(0x000000, 0.65).fillRect(width / 2 - w / 2 - 3, y - 1, w + 6, 16 * k);
+    b.fillStyle(0x8a1f2a).fillRect(width / 2 - w / 2, y + 2, w, 16 * k - 6);
+    b.fillStyle(0xff4a5a).fillRect(width / 2 - w / 2, y + 2, w * pct, 16 * k - 6);
   }
 
   private drawBars(xpPx: number, hpPx: number, hpPct: number) {

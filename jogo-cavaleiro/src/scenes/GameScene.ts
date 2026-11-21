@@ -1,8 +1,8 @@
 import Phaser from 'phaser';
 import { Enemy } from '../objects/Enemy';
 import { Pickup } from '../objects/Pickup';
-import { ENEMIES, hpScale, type EnemyDef } from '../data/enemies';
-import { CLASSES, type ClassDef, type ClassId } from '../data/classes';
+import { BOSSES, BOSS_INTERVAL, ENEMIES, MAX_ENEMY_RADIUS, hpScale, type EnemyDef } from '../data/enemies';
+import { CLASSES, LINES, type ClassDef, type ClassId, type LineId } from '../data/classes';
 import { BASE_STATS, type Stats } from '../data/stats';
 import type { SkillId } from '../data/skills';
 import { rollUpgrades, type Upgrade } from '../data/upgrades';
@@ -12,6 +12,7 @@ import { isTouch, onResize } from '../ui';
 import { SpatialGrid } from '../spatialGrid';
 import { Fx, FX_DEPTH } from '../fx';
 import { DECOR_KEYS } from '../art';
+import { Projectiles } from '../projectiles';
 
 /** XP necessária para passar do nível `l` para o `l + 1` */
 export const xpForLevel = (l: number) => Math.floor(4 + (l - 1) * 3 + Math.pow(l - 1, 1.5));
@@ -19,7 +20,6 @@ export const xpForLevel = (l: number) => Math.floor(4 + (l - 1) * 3 + Math.pow(l
 const PLAYER_RADIUS = 12;
 const PLAYER_IFRAMES = 500;
 const GRID_CELL = 64;
-const MAX_ENEMY_RADIUS = Math.max(...ENEMIES.map((d) => d.radius));
 
 /**
  * Limites de desempenho. No celular começam menores e, durante a partida,
@@ -41,6 +41,7 @@ export interface RunResult {
   level: number;
   className: string;
   kills: number;
+  line: LineId;
 }
 
 export class GameScene extends Phaser.Scene {
@@ -73,6 +74,12 @@ export class GameScene extends Phaser.Scene {
   private over = false;
   private spawnTimer = 0;
   private nextWaveAt = 60;
+  private nextBossAt = BOSS_INTERVAL;
+  private bossCount = 0;
+  /** Chefe vivo no momento (a barra de vida aparece no HUD) */
+  boss: Enemy | null = null;
+  line: LineId = 'cavaleiro';
+  projectiles!: Projectiles;
   private invulnUntil = 0;
   private hurtUntil = 0;
   private frame = 0;
@@ -101,6 +108,10 @@ export class GameScene extends Phaser.Scene {
     super('Game');
   }
 
+  init(data: { line?: LineId }) {
+    this.line = data?.line ?? 'cavaleiro';
+  }
+
   create() {
     const perf = isTouch(this) ? PERF.mobile : PERF.desktop;
     this.stats = { ...BASE_STATS };
@@ -108,7 +119,10 @@ export class GameScene extends Phaser.Scene {
     this.level = 1;
     this.xp = 0;
     this.xpNext = xpForLevel(1);
-    this.classId = 'aprendiz';
+    this.classId = LINES[this.line].classes[0];
+    // bônus da classe inicial (ex.: magos começam com menos vida)
+    for (const [k, v] of Object.entries(CLASSES[this.classId].statBonus) as [keyof Stats, number][]) this.stats[k] += v;
+    this.hp = this.stats.maxHp;
     this.skills = new Map();
     this.passives = {};
     this.facing.set(1, 0);
@@ -121,6 +135,9 @@ export class GameScene extends Phaser.Scene {
     this.over = false;
     this.spawnTimer = 600;
     this.nextWaveAt = 60;
+    this.nextBossAt = BOSS_INTERVAL;
+    this.bossCount = 0;
+    this.boss = null;
     this.invulnUntil = 0;
     this.hurtUntil = 0;
     this.frame = 0;
@@ -137,8 +154,10 @@ export class GameScene extends Phaser.Scene {
     onResize(this, () => this.bg.setSize(this.scale.width, this.scale.height));
 
     this.fx = new Fx(this, perf.maxNumbers);
-    this.player = this.add.sprite(0, 0, CLASSES.aprendiz.texture, 'idle0').setScale(0.5);
-    this.player.play(`${CLASSES.aprendiz.texture}-idle`);
+    const startTex = CLASSES[this.classId].texture;
+    this.player = this.add.sprite(0, 0, startTex, 'idle0').setScale(0.5);
+    this.player.play(`${startTex}-idle`);
+    this.projectiles = new Projectiles(this);
     this.sparks = this.add.particles(0, 0, 'fx-spark', {
       speed: { min: 70, max: 220 },
       lifespan: 280,
@@ -158,7 +177,7 @@ export class GameScene extends Phaser.Scene {
     this.wasd = kb.addKeys('W,A,S,D') as typeof this.wasd;
     this.setupJoystick();
 
-    this.addSkill(CLASSES.aprendiz.grantsSkill!);
+    this.addSkill(CLASSES[this.classId].grantsSkill!);
 
     // Atalho de teste: L sobe um nível (só no modo de desenvolvimento)
     if (import.meta.env.DEV) kb.on('keydown-L', () => this.gainXp(this.xpNext - this.xp));
@@ -182,6 +201,7 @@ export class GameScene extends Phaser.Scene {
     this.collectEnemies();
     this.updatePlayer(dt);
     this.skills.forEach((s) => s.update(dt));
+    this.projectiles.update(dt);
     this.updateEnemies(dt);
     this.updatePickups(dt);
     this.updateSpawner(dt);
@@ -395,7 +415,7 @@ export class GameScene extends Phaser.Scene {
       e.setFlipX(dx < 0);
       if (sortDepth) e.setDepth(e.y);
       if (e.flashUntil && this.elapsed > e.flashUntil) {
-        e.clearTint();
+        e.restoreTint();
         e.flashUntil = 0;
       }
     }
@@ -451,7 +471,25 @@ export class GameScene extends Phaser.Scene {
       }
       const elite = ENEMIES.find((d) => d.elite)!;
       if (t >= 300) this.spawnEnemy(elite);
-      this.events.emit('announce', t >= 300 ? 'Uma horda e um Cavaleiro Negro se aproximam!' : 'Uma horda se aproxima!');
+      if (t < this.nextBossAt - 5) {
+        this.events.emit('announce', t >= 300 ? 'Uma horda e um Cavaleiro Negro se aproximam!' : 'Uma horda se aproxima!');
+      }
+    }
+
+    // a cada 5 minutos, um chefe (alternando entre os chefes, cada volta mais forte)
+    if (t >= this.nextBossAt && !this.boss) {
+      this.nextBossAt += BOSS_INTERVAL;
+      const def = BOSSES[this.bossCount % BOSSES.length];
+      const round = Math.floor(this.bossCount / BOSSES.length);
+      this.bossCount++;
+      const p = this.ringPosition();
+      const e = this.spawnEnemy(def, p.x, p.y, true);
+      if (e) {
+        e.hp = e.maxHp = Math.ceil(e.maxHp * (1 + round * 0.8));
+        this.boss = e;
+        this.cameras.main.shake(400, 0.006);
+        this.events.emit('announce', `CHEFE: ${def.name}!`);
+      }
     }
   }
 
@@ -481,13 +519,49 @@ export class GameScene extends Phaser.Scene {
     return { x: this.player.x + cos * r, y: this.player.y + sin * r };
   }
 
-  private spawnEnemy(def: EnemyDef, x?: number, y?: number) {
-    if (this.enemies.countActive(true) >= this.maxEnemies) return;
+  private spawnEnemy(def: EnemyDef, x?: number, y?: number, force = false): Enemy | null {
+    if (!force && this.enemies.countActive(true) >= this.maxEnemies) return null;
     if (x === undefined || y === undefined) ({ x, y } = this.ringPosition());
-    const e = this.enemies.get(x, y) as Enemy | null;
-    if (!e) return;
+    let e = this.enemies.get(x, y) as Enemy | null;
+    if (!e && force) {
+      // chefe com o grupo cheio: reaproveita o primeiro inimigo comum
+      e = (this.enemies.getChildren() as Enemy[]).find((o) => !o.def?.boss) ?? null;
+    }
+    if (!e) return null;
     e.spawn(def, x, y, hpScale(this.elapsed / 1000));
     e.setDepth(y);
+    return e;
+  }
+
+  /** Os `n` inimigos mais próximos de (x, y), até `maxDist` */
+  nearestEnemies(x: number, y: number, n: number, maxDist: number): Enemy[] {
+    const maxSq = maxDist * maxDist;
+    const found: { e: Enemy; d: number }[] = [];
+    for (const e of this.live) {
+      if (!e.active) continue;
+      const d = (e.x - x) ** 2 + (e.y - y) ** 2;
+      if (d > maxSq) continue;
+      if (found.length < n) {
+        found.push({ e, d });
+        found.sort((a, b) => a.d - b.d);
+      } else if (d < found[found.length - 1].d) {
+        found[found.length - 1] = { e, d };
+        found.sort((a, b) => a.d - b.d);
+      }
+    }
+    return found.map((f) => f.e);
+  }
+
+  /** Explosão em área: fere todos os inimigos no raio (bola de fogo, meteoro) */
+  explode(x: number, y: number, radius: number, damage: number, knockback: number, color: number) {
+    this.fx.ring(x, y, radius * 0.35, 2.8, 260, color, 0.55);
+    this.burst(x, y, 6);
+    const hits = this.queryEnemies(x, y, radius, this.nearBuf).slice();
+    for (const e of hits) {
+      if (e.active && (e.x - x) ** 2 + (e.y - y) ** 2 <= (radius + e.def.radius) ** 2) {
+        this.damageEnemy(e, damage, knockback, x, y);
+      }
+    }
   }
 
   /** Aplica dano a um inimigo (usado por todas as habilidades) */
@@ -519,7 +593,19 @@ export class GameScene extends Phaser.Scene {
     e.kill();
     this.kills++;
     this.fx.ring(x, y, def.radius, 1.8, 200, 0xffffff, 0.5);
-    this.burst(x, y, def.elite ? 12 : 4);
+    this.burst(x, y, def.elite || def.boss ? 12 : 4);
+    if (def.boss) {
+      // chefe derrotado: chuva de gemas e comida
+      if (this.boss === e) this.boss = null;
+      this.cameras.main.flash(300, 255, 240, 200);
+      for (let k = 0; k < 8; k++) {
+        const a = (k / 8) * Math.PI * 2;
+        this.dropPickup('xp', Math.ceil(def.xp / 8), x + Math.cos(a) * 40, y + Math.sin(a) * 40);
+      }
+      this.dropPickup('comida', 60, x, y);
+      this.events.emit('announce', `${def.name} foi derrotado!`);
+      return;
+    }
     this.dropPickup('xp', def.xp, x, y);
     if (Math.random() < (def.elite ? 1 : 0.012)) this.dropPickup('comida', 30, x + 12, y);
   }
@@ -659,6 +745,7 @@ export class GameScene extends Phaser.Scene {
       level: this.level,
       className: CLASSES[this.classId].name,
       kills: this.kills,
+      line: this.line,
     };
     this.time.delayedCall(800, () => {
       this.scene.stop('UI');

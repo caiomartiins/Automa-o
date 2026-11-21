@@ -1,5 +1,6 @@
 export interface EnemyDef {
   id: string;
+  name: string;
   texture: string;
   hp: number;
   speed: number;
@@ -10,23 +11,47 @@ export interface EnemyDef {
   radius: number;
   /** Segundos de partida a partir dos quais pode aparecer */
   from: number;
-  /** Peso no sorteio de spawn */
+  /** Peso no sorteio de spawn (0 = nunca aparece sozinho, ex.: chefes) */
   weight: number;
   /** 0 = ignora empurrão, 1 = empurrão total */
   knockback: number;
+  /** Tamanho em relação à arte normal */
+  scale?: number;
+  /** Cor aplicada por cima da arte (ex.: chefe dourado) */
+  tint?: number;
   elite?: boolean;
+  boss?: boolean;
 }
 
 export const ENEMIES: EnemyDef[] = [
-  { id: 'gosma', texture: 'en-gosma', hp: 10, speed: 55, damage: 6, xp: 1, radius: 11, from: 0, weight: 10, knockback: 1 },
-  { id: 'morcego', texture: 'en-morcego', hp: 8, speed: 105, damage: 5, xp: 1, radius: 10, from: 40, weight: 6, knockback: 1 },
-  { id: 'esqueleto', texture: 'en-esqueleto', hp: 30, speed: 72, damage: 10, xp: 2, radius: 12, from: 110, weight: 6, knockback: 0.8 },
-  { id: 'orc', texture: 'en-orc', hp: 55, speed: 48, damage: 14, xp: 4, radius: 15, from: 170, weight: 4, knockback: 0.5 },
+  { id: 'gosma', name: 'Gosma', texture: 'en-gosma', hp: 10, speed: 55, damage: 6, xp: 1, radius: 11, from: 0, weight: 10, knockback: 1 },
+  { id: 'morcego', name: 'Morcego', texture: 'en-morcego', hp: 8, speed: 105, damage: 5, xp: 1, radius: 10, from: 40, weight: 6, knockback: 1 },
+  { id: 'cogumelo', name: 'Cogumelo Andante', texture: 'en-cogumelo', hp: 18, speed: 62, damage: 8, xp: 2, radius: 12, from: 75, weight: 6, knockback: 0.9 },
+  { id: 'esqueleto', name: 'Esqueleto', texture: 'en-esqueleto', hp: 30, speed: 72, damage: 10, xp: 2, radius: 12, from: 110, weight: 6, knockback: 0.8 },
+  { id: 'fantasma', name: 'Fantasma', texture: 'en-fantasma', hp: 24, speed: 88, damage: 9, xp: 2, radius: 12, from: 140, weight: 5, knockback: 1 },
+  { id: 'orc', name: 'Orc', texture: 'en-orc', hp: 55, speed: 48, damage: 14, xp: 4, radius: 15, from: 170, weight: 4, knockback: 0.5 },
   {
-    id: 'cavaleiro-negro', texture: 'en-cavaleiro-negro', hp: 320, speed: 52, damage: 22, xp: 25, radius: 17,
-    from: 240, weight: 0.4, knockback: 0.15, elite: true,
+    id: 'cavaleiro-negro', name: 'Cavaleiro Negro', texture: 'en-cavaleiro-negro', hp: 320, speed: 52, damage: 22, xp: 25, radius: 17,
+    from: 240, weight: 0.4, knockback: 0.15, elite: true, scale: 1.15,
   },
 ];
 
+/** Chefes: um a cada 5 minutos, alternando (com mais vida a cada volta) */
+export const BOSSES: EnemyDef[] = [
+  {
+    id: 'rei-gosma', name: 'Rei Gosma', texture: 'en-gosma', hp: 2000, speed: 46, damage: 28, xp: 80, radius: 36,
+    from: 0, weight: 0, knockback: 0, scale: 3, tint: 0xffd75a, boss: true,
+  },
+  {
+    id: 'lorde-esqueleto', name: 'Lorde Esqueleto', texture: 'en-esqueleto', hp: 3000, speed: 56, damage: 34, xp: 120, radius: 30,
+    from: 0, weight: 0, knockback: 0, scale: 2.5, tint: 0xd2b8ff, boss: true,
+  },
+];
+
+export const BOSS_INTERVAL = 300;
+
 /** Multiplicador de vida dos inimigos conforme o tempo passa */
 export const hpScale = (seconds: number) => 1 + seconds / 150;
+
+/** Maior raio de colisão entre todos os inimigos (usado nas buscas espaciais) */
+export const MAX_ENEMY_RADIUS = Math.max(...[...ENEMIES, ...BOSSES].map((d) => d.radius));
