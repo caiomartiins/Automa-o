@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { GameScene } from './scenes/GameScene';
 import type { Enemy } from './objects/Enemy';
+import { ENEMIES } from './data/enemies';
 import { FX_DEPTH } from './fx';
 
 interface Orb {
@@ -8,22 +9,37 @@ interface Orb {
   vx: number;
   vy: number;
   life: number;
+  /** Esferas da 2ª fase perseguem o jogador por um tempo */
+  homing: number;
 }
+
+/** Tempos de recarga (ms) e quantidades por fase */
+const PHASES = [
+  { slash: 2100, roar: 3600, geyser: 5200, dash: 7000, orbs: 5, spots: 6, slashDmg: 42, orbDmg: 26, geyserDmg: 34, dashDmg: 38, speed: 1 },
+  { slash: 1500, roar: 2500, geyser: 3800, dash: 4600, orbs: 8, spots: 9, slashDmg: 52, orbDmg: 32, geyserDmg: 42, dashDmg: 48, speed: 1.35 },
+];
 
 /**
  * Inteligência do Bafome, o primeiro chefe (aparece no nível 10).
  * Ataques, sempre com aviso antes para o jogador poder desviar:
  *  - Golpe Crescente: de perto, golpe de foice em volta dele
- *  - Rugido Demoníaco: esferas sombrias que voam até o jogador
- *  - Gêiser das Trevas: espinhos sobem do chão onde o jogador está
+ *  - Rugido Demoníaco: leque de esferas sombrias
+ *  - Gêiser das Trevas: espinhos sobem do chão em volta do jogador (amaldiçoam)
+ *  - Investida das Sombras: avança muito rápido em linha reta
+ * Com metade da vida entra em FÚRIA: fica vermelho, mais rápido, ataca mais
+ * e invoca servos (esqueletos e o Cavaleiro Negro).
  */
 export class BafomeAI {
   private nextSlash = 0;
-  private nextRoar = 2000;
-  private nextGeyser = 4500;
+  private nextRoar = 1500;
+  private nextGeyser = 3500;
+  private nextDash = 5500;
+  private nextSummon = 0;
   private busyUntil = 0;
+  private phase = 0;
   private orbs: Orb[] = [];
   private shadow: Phaser.GameObjects.Image;
+  private dash: { vx: number; vy: number; until: number; hit: boolean } | null = null;
 
   constructor(private g: GameScene, private e: Enemy) {
     this.shadow = g.add.image(e.x, e.y, 'fx-sombra').setScale(3, 2.2).setAlpha(0.5);
@@ -31,6 +47,11 @@ export class BafomeAI {
     this.nextSlash += now;
     this.nextRoar += now;
     this.nextGeyser += now;
+    this.nextDash += now;
+  }
+
+  private get P() {
+    return PHASES[this.phase];
   }
 
   /** Retorna false quando o chefe morreu (e a IA pode ser descartada) */
@@ -48,6 +69,28 @@ export class BafomeAI {
     this.shadow.setPosition(e.x, e.y + 56).setDepth(e.y - 1);
     const now = g.elapsed;
 
+    // velocidade de acordo com a fase (o resto do movimento é feito pelo jogo)
+    e.speed = e.def.speed * this.P.speed;
+
+    if (this.phase === 0 && e.hp <= e.maxHp * 0.5) this.enrage();
+    if (this.phase === 1 && now >= this.nextSummon) this.summon();
+
+    // investida em andamento
+    if (this.dash) {
+      e.vx = this.dash.vx;
+      e.vy = this.dash.vy;
+      e.knockUntil = now + 50;
+      g.fx.ring(e.x, e.y + 20, 26, 1.6, 220, this.phase ? 0xff3a3a : 0x6a1a7a, 0.35);
+      if (!this.dash.hit && Phaser.Math.Distance.Between(e.x, e.y, g.player.x, g.player.y) < 70) {
+        this.dash.hit = g.hurtPlayer(this.P.dashDmg, true);
+      }
+      if (now >= this.dash.until) {
+        this.dash = null;
+        e.vx = e.vy = 0;
+      }
+      return true;
+    }
+
     // parado enquanto ataca
     if (now < this.busyUntil) {
       e.vx = e.vy = 0;
@@ -58,9 +101,10 @@ export class BafomeAI {
 
     const p = g.player;
     const d = Phaser.Math.Distance.Between(e.x, e.y, p.x, p.y);
-    if (d < 160 && now >= this.nextSlash) this.slash();
-    else if (d < 560 && now >= this.nextRoar) this.roar();
-    else if (d < 700 && now >= this.nextGeyser) this.geyser();
+    if (d < 170 && now >= this.nextSlash) this.slash();
+    else if (d > 220 && d < 650 && now >= this.nextDash) this.startDash();
+    else if (d < 600 && now >= this.nextRoar) this.roar();
+    else if (d < 750 && now >= this.nextGeyser) this.geyser();
     return true;
   }
 
@@ -69,56 +113,112 @@ export class BafomeAI {
     this.e.play(anim);
   }
 
+  /** 2ª fase: fúria */
+  private enrage() {
+    const { g, e } = this;
+    this.phase = 1;
+    this.nextSummon = g.elapsed + 500;
+    e.def = { ...e.def, tint: 0xff8a8a };
+    e.restoreTint(g.elapsed);
+    g.cameras.main.shake(600, 0.012);
+    g.cameras.main.flash(400, 150, 0, 30);
+    g.fx.ring(e.x, e.y, 40, 9, 700, 0xff2a2a, 0.5);
+    g.events.emit('announce', 'O BAFOME ENTROU EM FÚRIA!');
+  }
+
+  /** Invoca servos em volta dele */
+  private summon() {
+    const { g, e } = this;
+    this.nextSummon = g.elapsed + 14000;
+    const skeleton = ENEMIES.find((d) => d.id === 'esqueleto')!;
+    const knight = ENEMIES.find((d) => d.id === 'cavaleiro-negro')!;
+    for (let k = 0; k < 6; k++) {
+      const a = (k / 6) * Math.PI * 2;
+      g.spawnMinion(k === 0 ? knight : skeleton, e.x + Math.cos(a) * 110, e.y + Math.sin(a) * 110);
+    }
+    g.fx.ring(e.x, e.y, 30, 5, 500, 0x6a1a7a, 0.5);
+  }
+
   private slash() {
     const { g, e } = this;
-    this.nextSlash = g.elapsed + 2600;
-    this.busy(800, 'en-bafome-slash');
-    const r = 165;
-    g.fx.ring(e.x, e.y, r, 1, 480, 0x9a2ab0, 0.22);
-    g.time.delayedCall(480, () => {
+    this.nextSlash = g.elapsed + this.P.slash;
+    this.busy(700, 'en-bafome-slash');
+    const r = this.phase ? 200 : 175;
+    const warn = this.phase ? 380 : 450;
+    g.fx.ring(e.x, e.y, r, 1, warn, this.phase ? 0xff3a3a : 0x9a2ab0, 0.25);
+    g.time.delayedCall(warn, () => {
       if (!e.active) return;
       const a = Math.atan2(g.player.y - e.y, g.player.x - e.x);
       e.setFlipX(Math.cos(a) < 0);
       g.fx.slash(e.x, e.y, a, r, 0x7a2a9a);
-      g.fx.slash(e.x, e.y, a + Math.PI, r * 0.8, 0x5a1a7a);
-      g.cameras.main.shake(120, 0.006);
-      if (Phaser.Math.Distance.Between(e.x, e.y, g.player.x, g.player.y) < r + 12) g.hurtPlayer(32, true);
+      g.fx.slash(e.x, e.y, a + Math.PI, r * 0.85, 0x5a1a7a);
+      g.cameras.main.shake(140, 0.007);
+      if (Phaser.Math.Distance.Between(e.x, e.y, g.player.x, g.player.y) < r + 12) g.hurtPlayer(this.P.slashDmg, true);
     });
   }
 
   private roar() {
     const { g, e } = this;
-    this.nextRoar = g.elapsed + 4600;
-    this.busy(700, 'en-bafome-roar');
-    g.time.delayedCall(380, () => {
+    this.nextRoar = g.elapsed + this.P.roar;
+    this.busy(650, 'en-bafome-roar');
+    const n = this.P.orbs;
+    const homing = this.phase ? 1600 : 0;
+    g.time.delayedCall(350, () => {
       if (!e.active) return;
       const base = Math.atan2(g.player.y - e.y, g.player.x - e.x);
       e.setFlipX(Math.cos(base) < 0);
-      for (const off of [-0.32, 0, 0.32]) {
-        const a = base + off;
-        const img = g.add.image(e.x + Math.cos(a) * 40, e.y + Math.sin(a) * 40 - 10, 'fx-orbe').setDepth(FX_DEPTH - 2).setScale(0.5);
-        this.orbs.push({ img, vx: Math.cos(a) * 230, vy: Math.sin(a) * 230, life: 4200 });
+      const spread = this.phase ? 1.6 : 1.1;
+      for (let k = 0; k < n; k++) {
+        const a = base + (n === 1 ? 0 : (k / (n - 1) - 0.5) * spread);
+        const img = g.add.image(e.x + Math.cos(a) * 40, e.y + Math.sin(a) * 40 - 10, 'fx-orbe').setDepth(FX_DEPTH - 2).setScale(0.55);
+        if (this.phase) img.setTint(0xff8a8a);
+        this.orbs.push({ img, vx: Math.cos(a) * 250, vy: Math.sin(a) * 250, life: 4500, homing });
       }
     });
   }
 
   private geyser() {
     const { g, e } = this;
-    this.nextGeyser = g.elapsed + 6500;
-    this.busy(900, 'en-bafome-slash');
+    this.nextGeyser = g.elapsed + this.P.geyser;
+    this.busy(800, 'en-bafome-slash');
     const p = g.player;
     const spots = [{ x: p.x, y: p.y }];
-    for (let k = 0; k < 3; k++) spots.push({ x: p.x + Phaser.Math.Between(-140, 140), y: p.y + Phaser.Math.Between(-110, 110) });
-    const r = 52;
-    for (const s of spots) g.fx.ring(s.x, s.y, r, 1, 900, 0x6a1a7a, 0.4);
-    g.time.delayedCall(900, () => {
+    for (let k = 1; k < this.P.spots; k++) {
+      const a = Math.random() * Math.PI * 2;
+      const rr = 60 + Math.random() * 150;
+      spots.push({ x: p.x + Math.cos(a) * rr, y: p.y + Math.sin(a) * rr });
+    }
+    const r = 56;
+    const warn = this.phase ? 700 : 850;
+    for (const s of spots) g.fx.ring(s.x, s.y, r, 1, warn, 0x6a1a7a, 0.4);
+    g.time.delayedCall(warn, () => {
+      let hit = false;
       for (const s of spots) {
-        const spike = g.add.image(s.x, s.y + 18, 'fx-geiser').setOrigin(0.5, 1).setDepth(s.y + 20).setScale(0.5, 0.05);
-        g.tweens.add({ targets: spike, scaleY: 0.5, duration: 120, ease: 'Back.Out' });
+        const spike = g.add.image(s.x, s.y + 18, 'fx-geiser').setOrigin(0.5, 1).setDepth(s.y + 20).setScale(0.55, 0.05);
+        g.tweens.add({ targets: spike, scaleY: 0.55, duration: 120, ease: 'Back.Out' });
         g.tweens.add({ targets: spike, alpha: 0, delay: 450, duration: 300, onComplete: () => spike.destroy() });
-        if (Phaser.Math.Distance.Between(s.x, s.y, g.player.x, g.player.y) < r + 10 && g.hurtPlayer(28, true)) g.afflictPlayer('maldicao', 3000);
+        if (!hit && Phaser.Math.Distance.Between(s.x, s.y, g.player.x, g.player.y) < r + 10) {
+          hit = true;
+          if (g.hurtPlayer(this.P.geyserDmg, true)) g.afflictPlayer('maldicao', 3500);
+        }
       }
-      g.cameras.main.shake(140, 0.005);
+      g.cameras.main.shake(140, 0.006);
+    });
+  }
+
+  /** Investida das Sombras: aviso em linha e avanço muito rápido */
+  private startDash() {
+    const { g, e } = this;
+    this.nextDash = g.elapsed + this.P.dash;
+    this.busy(650, 'en-bafome-roar');
+    const a = Math.atan2(g.player.y - e.y, g.player.x - e.x);
+    e.setFlipX(Math.cos(a) < 0);
+    const len = 520;
+    g.fx.lance(e.x, e.y + 20, a, len, 90, this.phase ? 0xff3a3a : 0x6a1a7a);
+    g.time.delayedCall(650, () => {
+      if (!e.active) return;
+      const speed = 900;
+      this.dash = { vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, until: g.elapsed + (len / speed) * 1000, hit: false };
     });
   }
 
@@ -128,11 +228,21 @@ export class BafomeAI {
     for (let i = this.orbs.length - 1; i >= 0; i--) {
       const o = this.orbs[i];
       o.life -= dt;
+      if (o.homing > 0) {
+        // curva suave em direção ao jogador
+        o.homing -= dt;
+        const want = Math.atan2(p.y - o.img.y, p.x - o.img.x);
+        const cur = Math.atan2(o.vy, o.vx);
+        const turn = Phaser.Math.Angle.RotateTo(cur, want, 2.2 * s);
+        const sp = Math.hypot(o.vx, o.vy);
+        o.vx = Math.cos(turn) * sp;
+        o.vy = Math.sin(turn) * sp;
+      }
       o.img.x += o.vx * s;
       o.img.y += o.vy * s;
       o.img.rotation += s * 4;
       const hit = Phaser.Math.Distance.Between(o.img.x, o.img.y, p.x, p.y) < 30;
-      if (hit) this.g.hurtPlayer(22);
+      if (hit) this.g.hurtPlayer(this.P.orbDmg);
       if (hit || o.life <= 0) {
         o.img.destroy();
         this.orbs.splice(i, 1);

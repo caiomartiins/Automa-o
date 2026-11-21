@@ -55,10 +55,14 @@ Todos os heróis usam sprites recortados das imagens enviadas. A fonte em PNG fi
 ## Inimigos e chefes
 Gosma, Morcego, Cogumelo Andante, Esqueleto, Fantasma, Orc e Cavaleiro Negro (elite) aparecem conforme o tempo passa. A cada minuto vem uma horda.
 
+**Progressão de força:** a cada minuto ("Ameaça" no HUD), os monstros ganham +45% de vida, +20% de dano e +5% de velocidade (a velocidade sobe até +50%). Os chefes crescem na metade desse ritmo. Itens de cura são raros.
+
 **Bafome** (sprite próprio, IA em `src/boss.ts`) aparece quando o jogador chega ao **nível 10**. Ataques, sempre com aviso antes:
 - **Golpe Crescente:** de perto, um círculo roxo avisa e logo depois vem o golpe de foice em volta dele.
 - **Rugido Demoníaco:** 3 esferas sombrias voam na direção do jogador.
-- **Gêiser das Trevas:** marcas no chão (uma embaixo do jogador) e, logo depois, sobem espinhos.
+- **Gêiser das Trevas:** marcas no chão (uma embaixo do jogador) e, logo depois, sobem espinhos que amaldiçoam (deixam mais lento).
+- **Investida das Sombras:** uma faixa no chão avisa, e ele atravessa a tela em alta velocidade.
+- **Fúria (com metade da vida):** fica vermelho e mais rápido, ataca com mais frequência, as esferas passam a perseguir o jogador e ele invoca servos (5 esqueletos e um Cavaleiro Negro) a cada 14 segundos.
 
 Além dele, a cada 5 minutos aparece um chefe de tempo (Rei Gosma, depois Lorde Esqueleto...).
 

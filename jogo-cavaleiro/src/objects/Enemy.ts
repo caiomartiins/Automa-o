@@ -13,6 +13,9 @@ export class Enemy extends Phaser.GameObjects.Sprite {
   def!: EnemyDef;
   hp = 0;
   maxHp = 0;
+  /** Dano e velocidade já com a progressão do tempo */
+  damage = 0;
+  speed = 0;
   vx = 0;
   vy = 0;
   /** Força de afastamento dos vizinhos (calculada em frames alternados) */
@@ -32,7 +35,7 @@ export class Enemy extends Phaser.GameObjects.Sprite {
     super(scene, x, y, 'en-gosma');
   }
 
-  spawn(def: EnemyDef, x: number, y: number, hpMult: number) {
+  spawn(def: EnemyDef, x: number, y: number, hpMult: number, dmgMult = 1, speedMult = 1) {
     this.def = def;
     this.setTexture(def.texture).setPosition(x, y).setActive(true).setVisible(true).setAlpha(1);
     // a arte é desenhada em 2x; elites e chefes aparecem maiores
@@ -40,6 +43,8 @@ export class Enemy extends Phaser.GameObjects.Sprite {
     const anim = this.scene.anims.get(`${def.texture}-move`);
     this.play({ key: anim.key, startFrame: Phaser.Math.Between(0, anim.frames.length - 1) });
     this.hp = this.maxHp = Math.ceil(def.hp * hpMult);
+    this.damage = Math.round(def.damage * dmgMult);
+    this.speed = def.speed * speedMult;
     this.vx = this.vy = this.sepX = this.sepY = 0;
     this.knockUntil = this.flashUntil = this.shieldHitAt = 0;
     for (const k of STATUS_PRIORITY) this.statusUntil[k] = this.statusDot[k] = 0;

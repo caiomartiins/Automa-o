@@ -5,6 +5,7 @@ import { SKILLS } from '../data/skills';
 import { ATTRS, ATTR_IDS, CARDS, ELEMENTS, KIND_NAME, REFINE_DMG } from '../data/rpg';
 import { loadSave } from '../save';
 import { jobForLevel } from './GameScene';
+import { threatLevel } from '../data/enemies';
 import { hex, isPortrait, isTouch, onResize, text } from '../ui';
 
 /** HUD desenhado por cima do jogo */
@@ -238,7 +239,7 @@ export class UIScene extends Phaser.Scene {
     const s = Math.floor(g.elapsed / 1000);
     if (s !== this.lastSecond) {
       this.lastSecond = s;
-      this.timeText.setText(`${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`);
+      this.timeText.setText(`${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}   Ameaça ${threatLevel(s)}`);
     }
     if (g.kills + g.zenyRun * 100000 !== this.lastKills) {
       this.lastKills = g.kills + g.zenyRun * 100000;

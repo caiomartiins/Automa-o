@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { Enemy } from '../objects/Enemy';
 import { Pickup } from '../objects/Pickup';
-import { BAFOME, BAFOME_LEVEL, BOSSES, BOSS_INTERVAL, ENEMIES, MAX_ENEMY_RADIUS, hpScale, type EnemyDef } from '../data/enemies';
+import { BAFOME, BAFOME_LEVEL, BOSSES, BOSS_INTERVAL, ENEMIES, MAX_ENEMY_RADIUS, dmgScale, hpScale, speedScale, threatLevel, type EnemyDef } from '../data/enemies';
 import { BafomeAI } from '../boss';
 import { CLASSES, LINES, lineOf, type ClassDef, type ClassId, type LineId } from '../data/classes';
 import { feetOffset, heroScale, needsShadow } from '../sprites';
@@ -416,7 +416,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
 
   private onEnemyTouch(e: Enemy) {
     if (e.isStopped(this.elapsed)) return;
-    const hit = this.hurtPlayer(e.def.damage);
+    const hit = this.hurtPlayer(e.damage);
     // cogumelos podem envenenar
     if (hit && e.def.id === 'cogumelo' && Math.random() < 0.2) this.afflictPlayer('veneno', 3000);
   }
@@ -577,7 +577,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
           e.vx = e.vy = 0;
         } else {
           const d = Math.sqrt(d2) || 1;
-          const speed = e.def.speed * (e.statusUntil.envenenado > this.elapsed ? STATUS.envenenado.slow! : 1);
+          const speed = e.speed * (e.statusUntil.envenenado > this.elapsed ? STATUS.envenenado.slow! : 1);
           e.vx = (dx / d) * speed + e.sepX;
           e.vy = (dy / d) * speed + e.sepY;
         }
@@ -645,7 +645,8 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       const elite = ENEMIES.find((d) => d.elite)!;
       if (t >= 300) this.spawnEnemy(elite);
       if (t < this.nextBossAt - 5) {
-        this.events.emit('announce', t >= 300 ? 'Uma horda e um Cavaleiro Negro se aproximam!' : 'Uma horda se aproxima!');
+        const horde = t >= 300 ? 'Uma horda e um Cavaleiro Negro se aproximam!' : 'Uma horda se aproxima!';
+        this.events.emit('announce', `${horde}\nAmeaça ${threatLevel(t)}: os monstros ficaram mais fortes`);
       }
     }
 
@@ -702,9 +703,19 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       e = (this.enemies.getChildren() as Enemy[]).find((o) => !o.def?.boss) ?? null;
     }
     if (!e) return null;
-    e.spawn(def, x, y, hpScale(this.elapsed / 1000));
+    const t = this.elapsed / 1000;
+    // chefes não ganham velocidade extra (já têm ataques próprios)
+    // chefes crescem na metade do ritmo (já têm muita vida e ataques próprios)
+    const ts = def.boss ? t / 2 : t;
+    e.spawn(def, x, y, hpScale(ts), dmgScale(ts), def.boss ? 1 : speedScale(t));
     e.setDepth(y);
     return e;
+  }
+
+  /** Servos invocados por chefes (ignoram o limite de inimigos) */
+  spawnMinion(def: EnemyDef, x: number, y: number) {
+    const e = this.spawnEnemy(def, x, y, true);
+    if (e) this.fx.ring(x, y, 20, 2.5, 300, 0x6a1a7a, 0.5);
   }
 
   /** Bafome entra em cena quando o jogador chega ao nível 10 */
@@ -862,7 +873,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
         const a = (k / 8) * Math.PI * 2;
         this.dropPickup('xp', Math.ceil(def.xp / 8), x + Math.cos(a) * 40, y + Math.sin(a) * 40);
       }
-      this.dropPickup('comida', 60, x, y);
+      this.dropPickup('comida', 40, x, y);
       this.dropPickup('zeny', 60 + Math.floor(Math.random() * 60), x - 30, y + 10);
       if (cardOf(def.id)) this.dropPickup('carta', 0, x + 30, y + 10, def.id);
       if (def.id === 'bafome') this.dropPickup('pena', 1, x, y + 36);
@@ -871,9 +882,9 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       return;
     }
     this.gainJob(def.elite ? 5 : 1);
-    if (this.mods.killHeal) this.hp = Math.min(this.stats.maxHp, this.hp + this.mods.killHeal);
+    if (this.mods.killHeal && Math.random() < 0.35) this.hp = Math.min(this.stats.maxHp, this.hp + this.mods.killHeal);
     this.dropPickup('xp', def.xp, x, y);
-    if (Math.random() < (def.elite ? 1 : 0.012)) this.dropPickup('comida', 30, x + 12, y);
+    if (Math.random() < (def.elite ? 0.35 : 0.0035)) this.dropPickup('comida', 20, x + 12, y);
     this.rollDrops(def, x, y);
   }
 
@@ -917,9 +928,9 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     switch (kind) {
       case 'xp': this.gainXp(value * (1 + this.mods.xp)); break;
       case 'comida': heal(value); break;
-      case 'pocao1': heal(30); break;
-      case 'pocao2': heal(70); break;
-      case 'pocao3': heal(this.stats.maxHp * 0.4); break;
+      case 'pocao1': heal(20); break;
+      case 'pocao2': heal(45); break;
+      case 'pocao3': heal(this.stats.maxHp * 0.3); break;
       case 'asa':
         this.items.asa++;
         this.events.emit('toast', 'Asa de Teletransporte! (Q ou botão para usar)', '#9fe6ff');

@@ -135,7 +135,7 @@ export interface CardDef {
 
 export const CARDS: CardDef[] = [
   { monster: 'gosma', name: 'Carta Gosma', desc: '+10% de XP', apply: (g) => (g.mods.xp += 0.1) },
-  { monster: 'morcego', name: 'Carta Morcego', desc: 'Cura 1 de vida a cada inimigo derrotado', apply: (g) => (g.mods.killHeal += 1) },
+  { monster: 'morcego', name: 'Carta Morcego', desc: '35% de chance de curar 1 de vida ao derrotar um inimigo', apply: (g) => (g.mods.killHeal += 1) },
   { monster: 'cogumelo', name: 'Carta Cogumelo', desc: '+3 VIT', apply: (g) => g.addAttr('vit', 3) },
   { monster: 'esqueleto', name: 'Carta Esqueleto', desc: '+20% de dano contra Morto-vivo', apply: (g) => add(g.mods.raceDmg, 'mortovivo', 0.2) },
   { monster: 'fantasma', name: 'Carta Fantasma', desc: '5% de chance de anular um golpe recebido', apply: (g) => (g.mods.ignoreHit += 0.05) },
@@ -174,7 +174,7 @@ export const ITEMS: Partial<Record<ItemKind, { name: string; texture: string }>>
 };
 
 /** Chances de queda por inimigo comum (multiplicadas pela Sorte) */
-export const DROPS = { zeny: 0.35, pocao1: 0.012, pocao2: 0.004, pocao3: 0.0012, asa: 0.0025, pena: 0.0005, carta: 0.004, ovo: 0.0015 };
+export const DROPS = { zeny: 0.35, pocao1: 0.004, pocao2: 0.0013, pocao3: 0.0004, asa: 0.0025, pena: 0.0005, carta: 0.004, ovo: 0.0015 };
 
 // ------------------------------------------------------------------ mascotes
 

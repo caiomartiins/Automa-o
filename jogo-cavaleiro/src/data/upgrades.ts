@@ -29,7 +29,7 @@ export const PASSIVES: PassiveDef[] = [
     id: 'vitalidade', name: 'Vitalidade', desc: '+20 de vida máxima', max: 5, color: 0xff4d6d,
     apply: (g) => { g.stats.maxHp += 20; g.hp += 20; },
   },
-  { id: 'regeneracao', name: 'Regeneração', desc: '+0,4 de vida por segundo', max: 5, color: 0x7dff6b, apply: (g) => (g.stats.regen += 0.4) },
+  { id: 'regeneracao', name: 'Regeneração', desc: '+0,25 de vida por segundo', max: 5, color: 0x7dff6b, apply: (g) => (g.stats.regen += 0.25) },
   { id: 'botas', name: 'Botas Leves', desc: '+16 de velocidade', max: 5, color: 0xffc46b, apply: (g) => (g.stats.speed += 16) },
   { id: 'ima', name: 'Ímã', desc: '+35% de raio de coleta', max: 3, color: 0x6bd5ff, apply: (g) => (g.stats.magnet *= 1.35) },
   { id: 'armadura', name: 'Armadura', desc: '+1 de armadura', max: 5, color: 0xb0b8c8, apply: (g) => (g.stats.armor += 1) },
@@ -77,9 +77,9 @@ export function rollUpgrades(g: GameScene, n: number): Upgrade[] {
     picks.push({
       id: 'pocao',
       title: 'Poção de Vida',
-      desc: 'Recupera 40 de vida.',
+      desc: 'Recupera 25 de vida.',
       color: 0xff4d6d,
-      apply: (game) => (game.hp = Math.min(game.stats.maxHp, game.hp + 40)),
+      apply: (game) => (game.hp = Math.min(game.stats.maxHp, game.hp + 25)),
     });
   }
   return picks;

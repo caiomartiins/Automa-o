@@ -43,7 +43,7 @@ export const ENEMIES: EnemyDef[] = [
 
 /** Bafome: primeiro chefe de verdade, aparece quando o jogador chega ao nível 10 */
 export const BAFOME: EnemyDef = {
-  id: 'bafome', name: 'Bafome', texture: 'en-bafome', hp: 1800, speed: 60, damage: 26, xp: 160, radius: 34,
+  id: 'bafome', name: 'Bafome', texture: 'en-bafome', hp: 4200, speed: 72, damage: 34, xp: 220, radius: 34,
   from: 0, weight: 0, knockback: 0, scale: 2.9, boss: true, element: 'sombrio', race: 'demonio', size: 'grande'
 };
 export const BAFOME_LEVEL = 10;
@@ -62,8 +62,15 @@ export const BOSSES: EnemyDef[] = [
 
 export const BOSS_INTERVAL = 300;
 
-/** Multiplicador de vida dos inimigos conforme o tempo passa */
-export const hpScale = (seconds: number) => 1 + seconds / 150;
+/**
+ * Progressão de força dos monstros conforme o tempo passa.
+ * A cada minuto: +45% de vida, +20% de dano e +5% de velocidade (velocidade até +50%).
+ */
+export const hpScale = (seconds: number) => 1 + (seconds / 60) * 0.45;
+export const dmgScale = (seconds: number) => 1 + (seconds / 60) * 0.2;
+export const speedScale = (seconds: number) => 1 + Math.min(0.5, (seconds / 60) * 0.05);
+/** "Ameaça" mostrada no HUD: sobe 1 a cada minuto */
+export const threatLevel = (seconds: number) => 1 + Math.floor(seconds / 60);
 
 /** Maior raio de colisão entre todos os inimigos (usado nas buscas espaciais) */
 export const MAX_ENEMY_RADIUS = Math.max(...[...ENEMIES, ...BOSSES, BAFOME].map((d) => d.radius));
