@@ -64,7 +64,7 @@ export const SKILLS: Record<SkillId, SkillDef> = {
     ],
   },
   aura: {
-    id: 'aura', name: 'Aura Sagrada', maxLevel: 5, color: 0xfff0a0, element: 'sagrado', kind: 'magic',
+    id: 'aura', name: 'Aura Sagrada', maxLevel: 5, color: 0xfff0a0, element: 'sagrado', kind: 'melee',
     levelDesc: [
       'Uma aura ao seu redor fere os inimigos e cura você aos poucos.',
       '+3 dano, área maior, cura mais.',
