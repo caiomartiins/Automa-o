@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { MAX_REFINE, PETS, PET_EGG_COST, REFINE_DMG, SHOP, refineChance, refineCost } from '../data/rpg';
 import { loadSave, writeSave } from '../save';
-import { isTouch, onResize, text } from '../ui';
+import { dim, isTouch, onResize, uiButton, uiPanel, uiScale, uiWindow, WIN, wtext } from '../ui';
 
 /**
  * Loja e Ferreiro (entre partidas): melhorias permanentes, refino da arma
@@ -20,32 +20,33 @@ export class ShopScene extends Phaser.Scene {
     const { width, height } = this.scale;
     const save = loadSave();
     const touch = isTouch(this);
-    this.add.tileSprite(0, 0, width, height, 'grama').setOrigin(0).setAlpha(0.35);
-    this.add.rectangle(0, 0, width, height, 0x0b0f14, 0.6).setOrigin(0);
+    const k = uiScale(this);
+    this.add.tileSprite(0, 0, width, height, 'grama').setOrigin(0);
+    dim(this, 0.45);
 
     const portrait = height > width;
-    const top = portrait ? 60 : 30;
-    text(this, width / 2, top, 'LOJA E FERREIRO', 40, '#ffd04a').setOrigin(0.5);
-    text(this, width / 2, top + 40, `Zeny: ${save.zeny} z`, 22, '#ffe36a').setOrigin(0.5);
+    const w = Math.min(820, width - 20);
+    const rowH = (portrait ? 64 : 48) * k * (portrait ? 0.85 : 1);
+    const rowsN = SHOP.length + 2;
+    const msgH = 24 * k;
+    const h = Math.min(height - 20, 24 * k + 2 + 34 * k + rowsN * rowH + msgH + 54 * k);
+    const win = uiWindow(this, (width - w) / 2, (height - h) / 2, w, h, `Loja e Ferreiro   •   Zeny: ${save.zeny} z`, k);
+    const c = win.c;
+    const pad = 12;
 
-    const rowW = Math.min(760, width - 30);
-    const rowH = portrait ? 66 : 50;
-    const fs = portrait ? 18 : 16;
-    let y = top + 82;
+    c.add(wtext(this, pad + 2, win.top + 8, 'Melhorias permanentes: valem para todas as próximas partidas.', 12 * k, WIN.label));
+    const listTop = win.top + 34 * k;
+    c.add(uiPanel(this, pad, listTop, w - pad * 2, rowsN * rowH + 4));
+    let i = 0;
+    const btnW = 130 * k;
 
-    const row = (title: string, desc: string, price: string, enabled: boolean, onBuy: () => void, color = 0x9fc3ff) => {
-      const cy = y + rowH / 2;
-      const bg = this.add.rectangle(width / 2, cy, rowW, rowH - 6, 0x151a24, 0.92).setStrokeStyle(1, color, 0.6);
-      text(this, width / 2 - rowW / 2 + 14, cy - (portrait ? 13 : 9), title, fs + 1, '#ffffff').setOrigin(0, 0.5);
-      text(this, width / 2 - rowW / 2 + 14, cy + (portrait ? 13 : 11), desc, fs - 3, '#b8c0d0').setOrigin(0, 0.5)
-        .setWordWrapWidth(rowW - 200);
-      const bw = 160;
-      const btn = this.add.rectangle(width / 2 + rowW / 2 - bw / 2 - 8, cy, bw, rowH - 16, enabled ? 0x2a5a2a : 0x2a2a2a, 1)
-        .setStrokeStyle(2, enabled ? 0x9aff8a : 0x555555);
-      text(this, btn.x, cy, price, fs, enabled ? '#ffffff' : '#777777').setOrigin(0.5);
-      if (enabled) btn.setInteractive({ useHandCursor: true }).on('pointerup', onBuy);
-      bg.setDepth(-1);
-      y += rowH;
+    const row = (title: string, desc: string, price: string, enabled: boolean, onBuy: () => void) => {
+      const y = listTop + 2 + i * rowH;
+      if (i % 2) c.add(this.add.rectangle(pad + 1, y, w - pad * 2 - 2, rowH, WIN.rowAlt).setOrigin(0));
+      c.add(wtext(this, pad + 12, y + rowH * 0.32, title, 14 * k, WIN.text, true).setOrigin(0, 0.5));
+      c.add(wtext(this, pad + 12, y + rowH * 0.7, desc, 11 * k, WIN.label).setOrigin(0, 0.5).setWordWrapWidth(w - pad * 2 - btnW - 40));
+      c.add(uiButton(this, w - pad - 10 - btnW / 2, y + rowH / 2, btnW, rowH - 14, price, onBuy, { size: 13 * k, enabled }).c);
+      i++;
     };
 
     // ---- melhorias permanentes
@@ -72,7 +73,7 @@ export class ShopScene extends Phaser.Scene {
     const petNames = Object.values(PETS);
     row(
       'Ovo de Mascote',
-      `Choca um mascote aleatório${save.pet ? ` (atual: ${PETS[save.pet]?.name})` : ''}. Ele segue você nas partidas.`,
+      `Choca um mascote aleatório${save.pet ? ` (atual: ${PETS[save.pet]?.name})` : ''}.`,
       `${PET_EGG_COST} z`,
       save.zeny >= PET_EGG_COST,
       () => {
@@ -83,7 +84,6 @@ export class ShopScene extends Phaser.Scene {
         this.message = `Nasceu: ${pet.name}! ${pet.desc}`;
         this.scene.restart();
       },
-      0xf08ab0,
     );
 
     // ---- ferreiro: refino da arma
@@ -91,9 +91,9 @@ export class ShopScene extends Phaser.Scene {
     const canRefine = save.refine < MAX_REFINE;
     const chance = refineChance(next);
     row(
-      `Refinar arma: +${save.refine} → +${next}`,
+      `Ferreiro: refinar arma +${save.refine} → +${next}`,
       canRefine
-        ? `+${Math.round(REFINE_DMG * 100)}% de dano por nível. Chance: ${Math.round(chance * 100)}%${next >= 5 ? '. Se falhar, a arma volta a +0!' : ''}`
+        ? `+${Math.round(REFINE_DMG * 100)}% de dano por nível. Chance: ${Math.round(chance * 100)}%${next >= 5 ? '. Se falhar, volta a +0!' : ''}`
         : 'Arma no refino máximo.',
       canRefine ? `${refineCost(next)} z` : 'Máximo',
       canRefine && save.zeny >= refineCost(next),
@@ -111,22 +111,20 @@ export class ShopScene extends Phaser.Scene {
         writeSave(save);
         this.scene.restart();
       },
-      0xffd04a,
     );
 
     if (this.effect === 'sucesso') this.cameras.main.flash(350, 255, 230, 120);
     if (this.effect === 'falha') this.cameras.main.shake(350, 0.012);
     this.effect = '';
+    const msgY = listTop + rowsN * rowH + 8 + msgH / 2;
     if (this.message) {
-      const m = text(this, width / 2, y + 22, this.message, 18, this.message.startsWith('Falhou') ? '#ff8a7a' : '#9aff8a').setOrigin(0.5).setAlign('center').setWordWrapWidth(width - 40);
+      const m = wtext(this, w / 2, msgY, this.message, 13 * k, this.message.startsWith('Falhou') ? WIN.bad : WIN.good, true).setOrigin(0.5);
+      c.add(m);
       this.tweens.add({ targets: m, alpha: 0, delay: 2600, duration: 600 });
       this.message = '';
     }
 
-    const backY = height - (portrait ? 50 : 34);
-    const back = this.add.rectangle(width / 2, backY, 240, 46, 0x151a24, 0.95).setStrokeStyle(2, 0x9fc3ff);
-    text(this, width / 2, backY, touch ? 'Voltar' : 'Voltar  [ESC]', 22, '#9fc3ff').setOrigin(0.5);
-    back.setInteractive({ useHandCursor: true }).on('pointerup', () => this.scene.start('Menu'));
+    c.add(uiButton(this, w / 2, h - 12 - 18 * k, 180 * k, 34 * k, touch ? 'Voltar' : 'Voltar  [Esc]', () => this.scene.start('Menu'), { size: 14 * k, primary: true }).c);
     this.input.keyboard?.once('keydown-ESC', () => this.scene.start('Menu'));
     onResize(this, () => this.scene.restart());
   }

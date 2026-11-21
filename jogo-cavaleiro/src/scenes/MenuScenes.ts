@@ -7,7 +7,7 @@ import { SKILLS } from '../data/skills';
 import { MAPS } from '../data/rpg';
 import { loadSave, writeSave } from '../save';
 import type { RunResult } from './GameScene';
-import { hex, isTouch, onResize, text } from '../ui';
+import { darken, dim, headline, isTouch, onResize, uiButton, uiPanel, uiScale, uiWindow, WIN, wtext } from '../ui';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -39,104 +39,127 @@ export class MenuScene extends Phaser.Scene {
     const { width, height } = this.scale;
     const portrait = height > width;
     const touch = isTouch(this);
-    this.add.tileSprite(0, 0, width, height, 'grama').setOrigin(0).setAlpha(0.55);
-    this.add.rectangle(0, 0, width, height, 0x0b0f14, 0.35).setOrigin(0);
+    const s = uiScale(this);
+    this.add.tileSprite(0, 0, width, height, 'grama').setOrigin(0);
+    dim(this, 0.35);
 
-    const titleY = portrait ? 80 : 46;
-    text(this, width / 2, titleY, 'ASCENSÃO DO CAVALEIRO', Math.min(50, (width - 40) / 13.5), '#ffd04a').setOrigin(0.5);
+    const titleY = portrait ? 56 : 34;
+    headline(this, width / 2, titleY, 'ASCENSÃO DO CAVALEIRO', Math.min(44, (width - 40) / 14), '#ffe9a0').setOrigin(0.5);
+
+    // ---- janela principal: classes
+    const bottomH = portrait ? 104 + 90 * s : 96;
+    const winW = Math.min(1240, width - 30);
+    const winX = (width - winW) / 2;
+    const winY = titleY + (portrait ? 40 : 28);
+    const winH = height - winY - bottomH - 16;
+    const win = uiWindow(this, winX, winY, winW, winH, 'Classes', s);
+    const c = win.c;
 
     // o Aprendiz, onde todos começam
-    const apY = titleY + (portrait ? 110 : 82);
     const ap = CLASSES.aprendiz;
-    const apScale = (heroScale(ap.texture) / 0.5) * (portrait ? 0.85 : 0.72);
-    this.add.sprite(width / 2 - 150, apY, ap.texture, 'idle0').setScale(apScale).play(`${ap.texture}-idle`);
-    text(this, width / 2 - 95, apY - 22, 'Todos começam como Aprendiz', 20).setOrigin(0, 0.5);
-    text(this, width / 2 - 95, apY + 6, `No nível ${PROFESSION_LEVEL}, escolha sua profissão:`, 17, '#9fc3ff').setOrigin(0, 0.5);
+    const apY = win.top + (portrait ? 56 : 44);
+    const apScale = (heroScale(ap.texture) / 0.5) * (portrait ? 0.62 : 0.5);
+    c.add(this.add.sprite(winW / 2 - 170, apY, ap.texture, 'idle0').setScale(apScale).play(`${ap.texture}-idle`));
+    c.add(wtext(this, winW / 2 - 120, apY - 12, 'Todos começam como Aprendiz', 17 * s, WIN.text, true).setOrigin(0, 0.5));
+    c.add(wtext(this, winW / 2 - 120, apY + 12, `Nível ${PROFESSION_LEVEL}: profissão  •  Nível 15: 2ª classe`, 13 * s, WIN.label).setOrigin(0, 0.5));
 
     // as três profissões (só informação)
     const lines = [LINES.espadachim, LINES.mago, LINES.arqueiro];
-    const top = apY + (portrait ? 70 : 52);
-    const gap = 16;
-    const bottomSpace = portrait ? 220 : 150;
+    const top = apY + (portrait ? 56 : 42);
+    const gap = 12;
+    const pad = 14;
     let cardW: number;
     let cardH: number;
     if (portrait) {
-      cardW = Math.min(640, width - 40);
-      cardH = Math.min(330, (height - top - bottomSpace - gap * 2) / 3);
+      cardW = winW - pad * 2;
+      cardH = (winH - top - pad - gap * 2) / 3;
     } else {
-      cardW = Math.min(390, (width - 40 - gap * 2) / 3);
-      cardH = Math.min(345, height - top - bottomSpace);
+      cardW = (winW - pad * 2 - gap * 2) / 3;
+      cardH = winH - top - pad;
     }
 
     lines.forEach((line, i) => {
-      const cx = portrait ? width / 2 : width / 2 + (i - 1) * (cardW + gap);
-      const cy = portrait ? top + cardH / 2 + i * (cardH + gap) : top + cardH / 2;
-      const card = this.add.container(cx, cy);
-      const bg = this.add.rectangle(0, 0, cardW, cardH, 0x151a24, 0.9).setStrokeStyle(2, line.color, 0.9);
-      const title = text(this, 0, -cardH / 2 + 26, line.name.toUpperCase(), 26, hex(line.color)).setOrigin(0.5);
-      const tag = text(this, 0, -cardH / 2 + 54, line.tagline, 15, '#d8d8d8').setOrigin(0.5);
-      card.add([bg, title, tag]);
+      const x0 = portrait ? pad : pad + i * (cardW + gap);
+      const y0 = portrait ? top + i * (cardH + gap) : top;
+      c.add(uiPanel(this, x0, y0, cardW, cardH));
+      const cx = x0 + cardW / 2;
+      // faixa colorida da linhagem
+      c.add(this.add.rectangle(x0 + 1, y0 + 1, cardW - 2, 4, line.color).setOrigin(0));
+      c.add(wtext(this, cx, y0 + 6 + 12 * s, line.name, 18 * s, darken(line.color), true).setOrigin(0.5));
+      if (!portrait) c.add(wtext(this, cx, y0 + 6 + 32 * s, line.tagline, 12 * s, WIN.muted).setOrigin(0.5));
 
-      const heroScaleK = Math.min(0.95, (cardH - (portrait ? 175 : 200)) / 160, cardW / 3 / 90);
-      const spacing = Math.min(cardW / 3, 120);
-      const heroY = -cardH / 2 + 74 + (160 * heroScaleK) / 2;
+      // personagens centralizados entre o cabeçalho e o rodapé do cartão
+      const headH = portrait ? 26 * s : 48 * s;
+      const footH = portrait ? 8 : 24 * s;
+      const labelsH = 34 * s;
+      const spacing = Math.min(cardW / 3, portrait ? 200 : 130);
+      const heroK = Math.min(portrait ? 1.1 : 1.15, (cardH - headH - footH - labelsH - 10) / 160, spacing / 100);
+      const blockH = 160 * heroK + labelsH;
+      const heroY = y0 + headH + (cardH - headH - footH - blockH) / 2 + (160 * heroK) / 2;
       line.classes.forEach((id, k) => {
-        const c = CLASSES[id];
-        const x = (k - 1) * spacing;
-        const hero = this.add.sprite(x, heroY, c.texture, 'idle0').setScale(heroScaleK * (heroScale(c.texture) / 0.5)).play(`${c.texture}-idle`);
-        const name = text(this, x, heroY + (160 * heroScaleK) / 2 + 4, c.name, 14).setOrigin(0.5, 0)
+        const cd = CLASSES[id];
+        const x = cx + (k - 1) * spacing;
+        c.add(this.add.sprite(x, heroY, cd.texture, 'idle0').setScale(heroK * (heroScale(cd.texture) / 0.5)).play(`${cd.texture}-idle`));
+        const name = wtext(this, x, heroY + (160 * heroK) / 2 + 2, `${cd.name}\nNv ${cd.minLevel}`, 11 * s, WIN.text, true).setOrigin(0.5, 0)
           .setAlign('center').setWordWrapWidth(spacing - 6);
-        const lvl = text(this, x, name.y + name.height + 1, `Nv ${c.minLevel}`, 12, '#9fc3ff').setOrigin(0.5, 0);
-        card.add([hero, name, lvl]);
-        if (k < 2) card.add(text(this, x + spacing / 2, heroY, k === 0 ? '→' : 'ou', k === 0 ? 20 : 15, hex(line.color)).setOrigin(0.5));
+        c.add(name);
+        if (k < 2) c.add(wtext(this, x + spacing / 2, heroY, k === 0 ? '→' : 'ou', 14 * s, darken(line.color), true).setOrigin(0.5));
       });
-      const [s0, s1, s2] = line.classes.map((id) => SKILLS[CLASSES[id].grantsSkill!].name);
-      const skills = `${s0}  →  ${s1} ou ${s2}`;
-      card.add(text(this, 0, cardH / 2 - 26, skills, 13, '#bfc6d6').setOrigin(0.5).setAlign('center').setWordWrapWidth(cardW - 24));
+      if (!portrait) {
+        const [s0, s1, s2] = line.classes.map((id) => SKILLS[CLASSES[id].grantsSkill!].name);
+        c.add(wtext(this, cx, y0 + cardH - 14 * s, `${s0}  →  ${s1} ou ${s2}`, 11 * s, WIN.muted).setOrigin(0.5)
+          .setAlign('center').setWordWrapWidth(cardW - 16));
+      }
     });
 
-    // ---- mapa, loja e botão de jogar
+    // ---- janela de baixo: mapa, loja e jogar
     const save = loadSave();
     let mapIdx = Math.max(0, MAPS.findIndex((m) => m.id === save.map));
-    const rowY = height - (portrait ? 190 : 110);
-    const mapX = portrait ? width / 2 : width / 2 - 170;
-    const mapBg = this.add.rectangle(mapX, rowY, 320, 44, 0x151a24, 0.92).setStrokeStyle(2, 0x9fc3ff, 0.8);
-    const mapText = text(this, mapX, rowY, '', 19, '#9fc3ff').setOrigin(0.5);
-    const showMap = () => mapText.setText(`◀  ${MAPS[mapIdx].name}  ▶`);
+    const bw = Math.min(winW, portrait ? winW : 900);
+    const bot = uiWindow(this, (width - bw) / 2, height - bottomH - 6, bw, bottomH, `Partida   •   Zeny: ${save.zeny} z`, s);
+    const bh = 36 * s;
+    const rowY = bot.top + (portrait ? 28 : (bottomH - bot.top) / 2);
+    const mapW = portrait ? bw - 120 : 270;
+    const mapCx = portrait ? bw / 2 : 20 + 34 + mapW / 2;
+    bot.c.add(uiPanel(this, mapCx - mapW / 2, rowY - bh / 2, mapW, bh));
+    const mapText = wtext(this, mapCx, rowY, '', 15 * s, WIN.text, true).setOrigin(0.5);
+    bot.c.add(mapText);
+    const showMap = () => mapText.setText(MAPS[mapIdx].name);
     showMap();
-    mapBg.setInteractive({ useHandCursor: true }).on('pointerup', (p: Phaser.Input.Pointer) => {
-      mapIdx = (mapIdx + (p.x < mapX - 40 ? MAPS.length - 1 : 1)) % MAPS.length;
+    const shift = (d: number) => {
+      mapIdx = (mapIdx + d + MAPS.length) % MAPS.length;
       save.map = MAPS[mapIdx].id;
       writeSave(save);
       showMap();
-    });
-    const shopX = portrait ? width / 2 : width / 2 + 170;
-    const shopY = portrait ? rowY + 60 : rowY;
-    const shopBg = this.add.rectangle(shopX, shopY, 320, 44, 0x2a2210, 0.92).setStrokeStyle(2, 0xffd04a, 0.8);
-    text(this, shopX, shopY, `Loja e Ferreiro   ${save.zeny} z`, 19, '#ffd04a').setOrigin(0.5);
-    shopBg.setInteractive({ useHandCursor: true }).on('pointerup', () => {
+    };
+    bot.c.add(uiButton(this, mapCx - mapW / 2 - 22 * s, rowY, 34 * s, bh, '◀', () => shift(-1)).c);
+    bot.c.add(uiButton(this, mapCx + mapW / 2 + 22 * s, rowY, 34 * s, bh, '▶', () => shift(1)).c);
+
+    const go = (target: string) => {
       if (this.started) return;
       this.started = true;
-      this.scene.start('Shop');
-    });
-    const playY = height - (portrait ? 50 : 52);
-    const playBg = this.add.rectangle(width / 2, playY, 260, 50, 0x1f6a2a, 0.95).setStrokeStyle(3, 0x9aff8a);
-    const start = text(this, width / 2, playY, touch ? 'JOGAR' : 'JOGAR  [ESPAÇO]', 26).setOrigin(0.5);
-    playBg.setInteractive({ useHandCursor: true }).on('pointerup', () => this.start());
-    this.tweens.add({ targets: [start, playBg], scale: 1.05, yoyo: true, repeat: -1, duration: 700 });
-    if (!portrait) text(this, width / 2, height - 14, touch
-      ? 'Toque e arraste para andar  •  Ataques são automáticos'
-      : 'WASD / Setas para andar  •  Ataques são automáticos  •  P pausa', touch ? 16 : 14, '#c8c8c8')
-      .setOrigin(0.5).setAlign('center').setWordWrapWidth(width - 40);
+      this.scene.start(target);
+    };
+    const row2 = portrait ? rowY + bh + 18 : rowY;
+    const shopCx = portrait ? bw / 2 - 110 * s : bw - 20 - 150 * s - 12 - 85 * s;
+    const playCx = portrait ? bw / 2 + 110 * s : bw - 20 - 75 * s;
+    bot.c.add(uiButton(this, shopCx, row2, 170 * s, bh, 'Loja e Ferreiro', () => go('Shop'), { size: 14 * s }).c);
+    bot.c.add(uiButton(this, playCx, row2, 150 * s, bh + 6, touch ? 'JOGAR' : 'JOGAR  [Espaço]', () => go('Game'), { size: 16 * s, primary: true }).c);
+    if (portrait) {
+      bot.c.add(wtext(this, bw / 2, row2 + bh + 8, 'Toque e arraste para andar  •  Ataques automáticos', 12 * s, WIN.muted).setOrigin(0.5, 0));
+    } else {
+      wtext(this, width / 2, height - 4, touch ? 'Toque e arraste para andar  •  Ataques automáticos'
+        : 'WASD / Setas para andar  •  Ataques automáticos  •  P pausa  •  Q usa a Asa', 12, '#dfe7f5').setOrigin(0.5, 1);
+    }
 
     const kb = this.input.keyboard!;
-    kb.once('keydown-SPACE', () => this.start());
-    kb.once('keydown-ENTER', () => this.start());
-
+    kb.once('keydown-SPACE', () => go('Game'));
+    kb.once('keydown-ENTER', () => go('Game'));
     onResize(this, () => this.scene.restart());
   }
 
-  private start() {
+  /** Começa a partida (também usado pelos testes) */
+  start() {
     if (this.started) return;
     this.started = true;
     this.scene.start('Game');
@@ -156,32 +179,50 @@ export class GameOverScene extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale;
-    const oy = Math.max(0, (height - 720) / 2);
     const r = this.result;
-    this.add.rectangle(0, 0, width, height, 0x120a0a).setOrigin(0);
-    const s = Math.floor(r.time / 1000);
-    text(this, width / 2, oy + 180, 'VOCÊ CAIU EM BATALHA', Math.min(52, (width - 40) / 12), '#ff5c5c').setOrigin(0.5);
-    text(
-      this, width / 2, oy + 330,
-      `Tempo sobrevivido: ${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s\n` +
-      `Nível alcançado: ${r.level}\nClasse: ${r.className}\nInimigos derrotados: ${r.kills}\nCartas: ${r.cards}\nZeny ganhos: ${r.zeny}  (total: ${r.zenyTotal})`,
-      24,
-    ).setOrigin(0.5).setAlign('center').setLineSpacing(10);
+    const s = uiScale(this);
     const touch = isTouch(this);
-    const again = text(this, width / 2, oy + 510, touch ? 'Jogar de novo' : 'Jogar de novo [ESPAÇO]', touch ? 32 : 26).setOrigin(0.5);
-    this.tweens.add({ targets: again, alpha: 0.45, yoyo: true, repeat: -1, duration: 700 });
-    const menu = text(this, width / 2, oy + 590, touch ? 'Voltar ao menu' : 'Voltar ao menu [M]', touch ? 24 : 20, '#9fc3ff').setOrigin(0.5);
+    this.add.tileSprite(0, 0, width, height, 'grama').setOrigin(0);
+    dim(this, 0.7);
+
+    const w = Math.min(520 * s, width - 30);
+    const rows: [string, string][] = [
+      ['Tempo sobrevivido', `${Math.floor(r.time / 60000)}m ${String(Math.floor(r.time / 1000) % 60).padStart(2, '0')}s`],
+      ['Nível alcançado', `${r.level}`],
+      ['Classe', r.className],
+      ['Inimigos derrotados', `${r.kills}`],
+      ['Cartas coletadas', `${r.cards}`],
+      ['Zeny ganhos', `${r.zeny} z`],
+      ['Zeny guardado', `${r.zenyTotal} z`],
+    ];
+    const rowH = 26 * s;
+    const h = 24 * s + 16 + rows.length * rowH + 20 + 50 * s;
+    const win = uiWindow(this, (width - w) / 2, (height - h) / 2, w, h, 'Você caiu em batalha', s);
+    const pad = 14;
+    const py = win.top + 10;
+    win.c.add(uiPanel(this, pad, py, w - pad * 2, rows.length * rowH + 8));
+    rows.forEach(([k, v], i) => {
+      const y = py + 4 + i * rowH;
+      if (i % 2) win.c.add(this.add.rectangle(pad + 1, y, w - pad * 2 - 2, rowH, WIN.rowAlt).setOrigin(0));
+      win.c.add(wtext(this, pad + 12, y + rowH / 2, k, 14 * s, WIN.label).setOrigin(0, 0.5));
+      win.c.add(wtext(this, w - pad - 12, y + rowH / 2, v, 14 * s, WIN.text, true).setOrigin(1, 0.5));
+    });
+
+    let gone = false;
+    const go = (target: string) => {
+      if (gone) return;
+      gone = true;
+      this.scene.start(target);
+    };
+    const by = h - 28 * s;
+    const again = uiButton(this, w / 2 + 90 * s, by, 160 * s, 34 * s, touch ? 'Jogar de novo' : 'Jogar de novo [Espaço]', () => go('Game'), { size: 13 * s, primary: true, enabled: false });
+    const menu = uiButton(this, w / 2 - 90 * s, by, 160 * s, 34 * s, touch ? 'Menu' : 'Menu [M]', () => go('Menu'), { size: 13 * s, enabled: false });
+    win.c.add([menu.c, again.c]);
 
     // pequena espera para o jogador não reiniciar sem querer
     this.time.delayedCall(600, () => {
-      let gone = false;
-      const go = (target: string, data?: object) => {
-        if (gone) return;
-        gone = true;
-        this.scene.start(target, data);
-      };
-      again.setInteractive({ useHandCursor: true }).on('pointerup', () => go('Game'));
-      menu.setInteractive({ useHandCursor: true }).on('pointerup', () => go('Menu'));
+      again.setEnabled(true);
+      menu.setEnabled(true);
       this.input.keyboard!.once('keydown-SPACE', () => go('Game'));
       this.input.keyboard!.once('keydown-ENTER', () => go('Game'));
       this.input.keyboard!.once('keydown-M', () => go('Menu'));
