@@ -11,6 +11,7 @@ import { createSkill } from '../skills';
 import { isTouch, onResize } from '../ui';
 import { SpatialGrid } from '../spatialGrid';
 import { Fx, FX_DEPTH } from '../fx';
+import { DECOR_KEYS } from '../art';
 
 /** XP necessária para passar do nível `l` para o `l + 1` */
 export const xpForLevel = (l: number) => Math.floor(4 + (l - 1) * 3 + Math.pow(l - 1, 1.5));
@@ -43,7 +44,7 @@ export interface RunResult {
 }
 
 export class GameScene extends Phaser.Scene {
-  player!: Phaser.GameObjects.Image;
+  player!: Phaser.GameObjects.Sprite;
   enemies!: Phaser.GameObjects.Group;
   pickups!: Phaser.GameObjects.Group;
   fx!: Fx;
@@ -78,6 +79,14 @@ export class GameScene extends Phaser.Scene {
   private maxEnemies = 0;
   private minEnemies = 0;
   private qualityTimer = 0;
+  private attackUntil = 0;
+  private sparks!: Phaser.GameObjects.Particles.ParticleEmitter;
+  /** Faíscas permitidas por frame (menos no celular) */
+  private sparkBudget = 0;
+  private sparkMax = 12;
+  /** Decoração do chão: imagens por célula do mapa, reaproveitadas */
+  private decor = new Map<number, Phaser.GameObjects.Image[]>();
+  private decorPool: Phaser.GameObjects.Image[] = [];
 
   private bg!: Phaser.GameObjects.TileSprite;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -118,13 +127,27 @@ export class GameScene extends Phaser.Scene {
     this.maxEnemies = perf.maxEnemies;
     this.minEnemies = perf.minEnemies;
     this.qualityTimer = 0;
+    this.attackUntil = 0;
+    this.sparkMax = isTouch(this) ? 6 : 12;
+    this.decor = new Map();
+    this.decorPool = [];
 
     const { width, height } = this.scale;
     this.bg = this.add.tileSprite(0, 0, width, height, 'grama').setOrigin(0).setScrollFactor(0).setDepth(-1e7);
     onResize(this, () => this.bg.setSize(this.scale.width, this.scale.height));
 
     this.fx = new Fx(this, perf.maxNumbers);
-    this.player = this.add.image(0, 0, CLASSES.aprendiz.texture);
+    this.player = this.add.sprite(0, 0, CLASSES.aprendiz.texture, 'idle0').setScale(0.5);
+    this.player.play(`${CLASSES.aprendiz.texture}-idle`);
+    this.sparks = this.add.particles(0, 0, 'fx-spark', {
+      speed: { min: 70, max: 220 },
+      lifespan: 280,
+      scale: { start: 0.9, end: 0 },
+      alpha: { start: 1, end: 0 },
+      tint: [0xfff2b0, 0xffffff, 0xffd060],
+      blendMode: 'ADD',
+      emitting: false,
+    }).setDepth(FX_DEPTH);
     this.cameras.main.startFollow(this.player, true, 0.15, 0.15);
 
     this.enemies = this.add.group({ classType: Enemy, maxSize: perf.maxEnemies });
@@ -153,6 +176,8 @@ export class GameScene extends Phaser.Scene {
     const dt = Math.min(delta, 50);
     this.elapsed += dt;
     this.frame++;
+    this.sparkBudget = this.sparkMax;
+    if (this.frame % 8 === 1) this.updateDecor();
 
     this.collectEnemies();
     this.updatePlayer(dt);
@@ -165,6 +190,66 @@ export class GameScene extends Phaser.Scene {
 
     const cam = this.cameras.main;
     this.bg.setTilePosition(cam.scrollX, cam.scrollY);
+  }
+
+  /** Chamado pela espada: mostra a pose de ataque por um instante */
+  playerAttacked() {
+    this.attackUntil = this.elapsed + 150;
+  }
+
+  private burst(x: number, y: number, n: number) {
+    if (this.sparkBudget <= 0) return;
+    const count = Math.min(n, this.sparkBudget);
+    this.sparkBudget -= count;
+    this.sparks.explode(count, x, y);
+  }
+
+  // ---------------------------------------------------------------- decoração do chão
+
+  /**
+   * Espalha tufos, flores, pedras, arbustos e cogumelos pelo mapa infinito.
+   * Cada célula do mapa sempre recebe a mesma decoração (sorteio pela posição),
+   * e só as células perto da câmera existem de fato.
+   */
+  private updateDecor() {
+    const C = 200;
+    const view = this.cameras.main.worldView;
+    const x0 = Math.floor((view.x - C) / C);
+    const x1 = Math.floor((view.right + C) / C);
+    const y0 = Math.floor((view.y - C) / C);
+    const y1 = Math.floor((view.bottom + C) / C);
+    const key = (cx: number, cy: number) => (cx + 50000) * 100000 + (cy + 50000);
+
+    for (const [k, imgs] of this.decor) {
+      const cx = Math.floor(k / 100000) - 50000;
+      const cy = (k % 100000) - 50000;
+      if (cx < x0 || cx > x1 || cy < y0 || cy > y1) {
+        for (const img of imgs) this.decorPool.push(img.setVisible(false));
+        this.decor.delete(k);
+      }
+    }
+
+    for (let cx = x0; cx <= x1; cx++) {
+      for (let cy = y0; cy <= y1; cy++) {
+        const k = key(cx, cy);
+        if (this.decor.has(k)) continue;
+        const rnd = cellRandom(cx, cy);
+        const imgs: Phaser.GameObjects.Image[] = [];
+        const n = rnd() < 0.3 ? 0 : 1 + Math.floor(rnd() * 3);
+        for (let j = 0; j < n; j++) {
+          const r = rnd();
+          const type = r < 0.38 ? DECOR_KEYS[0] : r < 0.62 ? DECOR_KEYS[1] : r < 0.78 ? DECOR_KEYS[2] : r < 0.92 ? DECOR_KEYS[3] : DECOR_KEYS[4];
+          const x = (cx + rnd()) * C;
+          const y = (cy + rnd()) * C;
+          const img = this.decorPool.pop() ?? this.add.image(0, 0, type);
+          img.setTexture(type).setPosition(x, y).setScale(0.5).setFlipX(rnd() < 0.5).setVisible(true);
+          // arbustos ficam "em pé" (o herói passa na frente ou atrás); o resto fica no chão
+          img.setDepth(type === 'deco-arbusto' ? y + 8 : -200000);
+          imgs.push(img);
+        }
+        this.decor.set(k, imgs);
+      }
+    }
   }
 
   /** Inimigos ativos perto de um ponto (usado pelas habilidades) */
@@ -191,7 +276,17 @@ export class GameScene extends Phaser.Scene {
       this.player.x += m.x * step;
       this.player.y += m.y * step;
     }
-    this.player.setAngle(moving ? Math.sin(this.elapsed / 70) * 7 : 0);
+    // animação: pose de ataque por um instante, senão andando ou parado
+    const tex = CLASSES[this.classId].texture;
+    if (this.elapsed < this.attackUntil) {
+      if (this.player.frame.name !== 'atk') {
+        this.player.stop();
+        this.player.setFrame('atk');
+      }
+    } else {
+      const anim = `${tex}-${moving ? 'walk' : 'idle'}`;
+      if (!this.player.anims.isPlaying || this.player.anims.currentAnim?.key !== anim) this.player.play(anim);
+    }
     this.player.setDepth(this.player.y);
 
     if (this.elapsed < this.hurtUntil) this.player.setTintFill(0xff5555);
@@ -403,6 +498,7 @@ export class GameScene extends Phaser.Scene {
     e.setTintFill(0xffffff);
     e.flashUntil = this.elapsed + 70;
     this.fx.number(e.x, e.y - 20, `${dmg}`, 0xffffff);
+    this.burst(e.x, e.y, 2);
 
     if (e.hp <= 0) {
       this.killEnemy(e);
@@ -423,6 +519,7 @@ export class GameScene extends Phaser.Scene {
     e.kill();
     this.kills++;
     this.fx.ring(x, y, def.radius, 1.8, 200, 0xffffff, 0.5);
+    this.burst(x, y, def.elite ? 12 : 4);
     this.dropPickup('xp', def.xp, x, y);
     if (Math.random() < (def.elite ? 1 : 0.012)) this.dropPickup('comida', 30, x + 12, y);
   }
@@ -521,7 +618,10 @@ export class GameScene extends Phaser.Scene {
     this.classId = id;
     for (const [k, v] of Object.entries(def.statBonus) as [keyof Stats, number][]) this.stats[k] += v;
     this.hp = this.stats.maxHp;
-    this.player.setTexture(def.texture);
+    this.player.setTexture(def.texture, 'idle0');
+    this.player.play(`${def.texture}-idle`);
+    this.sparkBudget = 40;
+    this.burst(this.player.x, this.player.y, 40);
     if (def.grantsSkill) this.addSkill(def.grantsSkill);
     this.cameras.main.flash(500, 255, 230, 150);
 
@@ -565,4 +665,17 @@ export class GameScene extends Phaser.Scene {
       this.scene.start('GameOver', result);
     });
   }
+}
+
+/** Gerador pseudoaleatório fixo por célula do mapa (mesma célula = mesma decoração) */
+function cellRandom(cx: number, cy: number) {
+  let h = Math.imul(cx, 374761393) ^ Math.imul(cy, 668265263);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  let a = h >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 }

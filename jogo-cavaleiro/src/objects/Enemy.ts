@@ -6,7 +6,7 @@ import type { EnemyDef } from '../data/enemies';
  * Não usa o motor de física: o movimento e as colisões são calculados no GameScene,
  * o que é bem mais leve com centenas de inimigos na tela.
  */
-export class Enemy extends Phaser.GameObjects.Image {
+export class Enemy extends Phaser.GameObjects.Sprite {
   def!: EnemyDef;
   hp = 0;
   maxHp = 0;
@@ -26,12 +26,16 @@ export class Enemy extends Phaser.GameObjects.Image {
   spawn(def: EnemyDef, x: number, y: number, hpMult: number) {
     this.def = def;
     this.setTexture(def.texture).setPosition(x, y).setActive(true).setVisible(true).setAlpha(1).clearTint();
+    // a arte é desenhada em 2x; elites aparecem um pouco maiores
+    this.setScale(0.5 * (def.elite ? 1.15 : 1));
+    this.play({ key: `${def.texture}-move`, startFrame: Phaser.Math.Between(0, 3) });
     this.hp = this.maxHp = Math.ceil(def.hp * hpMult);
     this.vx = this.vy = this.sepX = this.sepY = 0;
     this.knockUntil = this.flashUntil = this.shieldHitAt = 0;
   }
 
   kill() {
+    this.stop();
     this.setActive(false).setVisible(false);
   }
 }

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { createFxTextures, createTextures } from '../textures';
+import { createFxTextures } from '../textures';
+import { createArt } from '../art';
 import { CLASSES } from '../data/classes';
 import type { RunResult } from './GameScene';
 import { isTouch, onResize, text } from '../ui';
@@ -10,7 +11,7 @@ export class BootScene extends Phaser.Scene {
   }
 
   create() {
-    createTextures(this);
+    createArt(this);
     createFxTextures(this);
     this.scene.start('Menu');
   }
@@ -46,7 +47,7 @@ export class MenuScene extends Phaser.Scene {
     const spacing = Math.min(240, (width - 120) / 2.5);
     line.forEach((c, i) => {
       const x = width / 2 + (i - 1) * spacing;
-      const hero = this.add.image(x, oy + 320, c.texture).setScale(3);
+      const hero = this.add.sprite(x, oy + 320, c.texture, 'idle0').setScale(0.95).play(`${c.texture}-idle`);
       this.tweens.add({ targets: hero, y: oy + 310, yoyo: true, repeat: -1, duration: 600 + i * 120, ease: 'Sine.InOut' });
       text(this, x, oy + 410, c.name, 24).setOrigin(0.5);
       text(this, x, oy + 440, c.minLevel === 1 ? 'Início' : `Nível ${c.minLevel}`, 16, '#9fc3ff').setOrigin(0.5);

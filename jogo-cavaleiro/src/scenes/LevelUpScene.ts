@@ -45,8 +45,8 @@ export class LevelUpScene extends Phaser.Scene {
     if (promotion) {
       const title = text(this, width / 2, top + 30, 'PROMOÇÃO DE CLASSE!', 44, '#ffd04a').setOrigin(0.5);
       this.tweens.add({ targets: title, scale: { from: 0.6, to: 1 }, duration: 400, ease: 'Back.Out' });
-      const hero = this.add.image(width / 2, top + 145, promotion.texture).setScale(3.2);
-      this.tweens.add({ targets: hero, y: top + 135, yoyo: true, repeat: -1, duration: 700, ease: 'Sine.InOut' });
+      const hero = this.add.sprite(width / 2, top + 140, promotion.texture, 'idle0').setScale(0.95).play(`${promotion.texture}-idle`);
+      this.tweens.add({ targets: hero, y: top + 132, yoyo: true, repeat: -1, duration: 700, ease: 'Sine.InOut' });
       text(this, width / 2, top + 235, `Você agora é um ${promotion.name}!`, 30).setOrigin(0.5);
       text(this, width / 2, top + 272, promotion.description, 18, '#e8e8e8')
         .setOrigin(0.5, 0.5).setAlign('center').setWordWrapWidth(width - 60);

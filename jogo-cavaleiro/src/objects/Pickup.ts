@@ -17,7 +17,7 @@ export class Pickup extends Phaser.GameObjects.Image {
     this.value = value;
     this.magnetized = false;
     const tex = kind === 'comida' ? 'comida' : value >= 10 ? 'gem3' : value >= 3 ? 'gem2' : 'gem1';
-    this.setTexture(tex).setPosition(x, y).setActive(true).setVisible(true).setDepth(-100000);
+    this.setTexture(tex).setScale(0.5).setPosition(x, y).setActive(true).setVisible(true).setDepth(-100000);
   }
 
   release() {

@@ -16,6 +16,7 @@ export class SwordSkill extends Skill {
     if (this.timer > 0) return;
     this.timer = this.cooldown;
     const angle = this.g.facing.angle();
+    this.g.playerAttacked();
     this.swing(angle);
     if (this.level >= 5) this.swing(angle + Math.PI);
   }

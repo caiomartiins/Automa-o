@@ -41,7 +41,7 @@ export class ShieldSkill extends Skill {
     for (let i = 0; i < n; i++) {
       const s = this.shields[i];
       const a = this.angle + (i / n) * Math.PI * 2;
-      s.setPosition(p.x + Math.cos(a) * r, p.y + Math.sin(a) * r).setScale(scale).setRotation(a + Math.PI / 2);
+      s.setPosition(p.x + Math.cos(a) * r, p.y + Math.sin(a) * r).setScale(scale * 0.5).setRotation(a + Math.PI / 2);
       for (const e of this.g.queryEnemies(s.x, s.y, 14 * scale, this.near)) {
         if (!e.active || e.shieldHitAt > now) continue;
         const hit = 14 * scale + e.def.radius;
