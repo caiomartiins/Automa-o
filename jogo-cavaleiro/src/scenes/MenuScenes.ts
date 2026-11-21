@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { createTextures } from '../textures';
 import { CLASSES } from '../data/classes';
 import type { RunResult } from './GameScene';
-import { text } from '../ui';
+import { isTouch, text } from '../ui';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -49,9 +49,12 @@ export class MenuScene extends Phaser.Scene {
       if (i < line.length - 1) text(this, x + 120, 320, '→', 40, '#ffd04a').setOrigin(0.5);
     });
 
-    text(this, width / 2, 530, 'WASD / Setas para andar  •  Ataques são automáticos  •  P pausa', 18, '#dddddd').setOrigin(0.5);
-    text(this, width / 2, 560, 'No celular: toque e arraste para mover', 16, '#aaaaaa').setOrigin(0.5);
-    const start = text(this, width / 2, 630, 'Clique ou aperte ESPAÇO para começar', 26).setOrigin(0.5);
+    const touch = isTouch(this);
+    text(this, width / 2, 530, touch
+      ? 'Toque e arraste para andar  •  Ataques são automáticos'
+      : 'WASD / Setas para andar  •  Ataques são automáticos  •  P pausa', touch ? 26 : 18, '#dddddd').setOrigin(0.5);
+    if (touch) text(this, width / 2, 568, 'Jogue com o celular deitado', 20, '#ffd04a').setOrigin(0.5);
+    const start = text(this, width / 2, 630, touch ? 'Toque para começar' : 'Clique ou aperte ESPAÇO para começar', touch ? 34 : 26).setOrigin(0.5);
     this.tweens.add({ targets: start, alpha: 0.3, yoyo: true, repeat: -1, duration: 700 });
 
     startOnInput(this, 'Game');
@@ -81,7 +84,7 @@ export class GameOverScene extends Phaser.Scene {
       `Nível alcançado: ${r.level}\nClasse: ${r.className}\nInimigos derrotados: ${r.kills}`,
       24,
     ).setOrigin(0.5).setAlign('center').setLineSpacing(10);
-    const again = text(this, width / 2, 520, 'Clique ou aperte ESPAÇO para jogar de novo', 24).setOrigin(0.5);
+    const again = text(this, width / 2, 520, isTouch(this) ? 'Toque para jogar de novo' : 'Clique ou aperte ESPAÇO para jogar de novo', isTouch(this) ? 32 : 24).setOrigin(0.5);
     this.tweens.add({ targets: again, alpha: 0.3, yoyo: true, repeat: -1, duration: 700 });
 
     // pequena espera para o jogador não reiniciar sem querer

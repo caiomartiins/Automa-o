@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import type { GameScene, LevelUpData } from './GameScene';
-import { hex, text } from '../ui';
+import { hex, isTouch, text } from '../ui';
 
 /** Tela de escolha de melhoria (e de promoção de classe) */
 export class LevelUpScene extends Phaser.Scene {
@@ -37,8 +37,9 @@ export class LevelUpScene extends Phaser.Scene {
       text(this, width / 2, height / 2 - 120, `Nível ${level} — escolha uma melhoria`, 20).setOrigin(0.5);
     }
 
-    const cardW = 340;
-    const cardH = 170;
+    const big = isTouch(this) ? 1.3 : 1;
+    const cardW = 360;
+    const cardH = 170 * (promotion ? 1 : big);
     const gap = 30;
     const startX = width / 2 - ((cardW + gap) * (options.length - 1)) / 2;
 
@@ -47,12 +48,12 @@ export class LevelUpScene extends Phaser.Scene {
       const card = this.add.container(x, cardsY);
       const bg = this.add.rectangle(0, 0, cardW, cardH, 0x1c1f2b, 0.95).setStrokeStyle(3, opt.color);
       const stripe = this.add.rectangle(0, -cardH / 2 + 5, cardW, 10, opt.color);
-      const title = text(this, 0, -40, opt.title, 22, hex(opt.color)).setOrigin(0.5);
-      const desc = text(this, 0, 10, opt.desc, 17, '#e8e8e8')
+      const title = text(this, 0, -40, opt.title, 22 * big, hex(opt.color)).setOrigin(0.5);
+      const desc = text(this, 0, 10, opt.desc, 17 * big, '#e8e8e8')
         .setOrigin(0.5)
         .setAlign('center')
         .setWordWrapWidth(cardW - 40);
-      const key = text(this, 0, cardH / 2 - 22, `[${i + 1}]`, 15, '#8a8fa3').setOrigin(0.5);
+      const key = text(this, 0, cardH / 2 - 22, isTouch(this) ? 'Tocar para escolher' : `[${i + 1}]`, 15, '#8a8fa3').setOrigin(0.5);
       card.add([bg, stripe, title, desc, key]);
       card.setScale(0.8).setAlpha(0);
       this.tweens.add({ targets: card, scale: 1, alpha: 1, delay: 80 * i, duration: 220, ease: 'Back.Out' });

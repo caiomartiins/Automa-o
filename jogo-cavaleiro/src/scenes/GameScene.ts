@@ -9,11 +9,13 @@ import { rollUpgrades, type Upgrade } from '../data/upgrades';
 import type { Skill } from '../skills/Skill';
 import { FX_DEPTH } from '../skills/Skill';
 import { createSkill } from '../skills';
+import { isTouch } from '../ui';
 
 /** XP necessária para passar do nível `l` para o `l + 1` */
 export const xpForLevel = (l: number) => Math.floor(4 + (l - 1) * 3 + Math.pow(l - 1, 1.5));
 
-const MAX_ENEMIES = 400;
+const MAX_ENEMIES_DESKTOP = 400;
+const MAX_ENEMIES_MOBILE = 250;
 const PLAYER_IFRAMES = 500;
 
 export interface LevelUpData {
@@ -56,6 +58,7 @@ export class GameScene extends Phaser.Scene {
   private invulnUntil = 0;
   private hurtUntil = 0;
   private floatingTexts = 0;
+  private maxEnemies = MAX_ENEMIES_DESKTOP;
 
   private bg!: Phaser.GameObjects.TileSprite;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -91,6 +94,7 @@ export class GameScene extends Phaser.Scene {
     this.invulnUntil = 0;
     this.hurtUntil = 0;
     this.floatingTexts = 0;
+    this.maxEnemies = isTouch(this) ? MAX_ENEMIES_MOBILE : MAX_ENEMIES_DESKTOP;
 
     const { width, height } = this.scale;
     this.bg = this.add.tileSprite(0, 0, width, height, 'grama').setOrigin(0).setScrollFactor(0).setDepth(-1e7);
@@ -99,7 +103,7 @@ export class GameScene extends Phaser.Scene {
     (this.player.body as Phaser.Physics.Arcade.Body).setCircle(12, 8, 22);
     this.cameras.main.startFollow(this.player, true, 0.15, 0.15);
 
-    this.enemies = this.physics.add.group({ classType: Enemy, maxSize: MAX_ENEMIES });
+    this.enemies = this.physics.add.group({ classType: Enemy, maxSize: this.maxEnemies });
     this.pickups = this.add.group({ classType: Pickup, maxSize: 600 });
     this.physics.add.collider(this.enemies, this.enemies);
     this.physics.add.overlap(this.player, this.enemies, (_p, e) => this.onEnemyTouch(e as unknown as Enemy));
@@ -280,7 +284,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private spawnEnemy(def: EnemyDef, x?: number, y?: number) {
-    if (this.enemies.countActive(true) >= MAX_ENEMIES) return;
+    if (this.enemies.countActive(true) >= this.maxEnemies) return;
     if (x === undefined || y === undefined) ({ x, y } = this.ringPosition());
     const e = this.enemies.get(x, y) as Enemy | null;
     if (!e) return;
@@ -431,7 +435,7 @@ export class GameScene extends Phaser.Scene {
   // ---------------------------------------------------------------- utilidades
 
   private floatText(x: number, y: number, text: string, color: string) {
-    if (this.floatingTexts > 60) return;
+    if (this.floatingTexts > (this.maxEnemies === MAX_ENEMIES_DESKTOP ? 60 : 30)) return;
     this.floatingTexts++;
     const t = this.add
       .text(x, y, text, { fontFamily: 'Arial Black, Arial', fontSize: '16px', color, stroke: '#000', strokeThickness: 3 })

@@ -14,3 +14,6 @@ export function text(scene: Phaser.Scene, x: number, y: number, value: string, s
 }
 
 export const hex = (n: number) => `#${n.toString(16).padStart(6, '0')}`;
+
+/** true em celulares/tablets (tela de toque) */
+export const isTouch = (scene: Phaser.Scene) => scene.sys.game.device.input.touch && !scene.sys.game.device.os.desktop;
