@@ -22,5 +22,8 @@ export abstract class Skill {
 
   protected onLevelChanged() {}
 
+  /** Lança a habilidade agora (Lembrança Arcana do Professor) */
+  trigger() {}
+
   destroy() {}
 }

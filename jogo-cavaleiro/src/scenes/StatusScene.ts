@@ -94,12 +94,26 @@ export class StatusScene extends Phaser.Scene {
     this.buildStatus(c, g, pad, y, w - pad * 2, statH, rowH, k, portrait);
     y += statH + 10;
 
-    const label = start ? (touch ? 'Começar' : 'Começar  [Espaço]') : levelUp ? (touch ? 'Continuar' : 'Continuar  [Espaço]') : (touch ? 'Voltar ao jogo' : 'Voltar ao jogo  [P]');
-    c.add(uiButton(this, w / 2, y + btnH / 2, 220 * k, btnH, label, () => this.close(), { size: 14 * k, primary: true }).c);
+    // ---- botões: com pontos a confirmar aparecem Desfazer / Confirmar; a árvore de habilidades fica ao lado
+    const pending = g.hasPendingAttrs();
+    const label = pending ? 'Confirme os pontos' : start ? (touch ? 'Começar' : 'Começar  [Espaço]') : levelUp ? (touch ? 'Continuar' : 'Continuar  [Espaço]') : (touch ? 'Voltar ao jogo' : 'Voltar ao jogo  [P]');
+    const buttons: { label: string; fn: () => void; primary?: boolean; enabled?: boolean }[] = [];
+    if (pending) {
+      buttons.push({ label: 'Desfazer', fn: () => this.undo() });
+      buttons.push({ label: 'Confirmar', fn: () => this.confirm(), primary: true });
+    } else if (g.usesTree()) {
+      buttons.push({ label: g.skillPoints > 0 ? `Habilidades (${g.skillPoints})` : 'Habilidades', fn: () => this.openTree(), primary: g.skillPoints > 0 });
+    }
+    buttons.push({ label, fn: () => this.close(), primary: !pending, enabled: !pending });
+    const bw = Math.min(220 * k, (w - pad * 2 - 8 * (buttons.length - 1)) / buttons.length);
+    buttons.forEach((b, i) => {
+      const bx = w / 2 + (i - (buttons.length - 1) / 2) * (bw + 8);
+      c.add(uiButton(this, bx, y + btnH / 2, bw, btnH, b.label, b.fn, { size: 14 * k, primary: b.primary, enabled: b.enabled ?? true }).c);
+    });
 
     const kb = this.input.keyboard!;
     kb.once('keydown-SPACE', () => this.close());
-    kb.once('keydown-ENTER', () => this.close());
+    kb.once('keydown-ENTER', () => (g.hasPendingAttrs() ? this.confirm() : this.close()));
     onResize(this, () => this.scene.restart(this.data_));
   }
 
@@ -180,21 +194,27 @@ export class StatusScene extends Phaser.Scene {
     // ---- atributos: nome | valor (+bônus) | custo | +1 | +5
     const attrW = portrait ? w : Math.min(430 * k, w * 0.6);
     const btnH = Math.min(36 * k, rowH - 6);
-    const btnW = Math.max(btnH * 1.35, 46 * k);
+    const btnW = Math.max(btnH * 1.25, 44 * k);
     ATTR_IDS.forEach((a, i) => {
       const ry = top + 6 + i * rowH + rowH / 2;
       if (i % 2) c.add(this.add.rectangle(x + 1, ry - rowH / 2, attrW - 2, rowH, WIN.rowAlt).setOrigin(0));
       c.add(this.add.rectangle(x + 6, ry, 5, rowH * 0.6, ATTRS[a].color).setOrigin(0, 0.5));
       c.add(wtext(this, x + 18, ry, ATTRS[a].short, 17 * k, WIN.text, true).setOrigin(0, 0.5));
-      const vx = x + attrW * 0.34;
-      c.add(wtext(this, vx, ry, String(g.attrs[a]), 19 * k, WIN.text, true).setOrigin(1, 0.5));
+      const vx = x + attrW * 0.3;
+      const pend = g.pendingAttr(a);
+      // valor em azul enquanto houver pontos ainda não confirmados
+      c.add(wtext(this, vx, ry, String(g.attrs[a]), 19 * k, pend ? WIN.accent : WIN.text, true).setOrigin(1, 0.5));
       const bonus = g.bonusAttrs[a];
       if (bonus) c.add(wtext(this, vx + 4, ry, `+${bonus}`, 13 * k, WIN.good, true).setOrigin(0, 0.5));
       const cost = g.attrCostOf(a);
       const can = g.attrPoints >= cost && g.attrs[a] < 99;
-      c.add(wtext(this, x + attrW * 0.52, ry, `custo ${cost}`, 12 * k, can ? WIN.label : WIN.muted).setOrigin(0.5, 0.5));
+      const b0x = x + attrW - 12 - btnW * 2.5 - 16 + btnW * 0.1;
+      c.add(wtext(this, b0x - btnW * 0.4 - 8, ry, pend ? `(+${pend})  custo ${cost}` : `custo ${cost}`, 12 * k, pend ? WIN.accent : can ? WIN.label : WIN.muted).setOrigin(1, 0.5));
       const b1x = x + attrW - 12 - btnW * 1.5 - 8;
       const b5x = x + attrW - 12 - btnW / 2;
+      c.add(uiButton(this, b0x, ry, btnW * 0.8, btnH, '−', () => {
+        if (g.unspendAttr(a)) this.scene.restart(this.data_);
+      }, { size: 18 * k, enabled: pend > 0 }).c);
       c.add(uiButton(this, b1x, ry, btnW, btnH, '+1', () => {
         if (g.spendAttr(a)) this.scene.restart(this.data_);
       }, { size: 16 * k, enabled: can, primary: can }).c);
@@ -240,9 +260,30 @@ export class StatusScene extends Phaser.Scene {
     c.add(this.add.rectangle(dx + colW, dTop, 1, dRow * 6, WIN.panelBorder).setOrigin(0));
   }
 
-  /** Fecha a janela e volta ao jogo */
+  /** Confirma os pontos distribuídos */
+  confirm() {
+    const g = this.scene.get('Game') as GameScene;
+    g.commitAttrs();
+    this.scene.restart(this.data_);
+  }
+
+  /** Desfaz os pontos ainda não confirmados */
+  undo() {
+    const g = this.scene.get('Game') as GameScene;
+    g.revertAttrs();
+    this.scene.restart(this.data_);
+  }
+
+  /** Abre a árvore de habilidades (linha do Mago) */
+  openTree() {
+    this.scene.stop();
+    this.scene.launch('SkillTree', { reason: this.data_.reason });
+  }
+
+  /** Fecha a janela e volta ao jogo (só depois de confirmar ou desfazer os pontos) */
   close() {
     const g = this.scene.get('Game') as GameScene;
+    if (g.hasPendingAttrs()) return;
     this.scene.stop();
     // a cada 10 níveis, a loja abre antes de voltar ao jogo
     if (g.takeShopVisit()) {

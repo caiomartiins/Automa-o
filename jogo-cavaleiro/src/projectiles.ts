@@ -17,6 +17,10 @@ export interface ShotOptions {
   /** Se > 0, explode nesse raio ao acertar (bola de fogo) */
   explode?: number;
   scale?: number;
+  /** Cor aplicada na imagem do projétil */
+  tint?: number;
+  /** Cor da explosão */
+  explodeColor?: number;
   /** Habilidade que disparou (para elemento, atributos e estados) */
   src?: SkillId;
 }
@@ -40,6 +44,8 @@ export class Projectiles {
     const img = this.pool.pop() ?? this.g.add.image(0, 0, texture);
     img.setTexture(texture).setPosition(x, y).setRotation(angle).setScale(0.5 * (opts.scale ?? 1))
       .setActive(true).setVisible(true).setDepth(FX_DEPTH - 1).setOrigin(0.7, 0.5);
+    if (opts.tint !== undefined) img.setTint(opts.tint);
+    else img.clearTint();
     this.shots.push({
       ...opts, img,
       vx: Math.cos(angle) * opts.speed,
@@ -66,7 +72,7 @@ export class Projectiles {
           const r = p.radius + e.def.radius;
           if (dx * dx + dy * dy > r * r) continue;
           if (p.explode) {
-            this.g.explode(p.img.x, p.img.y, p.explode, p.damage, p.knockback, 0xff8a3a, p.src);
+            this.g.explode(p.img.x, p.img.y, p.explode, p.damage, p.knockback, p.explodeColor ?? 0xff8a3a, p.src);
             done = true;
             break;
           }

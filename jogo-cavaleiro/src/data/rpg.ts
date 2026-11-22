@@ -109,7 +109,7 @@ export const ATTR_FOCUS: Record<string, Partial<Attrs>> = {
 
 // ------------------------------------------------------------------ estados alterados
 
-export type StatusId = 'queimando' | 'envenenado' | 'sangrando' | 'atordoado' | 'congelado';
+export type StatusId = 'queimando' | 'envenenado' | 'sangrando' | 'atordoado' | 'congelado' | 'lento';
 
 export const STATUS: Record<StatusId, { name: string; tint: number; duration: number; dot: number; stops?: boolean; slow?: number }> = {
   queimando: { name: 'Queimando', tint: 0xff9a5a, duration: 2000, dot: 0.25 },
@@ -117,6 +117,7 @@ export const STATUS: Record<StatusId, { name: string; tint: number; duration: nu
   sangrando: { name: 'Sangrando', tint: 0xff6a7a, duration: 2500, dot: 0.2 },
   atordoado: { name: 'Atordoado', tint: 0xffff9a, duration: 700, dot: 0, stops: true },
   congelado: { name: 'Congelado', tint: 0x9fe6ff, duration: 1500, dot: 0, stops: true },
+  lento: { name: 'Lento', tint: 0xc8b088, duration: 700, dot: 0, slow: 0.45 },
 };
 
 // ------------------------------------------------------------------ modificadores da partida

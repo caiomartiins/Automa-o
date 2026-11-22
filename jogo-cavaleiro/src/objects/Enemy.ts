@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import type { EnemyDef } from '../data/enemies';
 import { STATUS, type StatusId } from '../data/rpg';
 
-const STATUS_PRIORITY: StatusId[] = ['congelado', 'atordoado', 'queimando', 'envenenado', 'sangrando'];
+const STATUS_PRIORITY: StatusId[] = ['congelado', 'atordoado', 'queimando', 'envenenado', 'sangrando', 'lento'];
 
 /**
  * Inimigo reutilizável (object pooling): nunca é destruído, só desativado.
@@ -31,8 +31,8 @@ export class Enemy extends Phaser.GameObjects.Sprite {
   hit = 20;
   flee = 1;
   /** Até quando cada estado dura (tempo da partida, em ms) e o dano por tique */
-  statusUntil: Record<StatusId, number> = { queimando: 0, envenenado: 0, sangrando: 0, atordoado: 0, congelado: 0 };
-  statusDot: Record<StatusId, number> = { queimando: 0, envenenado: 0, sangrando: 0, atordoado: 0, congelado: 0 };
+  statusUntil: Record<StatusId, number> = { queimando: 0, envenenado: 0, sangrando: 0, atordoado: 0, congelado: 0, lento: 0 };
+  statusDot: Record<StatusId, number> = { queimando: 0, envenenado: 0, sangrando: 0, atordoado: 0, congelado: 0, lento: 0 };
   nextDot = 0;
   /** Tem algum estado ativo (para atualizar a cor só quando preciso) */
   hasStatus = false;

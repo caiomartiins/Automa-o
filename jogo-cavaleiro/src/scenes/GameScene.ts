@@ -13,13 +13,14 @@ import type { Upgrade } from '../data/upgrades';
 import { EQUIPMENT, equipById, type EquipStats } from '../data/equipment';
 import type { Skill } from '../skills/Skill';
 import { createSkill } from '../skills';
+import { TREE, TREE_CLASSES, TREE_PARENT, nodeMax, treeNode, type PassiveId, type TreeId } from '../data/skilltree';
 import { isTouch, onResize } from '../ui';
 import { SpatialGrid } from '../spatialGrid';
 import { Fx, FX_DEPTH } from '../fx';
 import { Projectiles } from '../projectiles';
 import {
   ATTR_FX, ATTR_IDS, DROPS, attrCost, matkRange, statPointsForLevel, statusAtk, MAPS, PETS, REFINE_DMG, STATUS, cardOf, elementMult, emptyMods,
-  type Attr, type Attrs, type MapDef, type Mods, type PetDef, type RpgHost, type StatusId,
+  type Attr, type Attrs, type Element as Elem, type MapDef, type Mods, type PetDef, type RpgHost, type StatusId,
 } from '../data/rpg';
 import { loadSave, writeSave } from '../save';
 import type { ItemKind } from '../data/rpg';
@@ -98,6 +99,19 @@ export class GameScene extends Phaser.Scene implements RpgHost {
   zenyRun = 0;
   jobLevel = 1;
   jobXp = 0;
+  /** Pontos de habilidade da árvore (1 por nível de classe na linha do Mago) */
+  skillPoints = 0;
+  /** Nível das habilidades passivas da árvore */
+  passiveLv: Partial<Record<PassiveId, number>> = {};
+  /** Redução do dano recebido (Barreira Arcana) */
+  private dmgTakenRed = 0;
+  /** Flee extra (Vendaval) */
+  private skillFlee = 0;
+  /** HP máximo extra em % (Dilúvio) */
+  private hpPct = 0;
+  /** Atributos e pontos já confirmados (o que passar disso ainda pode ser desfeito) */
+  private committedAttrs: Attrs = { for: 1, agi: 1, vit: 1, int: 1, des: 1, sor: 1 };
+  private committedPoints = 0;
   pet: PetDef | null = null;
   map!: MapDef;
   /** Estados do jogador */
@@ -229,6 +243,11 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     this.zenyRun = 0;
     this.jobLevel = 1;
     this.jobXp = 0;
+    this.skillPoints = 0;
+    this.passiveLv = {};
+    this.dmgTakenRed = this.skillFlee = this.hpPct = 0;
+    this.committedAttrs = { ...this.attrs };
+    this.committedPoints = this.attrPoints;
     this.pet = null;
     this.petSprite = null;
     this.curseUntil = this.poisonUntil = this.nextPoisonTick = 0;
@@ -473,7 +492,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       return false;
     }
     // DEF dura (%) e DEF macia (VIT); ataques de chefe ignoram metade da DEF dura
-    const dmg = Math.max(1, Math.round(amount * (1 - this.hardDef() * (heavy ? 0.5 : 1)) - this.softDef()));
+    const dmg = Math.max(1, Math.round(amount * (1 - this.dmgTakenRed) * (1 - this.hardDef() * (heavy ? 0.5 : 1)) - this.softDef()));
     this.hp -= dmg;
     this.invulnUntil = this.elapsed + PLAYER_IFRAMES;
     this.hurtUntil = this.elapsed + 100;
@@ -489,7 +508,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
   // ---------------------------------------------------------------- fórmulas no estilo clássico
 
   private effectiveHp(flat: number) {
-    return Math.round((flat + (this.level - 1) * ATTR_FX.hpPerLevel) * (1 + this.attr('vit') / 100));
+    return Math.round((flat + (this.level - 1) * ATTR_FX.hpPerLevel) * (1 + this.attr('vit') / 100) * (1 + this.hpPct));
   }
 
   /** Atq de status físico (corpo a corpo usa FOR, à distância usa DES) */
@@ -519,7 +538,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
 
   /** Flee do jogador: nível + AGI + SOR/5 */
   flee() {
-    return this.level + this.attr('agi') + Math.floor(this.attr('sor') / 5);
+    return this.level + this.attr('agi') + Math.floor(this.attr('sor') / 5) + this.skillFlee;
   }
 
   /** Esquiva perfeita: 0,1% por ponto de SOR (desvia até de chefes) */
@@ -661,7 +680,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
           e.vx = e.vy = 0;
         } else {
           const d = Math.sqrt(d2) || 1;
-          const speed = e.speed * (e.statusUntil.envenenado > this.elapsed ? STATUS.envenenado.slow! : 1);
+          const speed = e.speed * (e.statusUntil.envenenado > this.elapsed ? STATUS.envenenado.slow! : 1) * (e.statusUntil.lento > this.elapsed ? STATUS.lento.slow! : 1);
           e.vx = (dx / d) * speed + e.sepX;
           e.vy = (dy / d) * speed + e.sepY;
         }
@@ -923,7 +942,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
 
       // estados alterados
       if (e.hp > 0) {
-        if (sk?.status && Math.random() < sk.status.chance) this.applyStatus(e, sk.status.id, dmg);
+        if (sk?.status && Math.random() < sk.status.chance + (sk.statusPerLv ?? 0) * ((this.skills.get(sk.id)?.level ?? 1) - 1)) this.applyStatus(e, sk.status.id, dmg);
         if (this.mods.freezeChance && Math.random() < this.mods.freezeChance) this.applyStatus(e, 'congelado', dmg);
       }
     }
@@ -960,7 +979,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     let active = false;
     let total = 0;
     let color = 0xffffff;
-    for (const id of ['queimando', 'envenenado', 'sangrando', 'atordoado', 'congelado'] as StatusId[]) {
+    for (const id of ['queimando', 'envenenado', 'sangrando', 'atordoado', 'congelado', 'lento'] as StatusId[]) {
       if (e.statusUntil[id] <= now) continue;
       active = true;
       if (STATUS[id].dot) {
@@ -1209,6 +1228,37 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     return true;
   }
 
+  /** Pontos colocados no atributo desde a última confirmação */
+  pendingAttr(a: Attr) {
+    return this.attrs[a] - this.committedAttrs[a];
+  }
+
+  hasPendingAttrs() {
+    return ATTR_IDS.some((a) => this.pendingAttr(a) > 0);
+  }
+
+  /** Tira 1 ponto ainda não confirmado do atributo (botão −) e devolve o custo */
+  unspendAttr(a: Attr) {
+    if (this.pendingAttr(a) <= 0) return false;
+    this.changeAttr(() => {
+      this.attrs[a]--;
+      this.attrEffects(a, -1);
+    });
+    this.attrPoints += attrCost(this.attrs[a]);
+    return true;
+  }
+
+  /** Confirma a distribuição (não dá mais para desfazer) */
+  commitAttrs() {
+    this.committedAttrs = { ...this.attrs };
+    this.committedPoints = this.attrPoints;
+  }
+
+  /** Desfaz tudo o que não foi confirmado */
+  revertAttrs() {
+    for (const a of ATTR_IDS) while (this.unspendAttr(a));
+  }
+
   /** Gasta vários pontos de uma vez (botão +5); devolve quantos subiu */
   spendAttrMany(a: Attr, times: number) {
     let n = 0;
@@ -1224,9 +1274,89 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     while (this.jobXp >= jobForLevel(this.jobLevel) && this.jobLevel < MAX_JOB) {
       this.jobXp -= jobForLevel(this.jobLevel);
       this.jobLevel++;
-      if (this.jobLevel % 2 === 0) this.levelUpSkill();
+      if (this.usesTree()) {
+        this.skillPoints += 1;
+        this.events.emit('toast', `Nível de classe ${this.jobLevel}! +1 ponto de habilidade`, '#9fc3ff');
+      } else if (this.jobLevel % 2 === 0) this.levelUpSkill();
       else if (this.jobLevel % 5 === 0) this.events.emit('toast', `Nível de classe ${this.jobLevel}! (+${(this.jobLevel - 1) * 2}% de dano)`, '#9fc3ff');
     }
+  }
+
+  // ---------------------------------------------------------------- árvore de habilidades
+
+  /** A classe atual usa a árvore de habilidades (linha do Mago) */
+  usesTree() {
+    return TREE_CLASSES.includes(this.classId);
+  }
+
+  /** Nível atual de uma habilidade da árvore (ativa ou passiva) */
+  nodeLevel(id: TreeId) {
+    const n = treeNode(id);
+    return n.passive ? (this.passiveLv[id as PassiveId] ?? 0) : (this.skills.get(id as SkillId)?.level ?? 0);
+  }
+
+  /** A aba (classe) pode receber pontos agora? (a 1ª classe continua valendo depois da 2ª) */
+  canUseTab(cls: ClassId) {
+    return cls === this.classId || TREE_PARENT[this.classId] === cls;
+  }
+
+  /**
+   * Por que não dá para subir a habilidade (ou null se dá).
+   * `level` devolve o nível considerado (incluindo mudanças ainda não confirmadas).
+   */
+  learnBlock(id: TreeId, level: (id: TreeId) => number, pointsLeft: number): string | null {
+    const n = treeNode(id);
+    if (!this.canUseTab(n.cls)) return `Só para ${CLASSES[n.cls].name}`;
+    if (level(id) >= nodeMax(n)) return 'Nível máximo';
+    for (const r of n.req) if (level(r.id) < r.lv) return 'Faltam requisitos';
+    if (pointsLeft <= 0) return 'Sem pontos';
+    return null;
+  }
+
+  /** Aplica as mudanças confirmadas na árvore (id → níveis a subir) */
+  learnTree(plan: Partial<Record<TreeId, number>>) {
+    let spent = 0;
+    // na ordem da árvore, para os requisitos virem antes
+    for (const node of TREE) {
+      const n = plan[node.id] ?? 0;
+      for (let i = 0; i < n; i++) {
+        if (this.skillPoints <= 0 || this.learnBlock(node.id, (x) => this.nodeLevel(x), this.skillPoints)) break;
+        this.skillPoints--;
+        spent++;
+        if (node.passive) this.addPassive(node.id as PassiveId);
+        else this.addSkill(node.id as SkillId);
+      }
+    }
+    return spent;
+  }
+
+  /** Sobe 1 nível de uma passiva e aplica o bônus */
+  private addPassive(id: PassiveId) {
+    this.passiveLv[id] = (this.passiveLv[id] ?? 0) + 1;
+    const m = this.mods;
+    const elem = (e: Elem, v: number) => { m.elemDmg[e] = (m.elemDmg[e] ?? 0) + v; };
+    switch (id) {
+      case 'foco': m.kindDmg.magic += 0.05; break;
+      case 'barreira': this.dmgTakenRed += 0.04; break;
+      case 'dominio': elem('fogo', 0.06); elem('agua', 0.06); elem('vento', 0.06); break;
+      case 'vulcao': elem('fogo', 0.07); elem('terra', 0.07); break;
+      case 'vendaval': this.skillFlee += 4; elem('vento', 0.06); break;
+      case 'dracologia': this.addAttr('int', 2); break;
+      case 'diluvio':
+        this.changeAttr(() => { this.hpPct += 0.05; });
+        this.stats.regen += 0.4;
+        break;
+      case 'conjuracao': this.stats.haste += 0.04; this.stats.speed *= 1.03; break;
+      case 'lembranca': break;
+    }
+  }
+
+  /** Lembrança Arcana: ao arremessar livros, chance de lançar uma magia de Mago de graça */
+  onBookCast() {
+    const lv = this.passiveLv.lembranca ?? 0;
+    if (!lv || Math.random() >= lv * 0.08) return;
+    const known = (['fogo', 'gelo', 'relampago'] as SkillId[]).map((id) => this.skills.get(id)).filter((sk) => !!sk);
+    if (known.length) Phaser.Utils.Array.GetRandom(known).trigger();
   }
 
   /** A cada 2 níveis de classe, a habilidade de menor nível sobe (a mais nova desempata) */
@@ -1324,6 +1454,8 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       const pts = statPointsForLevel(this.level);
       this.attrPoints += pts;
       gained += pts;
+      // cada nível de base também vale meio nível de classe (mais pontos de habilidade)
+      this.gainJob(Math.ceil(jobForLevel(this.jobLevel) / 2));
     }
     if (gained > 0) {
       const shops = Math.floor(this.level / SHOP_LEVEL_EVERY);

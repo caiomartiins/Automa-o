@@ -10,6 +10,10 @@ export class FireballSkill extends Skill {
   get count() { return [1, 2, 2, 3, 4][this.level - 1]; }
   get blast() { return (this.level >= 3 ? 58 : 44) * this.g.stats.area; }
 
+  trigger() {
+    this.timer = 0;
+  }
+
   update(dt: number) {
     this.timer -= dt;
     if (this.timer > 0) return;

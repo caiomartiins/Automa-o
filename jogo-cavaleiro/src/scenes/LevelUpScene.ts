@@ -1,12 +1,16 @@
 import Phaser from 'phaser';
 import type { GameScene, LevelUpData } from './GameScene';
-import { darken, dim, isPortrait, isTouch, onResize, uiPanel, uiScale, uiWindow, WIN, wtext } from '../ui';
+import { darken, dim, isPortrait, isTouch, onResize, uiButton, uiPanel, uiScale, uiWindow, WIN, wtext, type UIButton } from '../ui';
 import { heroScale } from '../sprites';
 
 /** Tela de escolha de melhoria (e de escolha de classe), no estilo de janelas */
 export class LevelUpScene extends Phaser.Scene {
   private data_!: LevelUpData;
   private done = false;
+  /** Opção marcada, esperando o botão Confirmar */
+  private picked = -1;
+  private marks: Phaser.GameObjects.Rectangle[] = [];
+  private confirmBtn?: UIButton;
 
   constructor() {
     super('LevelUp');
@@ -15,6 +19,8 @@ export class LevelUpScene extends Phaser.Scene {
   init(data: LevelUpData) {
     this.data_ = data;
     this.done = false;
+    this.picked = -1;
+    this.marks = [];
   }
 
   create() {
@@ -43,10 +49,11 @@ export class LevelUpScene extends Phaser.Scene {
     }
     const cardsH = portrait ? options.length * cardH + (options.length - 1) * gap : cardH;
     const titleH = 26 * s;
-    let winH = titleH + 10 + subH + cardsH + pad;
+    const confirmH = 40 * s + 12;
+    let winH = titleH + 10 + subH + cardsH + pad + confirmH;
     const maxH = height - statusH - 40;
     if (winH > maxH && portrait) {
-      cardH = (maxH - titleH - 10 - subH - pad - gap * (options.length - 1)) / options.length;
+      cardH = (maxH - titleH - 10 - subH - pad - confirmH - gap * (options.length - 1)) / options.length;
       winH = maxH;
     }
     const totalH = winH + 12 + statusH;
@@ -64,7 +71,9 @@ export class LevelUpScene extends Phaser.Scene {
       const y = portrait ? cardsTop + i * (cardH + gap) : cardsTop;
       const card = this.add.container(x, y);
       const hover = this.add.rectangle(1, 1, cardW - 2, cardH - 2, WIN.hover).setOrigin(0).setVisible(false);
-      card.add([uiPanel(this, 0, 0, cardW, cardH), hover]);
+      const mark = this.add.rectangle(cardW / 2, cardH / 2, cardW - 3, cardH - 3).setStrokeStyle(4, 0x2559b0).setVisible(false);
+      this.marks.push(mark);
+      card.add([uiPanel(this, 0, 0, cardW, cardH), hover, mark]);
       card.add(this.add.rectangle(1, 1, 5, cardH - 2, opt.color).setOrigin(0));
       const col = darken(opt.color, 0.5);
       if (opt.icon) {
@@ -85,11 +94,11 @@ export class LevelUpScene extends Phaser.Scene {
         card.add(wtext(this, cardW / 2, cardH * 0.28, opt.title, 17 * s, col, true).setOrigin(0.5));
         card.add(wtext(this, cardW / 2, cardH * 0.5, opt.desc, 13 * s, WIN.text).setOrigin(0.5).setAlign('center').setWordWrapWidth(cardW - 30));
       }
-      card.add(wtext(this, cardW - 8, cardH - 6, touch ? 'tocar' : `[${i + 1}]`, 11 * s, WIN.muted).setOrigin(1, 1));
+      card.add(wtext(this, cardW - 8, cardH - 6, touch ? 'tocar para marcar' : `[${i + 1}]`, 11 * s, WIN.muted).setOrigin(1, 1));
       const zone = this.add.zone(0, 0, cardW, cardH).setOrigin(0).setInteractive({ useHandCursor: true });
       zone.on('pointerover', () => hover.setVisible(true));
       zone.on('pointerout', () => hover.setVisible(false));
-      zone.on('pointerup', () => this.choose(i));
+      zone.on('pointerup', () => this.select(i));
       card.add(zone);
       c.add(card);
       card.setAlpha(0);
@@ -97,11 +106,28 @@ export class LevelUpScene extends Phaser.Scene {
     });
 
 
+    // botão de confirmação: a escolha só vale depois de aprovada
+    const bw = Math.min(360 * s, winW - pad * 2);
+    this.confirmBtn = uiButton(this, winW / 2, winH - 12 - 20 * s, bw, 40 * s, 'Marque uma opção', () => this.choose(this.picked), { size: 15 * s, primary: true, enabled: false });
+    c.add(this.confirmBtn.c);
+
     const kb = this.input.keyboard!;
-    ['ONE', 'TWO', 'THREE'].forEach((k, i) => kb.once(`keydown-${k}`, () => this.choose(i)));
+    ['ONE', 'TWO', 'THREE'].forEach((k, i) => kb.on(`keydown-${k}`, () => this.select(i)));
+    kb.on('keydown-ENTER', () => this.picked >= 0 && this.choose(this.picked));
     onResize(this, () => this.scene.restart(this.data_));
   }
 
+  /** Marca uma opção (ainda não aplica) */
+  select(i: number) {
+    const opt = this.data_.options[i];
+    if (this.done || !opt) return;
+    this.picked = i;
+    this.marks.forEach((m, j) => m.setVisible(j === i));
+    this.confirmBtn?.setEnabled(true);
+    this.confirmBtn?.setText(`Confirmar: ${opt.title}`);
+  }
+
+  /** Aplica a opção escolhida */
   choose(i: number) {
     const opt = this.data_.options[i];
     if (this.done || !opt) return;

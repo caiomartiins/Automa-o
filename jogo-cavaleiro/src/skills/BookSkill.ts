@@ -21,6 +21,7 @@ export class BookSkill extends Skill {
     }
     this.timer = this.cooldown;
     this.g.playerAttacked();
+    this.g.onBookCast();
     for (let i = 0; i < this.count; i++) {
       const t = targets[i % targets.length];
       const spread = i >= targets.length ? (i % 2 ? 0.22 : -0.22) : 0;

@@ -936,6 +936,74 @@ function drawProjectiles(scene: Phaser.Scene) {
       }, vgrad(c, 80 - h, 80, '#c8a0e8', '#1e0a2a'), 1, '#0c0410');
     }
   });
+  single(scene, 'proj-gelo', 30, 14, (c) => {
+    // lança de gelo apontando para a direita
+    c.save();
+    c.shadowColor = '#7ad8ff';
+    c.shadowBlur = 5;
+    paint(c, () => {
+      c.moveTo(29, 7);
+      c.lineTo(17, 1.5);
+      c.lineTo(3, 5);
+      c.lineTo(0.5, 7);
+      c.lineTo(3, 9);
+      c.lineTo(17, 12.5);
+      c.closePath();
+    }, vgrad(c, 1, 13, '#f4fdff', '#5ab8f0'), 1, '#1a5a8a');
+    c.restore();
+    c.strokeStyle = 'rgba(255,255,255,0.85)';
+    c.lineWidth = 1;
+    c.beginPath();
+    c.moveTo(5, 6.2);
+    c.lineTo(25, 6.6);
+    c.stroke();
+  });
+  single(scene, 'proj-alma', 24, 24, (c) => {
+    // esfera espiritual azul-clara brilhante
+    c.save();
+    c.shadowColor = '#b8c0ff';
+    c.shadowBlur = 8;
+    const g = c.createRadialGradient(11, 11, 0.5, 12, 12, 9);
+    g.addColorStop(0, '#ffffff');
+    g.addColorStop(0.45, '#d8dcff');
+    g.addColorStop(1, 'rgba(120,130,255,0.15)');
+    c.fillStyle = g;
+    c.beginPath();
+    c.arc(12, 12, 9, 0, TAU);
+    c.fill();
+    c.restore();
+  });
+  single(scene, 'fx-chama', 40, 56, (c) => {
+    // chama da Parede de Fogo (base embaixo)
+    c.save();
+    c.shadowColor = '#ff6a10';
+    c.shadowBlur = 8;
+    const outer = c.createLinearGradient(0, 4, 0, 54);
+    outer.addColorStop(0, 'rgba(255,120,30,0.2)');
+    outer.addColorStop(0.5, '#ff7a1a');
+    outer.addColorStop(1, '#c82a0a');
+    c.fillStyle = outer;
+    c.beginPath();
+    c.moveTo(20, 2);
+    c.quadraticCurveTo(36, 22, 34, 40);
+    c.quadraticCurveTo(32, 54, 20, 54);
+    c.quadraticCurveTo(8, 54, 6, 40);
+    c.quadraticCurveTo(5, 26, 14, 14);
+    c.quadraticCurveTo(16, 24, 20, 2);
+    c.fill();
+    c.restore();
+    const inner = c.createLinearGradient(0, 22, 0, 52);
+    inner.addColorStop(0, 'rgba(255,240,150,0.3)');
+    inner.addColorStop(1, '#fff2a0');
+    c.fillStyle = inner;
+    c.beginPath();
+    c.moveTo(20, 20);
+    c.quadraticCurveTo(28, 34, 27, 44);
+    c.quadraticCurveTo(25, 52, 20, 52);
+    c.quadraticCurveTo(14, 52, 13, 44);
+    c.quadraticCurveTo(13, 32, 20, 20);
+    c.fill();
+  });
   single(scene, 'fx-meteoro', 36, 60, (c) => {
     // caindo de cima para baixo, com rastro de fogo
     const trail = c.createLinearGradient(0, 0, 0, 44);

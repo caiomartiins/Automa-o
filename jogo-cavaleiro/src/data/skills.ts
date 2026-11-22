@@ -1,6 +1,8 @@
 export type SkillId =
   | 'espada' | 'escudo' | 'lanca' | 'impacto' | 'aura'
   | 'fogo' | 'raio' | 'meteoro' | 'livro'
+  | 'gelo' | 'relampago' | 'alma' | 'parede' | 'congelar' | 'tempestade'
+  | 'nevasca' | 'trovao' | 'pantano' | 'espinhos'
   | 'flecha' | 'chuva' | 'tiro';
 
 import type { DamageKind, Element, Size, StatusId } from './rpg';
@@ -16,6 +18,8 @@ export interface SkillDef {
   kind: DamageKind;
   /** Estado que a habilidade pode aplicar e a chance */
   status?: { id: StatusId; chance: number };
+  /** Chance extra do estado por nível da habilidade */
+  statusPerLv?: number;
   /** Multiplicador de dano por tamanho do alvo */
   sizeMod?: Partial<Record<Size, number>>;
 }
@@ -114,6 +118,112 @@ export const SKILLS: Record<SkillId, SkillDef> = {
       'Os livros atravessam +1 inimigo. +7 dano.',
       '+1 livro, +7 dano.',
       '+1 livro, +7 dano, recarga menor.',
+    ],
+  },
+
+  // ---- Mago: árvore de habilidades (pontos de classe)
+  gelo: {
+    id: 'gelo', name: 'Lança de Gelo', maxLevel: 5, color: 0x8fd8ff, element: 'agua', kind: 'magic', status: { id: 'congelado', chance: 0.08 }, statusPerLv: 0.02,
+    levelDesc: [
+      'Dispara lanças de gelo em leque no inimigo mais próximo. Podem congelar.',
+      '+1 lança, +3 dano.',
+      '+1 lança, +3 dano.',
+      '+1 lança, +3 dano.',
+      '+1 lança, +3 dano, recarga menor.',
+    ],
+  },
+  relampago: {
+    id: 'relampago', name: 'Relâmpago', maxLevel: 5, color: 0xd8f0ff, element: 'vento', kind: 'magic', status: { id: 'atordoado', chance: 0.12 },
+    levelDesc: [
+      'Raios caem do céu nos inimigos mais próximos. Podem atordoar.',
+      '+1 raio, +7 dano.',
+      '+7 dano, recarga menor.',
+      '+1 raio, +7 dano.',
+      '+1 raio, +7 dano.',
+    ],
+  },
+  alma: {
+    id: 'alma', name: 'Ataque Espiritual', maxLevel: 5, color: 0xc8c8ff, element: 'fantasma', kind: 'magic',
+    levelDesc: [
+      'Esferas espirituais atravessam os inimigos. Muito fortes contra mortos-vivos.',
+      '+1 esfera, +4 dano.',
+      'Atravessam +1 inimigo. +4 dano.',
+      '+1 esfera, +4 dano.',
+      '+1 esfera, +4 dano, recarga menor.',
+    ],
+  },
+  parede: {
+    id: 'parede', name: 'Parede de Fogo', maxLevel: 5, color: 0xff7a2a, element: 'fogo', kind: 'magic', status: { id: 'queimando', chance: 0.3 },
+    levelDesc: [
+      'Ergue uma parede de fogo à sua frente que queima e empurra quem encosta.',
+      'Parede mais larga, +3 dano, dura mais.',
+      'Parede mais larga, +3 dano, dura mais.',
+      'Parede mais larga, +3 dano, recarga menor.',
+      'Duas paredes (frente e costas)! +3 dano.',
+    ],
+  },
+  congelar: {
+    id: 'congelar', name: 'Rajada Congelante', maxLevel: 5, color: 0x6ad0ff, element: 'agua', kind: 'magic', status: { id: 'congelado', chance: 0.35 }, statusPerLv: 0.08,
+    levelDesc: [
+      'Uma grande lança de gelo atravessa a fila de inimigos e congela.',
+      '+8 dano, atravessa +1, congela mais.',
+      '+8 dano, atravessa +1, congela mais.',
+      '+8 dano, atravessa +1, recarga menor.',
+      'Duas rajadas! +8 dano.',
+    ],
+  },
+  tempestade: {
+    id: 'tempestade', name: 'Tempestade de Raios', maxLevel: 5, color: 0xa8e0ff, element: 'vento', kind: 'magic', status: { id: 'atordoado', chance: 0.1 },
+    levelDesc: [
+      'Uma chuva de raios cai sobre o grupo de inimigos mais próximo.',
+      '+1 raio, +5 dano, área maior.',
+      '+1 raio, +5 dano, área maior.',
+      '+1 raio, +5 dano, recarga menor.',
+      '+2 raios, +5 dano.',
+    ],
+  },
+
+  // ---- Bruxo
+  nevasca: {
+    id: 'nevasca', name: 'Nevasca', maxLevel: 5, color: 0xbff0ff, element: 'agua', kind: 'magic', status: { id: 'congelado', chance: 0.2 }, statusPerLv: 0.04,
+    levelDesc: [
+      'Uma nevasca gira sobre os inimigos, ferindo várias vezes e congelando.',
+      '+5 dano, área maior.',
+      '+1 golpe da nevasca, +5 dano.',
+      '+5 dano, área maior, recarga menor.',
+      '+1 golpe da nevasca, +5 dano.',
+    ],
+  },
+  trovao: {
+    id: 'trovao', name: 'Fúria dos Céus', maxLevel: 5, color: 0xfff27a, element: 'vento', kind: 'magic', status: { id: 'atordoado', chance: 0.2 },
+    levelDesc: [
+      'Raios gigantes caem em toda a área ao seu redor, várias vezes.',
+      '+7 dano, área maior.',
+      '+1 onda de raios, +7 dano.',
+      '+7 dano, área maior, recarga menor.',
+      '+1 onda de raios, +7 dano.',
+    ],
+  },
+  pantano: {
+    id: 'pantano', name: 'Pântano', maxLevel: 5, color: 0x8a7a4a, element: 'terra', kind: 'magic', status: { id: 'lento', chance: 1 },
+    levelDesc: [
+      'Transforma o chão em pântano: os inimigos ficam lentos e se ferem aos poucos.',
+      'Área maior, +2 dano, dura mais.',
+      'Área maior, +2 dano, dura mais.',
+      'Área maior, +2 dano, recarga menor.',
+      'Dois pântanos por vez! +2 dano.',
+    ],
+  },
+
+  // ---- Professor
+  espinhos: {
+    id: 'espinhos', name: 'Espinhos da Terra', maxLevel: 5, color: 0xc8a050, element: 'terra', kind: 'magic', status: { id: 'atordoado', chance: 0.15 }, sizeMod: { grande: 1.15 },
+    levelDesc: [
+      'Espinhos de pedra brotam do chão embaixo dos inimigos.',
+      '+1 espinho, +8 dano.',
+      '+8 dano, área maior.',
+      '+1 espinho, +8 dano.',
+      '+1 espinho, +8 dano, recarga menor.',
     ],
   },
 

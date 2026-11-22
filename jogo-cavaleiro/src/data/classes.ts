@@ -57,17 +57,17 @@ export const CLASSES: Record<ClassId, ClassDef> = {
   // ---- Mago → Bruxo ou Professor
   mago: {
     id: 'mago', name: 'Mago', texture: 'hero-mago', minLevel: PROFESSION_LEVEL,
-    description: 'Estuda magia e lança bolas de fogo que explodem em área. +10% Dano, -10 Vida.',
+    description: 'Estuda magia: ganha a Bola de Fogo e a árvore de habilidades (1 ponto por nível de classe). +10% Dano, -10 Vida.',
     statBonus: { maxHp: -10, might: 0.1 }, grantsSkill: 'fogo', choices: ['bruxo', 'professor'],
   },
   bruxo: {
     id: 'bruxo', name: 'Bruxo', texture: 'hero-bruxo', minLevel: SECOND_CLASS_LEVEL,
-    description: 'Mestre dos elementos. Ganha a Corrente de Raios. +30% Dano, +15% Área, +20 Vida.',
+    description: 'Mestre dos elementos: Corrente de Raios, Nevasca, Meteoros, Fúria dos Céus e Pântano. +30% Dano, +15% Área, +20 Vida.',
     statBonus: { maxHp: 20, might: 0.3, area: 0.15 }, grantsSkill: 'raio',
   },
   professor: {
     id: 'professor', name: 'Professor', texture: 'hero-professor', minLevel: SECOND_CLASS_LEVEL,
-    description: 'Sábio da academia. Ganha os Livros Voadores. Ataques 15% mais rápidos, +ímã, +25 Vida.',
+    description: 'Sábio da academia: Livros Voadores, Espinhos da Terra e passivas de suporte (INT, vida, esquiva). Ataques 15% mais rápidos, +25 Vida.',
     statBonus: { maxHp: 25, haste: 0.15, area: 0.1, magnet: 60 }, grantsSkill: 'livro',
   },
 

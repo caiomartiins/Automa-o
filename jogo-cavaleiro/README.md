@@ -42,7 +42,26 @@ Todos os heróis usam sprites recortados das imagens enviadas. A fonte em PNG fi
 - **Esquiva:** contra golpes comuns, usa o seu Flee contra o HIT do monstro. Os ataques avisados dos chefes só podem ser evitados pela **esquiva perfeita** (0,1% por SOR), ou seja, desviando de verdade.
 - **HP** = (HP base + 7 por nível) × (1 + VIT/100). **DEF dura** (equipamento e classe) reduz em %; **DEF macia** (VIT/2) subtrai.
 - **Crítico** = 1% + SOR × 0,3%: nunca erra e causa ×1,5.
-- **Habilidades** sobem sozinhas: a cada 2 níveis de classe, a de menor nível sobe.
+- **Confirmação:** os pontos de status ficam pendentes (valor em azul, botão **−** para tirar) até tocar em **Confirmar**; **Desfazer** devolve tudo. Não dá para voltar ao jogo com pontos pendentes. A escolha de classe também precisa ser marcada e depois confirmada.
+- **Habilidades (Espadachim e Arqueiro):** sobem sozinhas; a cada 2 níveis de classe, a de menor nível sobe.
+
+## Árvore de habilidades do Mago (`src/data/skilltree.ts`)
+
+Cada nível de classe dá **1 ponto de habilidade** (e cada nível de base vale meio nível de classe). Os pontos são gastos na janela **Habilidades** (botão na janela de Status) e só valem depois de **Confirmar**. As habilidades do Mago continuam valendo depois de virar Bruxo ou Professor. A classe nova dá a habilidade inicial de graça (Bola de Fogo, Corrente de Raios ou Livros Voadores).
+
+| Mago | Bruxo | Professor |
+|---|---|---|
+| Bola de Fogo | Corrente de Raios (Relâmpago 1) | Livros Voadores |
+| Lança de Gelo (congela) | Domínio Elemental (passiva: Fogo/Água/Vento) | Espinhos da Terra |
+| Relâmpago | Nevasca (Rajada Congelante 2) | Dracologia (passiva: +INT) |
+| Parede de Fogo (Bola de Fogo 3) | Fúria dos Céus (Corrente 3, Tempestade 3) | Lembrança Arcana (Livros 2: lança magias de Mago de graça) |
+| Rajada Congelante (Lança de Gelo 3) | Chuva de Meteoros (Tempestade 2, Parede 1) | Vulcão (Espinhos 2: Fogo/Terra) |
+| Tempestade de Raios (Relâmpago 3) | Pântano (Nevasca 1: deixa lento) | Dilúvio (Dracologia 2: HP e regeneração) |
+| Foco Arcano (passiva: dano mágico) | | Conjuração Livre (Lembrança 1: vel. de ataque e movimento) |
+| Ataque Espiritual (Fantasma) | | Vendaval (Vulcão 1: Flee e Vento) |
+| Barreira Arcana (Espiritual 2: menos dano recebido) | | |
+
+Todas as habilidades vão até o nível 5. As magias somam a Matq (INT), o elemento contra o monstro e as passivas.
 - **Equipamentos** (`src/data/equipment.ts`): são comprados com zeny na loja (cabeça, corpo, arma, mão esquerda, capa, calçado e 2 acessórios), ficam salvos e valem em todas as partidas. O Ferreiro refina a arma equipada.
 
 ## Sistemas de RPG (`src/data/rpg.ts`)
