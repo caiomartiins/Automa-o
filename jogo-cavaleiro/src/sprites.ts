@@ -34,6 +34,8 @@ interface SheetDef {
   /** Largura e altura de cada quadro */
   cellW: number;
   cellH: number;
+  /** Linha dos pés dentro do quadro (padrão: FEET_Y) */
+  feetY?: number;
   frames: string[];
   /** Escala de exibição no jogo */
   scale: number;
@@ -41,13 +43,16 @@ interface SheetDef {
 }
 
 
-/** Atalho para os personagens recortados das imagens enviadas (quadros 160x128) */
-function hero(key: string, url: string, idle: number, walk: number, atk: number, die: number, hurt = true): SheetDef {
+/**
+ * Atalho para os personagens recortados das imagens enviadas (quadros 160x128).
+ * `res` > 1 = folha em alta resolução (quadros maiores, mesma altura na tela).
+ */
+function hero(key: string, url: string, idle: number, walk: number, atk: number, die: number, hurt = true, res = 1): SheetDef {
   const seq = (p: string, n: number) => Array.from({ length: n }, (_, i) => `${p}${i}`);
   const frames = [...seq('idle', idle), ...seq('walk', walk), ...seq('atk', atk), ...(hurt ? ['hurt'] : []), ...seq('die', die)];
   const idleLoop = idle > 2 ? [...seq('idle', idle), ...seq('idle', idle).slice(1, -1).reverse()] : seq('idle', idle);
   return {
-    key, url, cellW: 160, cellH: 128, frames, scale: SPRITE_SCALE,
+    key, url, cellW: 160 * res, cellH: 128 * res, feetY: Math.round(FEET_Y * res), frames, scale: SPRITE_SCALE / res,
     anims: [
       { name: 'idle', frames: idleLoop, rate: 3.5, repeat: -1 },
       { name: 'walk', frames: seq('walk', walk), rate: walk >= 6 ? 10 : 7, repeat: -1 },
@@ -107,7 +112,7 @@ const SHEETS: SheetDef[] = [
   hero('hero-mago', magoUrl, 2, 4, 1, 2, false),
   hero('hero-bruxo', bruxoUrl, 2, 4, 3, 3),
   hero('hero-professor', professorUrl, 2, 3, 2, 2),
-  hero('hero-arqueiro', arqueiroUrl, 2, 4, 1, 2),
+  hero('hero-arqueiro', arqueiroUrl, 2, 4, 1, 2, true, 1.5),
   hero('hero-atirador', atiradorUrl, 3, 3, 1, 1),
   hero('hero-cacador-sombras', cacadorSombrasUrl, 2, 3, 1, 2, false),
   {
@@ -139,7 +144,7 @@ export function needsShadow(texture: string) {
 /** Distância do centro do sprite até os pés, já na escala do jogo */
 export function feetOffset(texture: string) {
   const s = SHEETS.find((d) => d.key === texture);
-  return s ? (FEET_Y - s.cellH / 2) * s.scale : 33;
+  return s ? ((s.feetY ?? FEET_Y) - s.cellH / 2) * s.scale : 33;
 }
 
 export function preloadSprites(scene: Phaser.Scene) {
