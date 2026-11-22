@@ -54,6 +54,8 @@ export interface EquipDef {
   drop?: { monster: string; chance: number };
   /** Item lendário (o mais caro da loja) */
   legend?: boolean;
+  /** Arma mítica de chefe: o herói brilha com esta cor quando equipada */
+  glow?: number;
 }
 
 export const EQUIPMENT: EquipDef[] = [
@@ -119,6 +121,11 @@ export const EQUIPMENT: EquipDef[] = [
   { id: 'veu-fantasma', name: 'Véu Fantasma', slot: 'capa', price: 0, drop: { monster: 'fantasma', chance: 0.0015 }, icon: 'eq-capa', tint: 0xc8d0ff, stats: { flee: 0.06, matk: 0.05 } },
   { id: 'escudo-ossos', name: 'Escudo de Ossos', slot: 'escudo', price: 0, drop: { monster: 'esqueleto', chance: 0.0015 }, icon: 'eq-escudo', tint: 0xe8e0c8, stats: { def: 4, hp: 10 } },
   { id: 'chapeu-cogumelo', name: 'Chapéu de Cogumelo', slot: 'cabeca', price: 0, drop: { monster: 'cogumelo', chance: 0.0015 }, icon: 'eq-chapeu', tint: 0xd04a3a, stats: { hp: 25, regen: 0.3 } },
+  // ---- míticas: armas super raras dos chefes (3% na 1ª vez; a chance sobe a cada volta do chefe). Equipada, o herói brilha.
+  { id: 'ceifadora-abissal', name: 'Ceifadora Abissal', slot: 'arma', price: 0, drop: { monster: 'bafome', chance: 0.03 }, glow: 0xff3a8a, icon: 'eq-espada', tint: 0xff3a8a, stats: { atk: 0.6, crit: 0.08, attrs: { for: 4 } } },
+  { id: 'cetro-eclipse', name: 'Cetro do Eclipse', slot: 'arma', price: 0, drop: { monster: 'bafome', chance: 0.03 }, glow: 0xb070ff, icon: 'eq-cajado', tint: 0xb070ff, stats: { matk: 0.7, attrs: { int: 4 } } },
+  { id: 'martelo-titas', name: 'Martelo dos Titãs', slot: 'arma', price: 0, drop: { monster: 'minotauro', chance: 0.03 }, glow: 0xffa030, icon: 'eq-espada', tint: 0xffa030, stats: { atk: 0.65, hp: 40, attrs: { vit: 4 } } },
+  { id: 'arco-tempestade', name: 'Arco da Tempestade', slot: 'arma', price: 0, drop: { monster: 'minotauro', chance: 0.03 }, glow: 0x7ae0ff, icon: 'eq-arco', tint: 0x7ae0ff, stats: { atk: 0.55, crit: 0.08, aspd: 0.08, attrs: { des: 4 } } },
   { id: 'gema-gosmenta', name: 'Gema Gosmenta', slot: 'acessorio', price: 0, drop: { monster: 'gosma', chance: 0.001 }, icon: 'eq-colar', tint: 0x5ab0ff, stats: { magnet: 0.3, attrs: { sor: 2 } } },
 ];
 

@@ -66,6 +66,7 @@ Todas as habilidades vão até o nível 5. Ativas corpo a corpo usam FOR, à dis
 ## Itens, conjuntos e coleção (`src/data/equipment.ts`)
 
 - **52 equipamentos**: 30 comuns da loja, **9 lendários** (2.200 a 3.200 z) e **13 raros**, que não são vendidos e só caem de monstros específicos (a SOR aumenta a chance). Cada chefe solta 2 raros próprios (Bafome, Minotauro, Carniçal); o Cavaleiro Negro e cada monstro comum têm um raro com chance baixa. Raro repetido vira 250 zeny.
+- **Armas míticas** (4): super raras, caem só do Bafome (Ceifadora Abissal, Cetro do Eclipse) e do Minotauro (Martelo dos Titãs, Arco da Tempestade). 3% na 1ª vez que o chefe aparece, ×2 na 2ª, ×3 na 3ª... Equipada, o herói brilha (contorno pulsando, aura e faíscas da cor da arma). Repetida vira 1.500 zeny.
 - **Conjuntos**: equipar todas as peças dá bônus extra (Andarilho, Caçador, Sábio, Guardião de Ferro, Pacto Demoníaco, Realeza).
 - **Coleção** (aba na loja): bônus permanentes ao juntar 10, 20, 30, 40 e todos os itens, mesmo sem equipar.
 

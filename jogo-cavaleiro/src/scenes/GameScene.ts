@@ -164,6 +164,11 @@ export class GameScene extends Phaser.Scene implements RpgHost {
   zenyBanked = 0;
   private appliedEquip: Record<string, string | undefined> = {};
   private appliedStats: EquipStats[] = [];
+  /** Brilho da arma mítica */
+  private glowFx: Phaser.FX.Glow | null = null;
+  private glowTween: Phaser.Tweens.Tween | null = null;
+  private glowAura: Phaser.GameObjects.Image | null = null;
+  private glowColor = 0;
   private appliedRefine = 0;
   private bossRound: Record<string, number> = {};
   private bossAIs: { update(dt: number): boolean }[] = [];
@@ -243,6 +248,10 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     this.pendingShop = false;
     this.zenyBanked = 0;
     this.appliedEquip = {};
+    this.glowFx = null;
+    this.glowTween = null;
+    this.glowAura = null;
+    this.glowColor = 0;
     this.appliedRefine = 0;
     this.bossRound = {};
     this.boss = null;
@@ -297,6 +306,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     this.shadow = this.add.image(0, 0, 'fx-sombra').setAlpha(0.45);
     this.player = this.add.sprite(0, 0, startTex, 'idle0').setScale(heroScale(startTex));
     this.player.play(`${startTex}-idle`);
+    this.updateWeaponGlow();
     this.projectiles = new Projectiles(this);
     this.sparks = this.add.particles(0, 0, 'fx-spark', {
       speed: { min: 70, max: 220 },
@@ -348,6 +358,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     this.updatePlayer(dt);
     this.updatePet(dt);
     this.skills.forEach((s) => s.update(dt));
+    this.updateGlowAura();
     this.projectiles.update(dt);
     this.updateEnemies(dt);
     this.updatePickups(dt);
@@ -1118,8 +1129,19 @@ export class GameScene extends Phaser.Scene implements RpgHost {
   private rollRare(monster: string, x: number, y: number, luck = 1 + this.attr('sor') * ATTR_FX.sorDrop + this.mods.drop) {
     const list = RARE_BY_MONSTER.get(monster);
     if (!list) return;
+    // armas míticas: a chance multiplica a cada volta do mesmo chefe (2ª vez = x2...)
+    const round = Math.max(1, this.bossRound[monster] ?? 1);
     for (const item of list) {
-      if (Math.random() < item.drop!.chance * luck) this.dropPickup('equip', 0, x + Phaser.Math.Between(-20, 20), y + Phaser.Math.Between(-10, 20), item.id);
+      const chance = item.drop!.chance * luck * (item.glow ? round : 1);
+      if (Math.random() >= chance) continue;
+      const p = this.dropPickup('equip', 0, x + Phaser.Math.Between(-20, 20), y + Phaser.Math.Between(-10, 20), item.id);
+      if (item.glow) {
+        // arma mítica: coluna de luz, aviso e vem sozinha até o jogador
+        if (p) p.magnetized = true;
+        this.fx.ring(x, y, 20, 9, 900, item.glow, 0.6);
+        this.cameras.main.flash(400, (item.glow >> 16) & 255, (item.glow >> 8) & 255, item.glow & 255);
+        this.events.emit('announce', `✦ ARMA MÍTICA! ${item.name} caiu do ${monster === 'bafome' ? 'Bafome' : 'Minotauro'}! ✦`);
+      }
     }
   }
 
@@ -1129,13 +1151,14 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     if (!item) return;
     const save = loadSave();
     if (save.owned.includes(id)) {
-      this.zenyRun += RARE_DUPLICATE_ZENY;
-      this.events.emit('toast', `${item.name} repetido: +${RARE_DUPLICATE_ZENY} zeny`, '#ffd27a');
+      const z = item.glow ? RARE_DUPLICATE_ZENY * 6 : RARE_DUPLICATE_ZENY;
+      this.zenyRun += z;
+      this.events.emit('toast', `${item.name} repetido: +${z} zeny`, '#ffd27a');
       return;
     }
     save.owned.push(id);
     writeSave(save);
-    this.events.emit('announce', `Item raro: ${item.name}! Equipe na loja. (Coleção ${save.owned.length}/${EQUIPMENT.length})`);
+    this.events.emit('announce', `${item.glow ? '✦ Arma mítica' : 'Item raro'}: ${item.name}! Equipe na loja. (Coleção ${save.owned.length}/${EQUIPMENT.length})`);
     this.cameras.main.flash(250, 255, 230, 150);
   }
 
@@ -1144,9 +1167,10 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     if (!p) {
       if (kind === 'xp') this.gainXp(value);
       else if (kind !== 'comida') this.collect(kind, value, extra);
-      return;
+      return null;
     }
     p.place(kind, value, x, y, extra);
+    return p;
   }
 
   /** Efeito de pegar um item do chão */
@@ -1229,11 +1253,49 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     return list;
   }
 
+  /**
+   * Arma mítica equipada: o herói ganha um contorno brilhante pulsando (WebGL)
+   * e uma aura no chão com faíscas da cor da arma.
+   */
+  updateWeaponGlow() {
+    // o herói ainda não existe no começo do create(); chamado de novo depois
+    if (!this.player?.scene) return;
+    const weapon = equipById(this.appliedEquip.arma);
+    const color = weapon?.glow;
+    if (this.glowFx) {
+      this.player.preFX?.remove(this.glowFx);
+      this.glowFx = null;
+    }
+    this.glowTween?.remove();
+    this.glowTween = null;
+    this.glowColor = color ?? 0;
+    this.glowAura?.setVisible(!!color);
+    if (!color) return;
+    const fx = this.player.preFX?.addGlow(color, 3, 0, false, 0.1, 10) ?? null;
+    this.glowFx = fx;
+    if (fx) this.glowTween = this.tweens.add({ targets: fx, outerStrength: 6, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+    if (!this.glowAura) this.glowAura = this.add.image(0, 0, 'fx-ring');
+    this.glowAura.setTint(color).setAlpha(0.28).setScale(2.2, 0.8).setVisible(true);
+  }
+
+  /** Acompanha a aura e solta faíscas da arma mítica */
+  private updateGlowAura() {
+    if (!this.glowColor || !this.glowAura) return;
+    const p = this.player;
+    const t = this.elapsed / 700;
+    this.glowAura.setPosition(p.x, p.y + feetOffset(p.texture.key) - 2).setDepth(p.y - 2).setAlpha(0.2 + 0.12 * Math.sin(t * Math.PI));
+    if (this.frame % 9 === 0) {
+      const a = Math.random() * Math.PI * 2;
+      this.fx.ring(p.x + Math.cos(a) * 18, p.y - 20 + Math.sin(a) * 26, 2.5, 1.6, 420, this.glowColor, 0.9);
+    }
+  }
+
   /** Aplica os itens equipados, conjuntos, coleção e o refino da arma */
   private applyEquipment(equip: Record<string, string | undefined>, refine: number) {
     this.appliedStats = this.equipStatsList(equip);
     this.equipTotals = this.equipEffects(this.appliedStats, 1);
     this.appliedEquip = { ...equip };
+    this.updateWeaponGlow();
     // o refino só vale se houver uma arma equipada
     this.appliedRefine = equip.arma ? refine * REFINE_DMG : 0;
     this.mods.dmgAll += this.appliedRefine;

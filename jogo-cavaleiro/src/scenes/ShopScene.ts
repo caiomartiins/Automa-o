@@ -100,8 +100,16 @@ export class ShopScene extends Phaser.Scene {
       c.add(this.add.rectangle(listX + 10 + icon / 2, cy, icon + 4, icon + 4, 0xdde6f3).setStrokeStyle(1, WIN.panelBorder));
       c.add(this.add.image(listX + 10 + icon / 2, cy, item.icon).setDisplaySize(icon, icon).setTint(item.tint));
       const tx = listX + 20 + icon;
-      const nameCol = item.drop ? '#7a2ab0' : item.legend ? WIN.gold : WIN.text;
-      c.add(wtext(this, tx, cy - 9 * k, item.drop ? `${item.name}  ★ raro` : item.legend ? `${item.name}  ★ lendário` : item.name, 14 * k, nameCol, true).setOrigin(0, 0.5));
+      const owned0 = save.owned.includes(item.id);
+      const nameCol = item.glow ? '#c0186a' : item.drop ? '#7a2ab0' : item.legend ? WIN.gold : WIN.text;
+      const tag = item.glow ? '  ✦ mítica (brilha)' : item.drop ? '  ★ raro' : item.legend ? '  ★ lendário' : '';
+      c.add(wtext(this, tx, cy - 9 * k, item.name + tag, 14 * k, nameCol, true).setOrigin(0, 0.5));
+      // ícone das míticas pulsando
+      if (item.glow && owned0) {
+        const halo = this.add.rectangle(listX + 10 + icon / 2, cy, icon + 6, icon + 6).setStrokeStyle(2, item.glow);
+        c.add(halo);
+        this.tweens.add({ targets: halo, alpha: 0.2, duration: 600, yoyo: true, repeat: -1 });
+      }
       c.add(wtext(this, tx, cy + 10 * k, describe(item.stats), 11 * k, WIN.label).setOrigin(0, 0.5).setWordWrapWidth(listW - icon - btnW - 50));
 
       const owned = save.owned.includes(item.id);
@@ -222,7 +230,7 @@ export class ShopScene extends Phaser.Scene {
       const ix = x + 12 + (i % perRow) * (icon + gap) + icon / 2;
       const iy = cy + Math.floor(i / perRow) * (icon + gap) + icon / 2;
       const got = have.has(e.id);
-      c.add(this.add.rectangle(ix, iy, icon + 2, icon + 2, got ? (e.drop ? 0xeedcff : e.legend ? 0xfff0c0 : 0xdde6f3) : 0xeef1f5).setStrokeStyle(1, WIN.panelBorder));
+      c.add(this.add.rectangle(ix, iy, icon + 2, icon + 2, got ? (e.glow ? 0xffe0f0 : e.drop ? 0xeedcff : e.legend ? 0xfff0c0 : 0xdde6f3) : 0xeef1f5).setStrokeStyle(e.glow ? 2 : 1, e.glow ?? WIN.panelBorder));
       const img = this.add.image(ix, iy, e.icon).setDisplaySize(icon - 2, icon - 2);
       if (got) img.setTint(e.tint);
       else img.setTint(0xb0b8c4).setAlpha(0.35);
