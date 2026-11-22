@@ -114,7 +114,7 @@ const SHEETS: SheetDef[] = [
   hero('hero-professor', professorUrl, 2, 3, 2, 2),
   hero('hero-arqueiro', arqueiroUrl, 2, 4, 1, 2, true, 1.5),
   hero('hero-atirador', atiradorUrl, 3, 3, 1, 1),
-  hero('hero-cacador-sombras', cacadorSombrasUrl, 2, 3, 1, 2, false),
+  hero('hero-cacador-sombras', cacadorSombrasUrl, 2, 3, 1, 2, false, 1.5),
   {
     key: 'hero-aprendiz',
     url: aprendizUrl,
