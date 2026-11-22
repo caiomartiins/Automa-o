@@ -40,17 +40,17 @@ export const CLASSES: Record<ClassId, ClassDef> = {
   // ---- Espadachim → Cavaleiro ou Paladino
   espadachim: {
     id: 'espadachim', name: 'Espadachim', texture: 'hero-espadachim', minLevel: PROFESSION_LEVEL,
-    description: 'Espada e escudo. Ganha o Escudo Giratório. +30 Vida, +2 Armadura.',
+    description: 'Espada e escudo. Ganha o Escudo Giratório e a árvore de habilidades (Impacto Explosivo, Fúria...). +30 Vida, +2 Armadura.',
     statBonus: { maxHp: 30, armor: 2 }, grantsSkill: 'escudo', choices: ['cavaleiro', 'paladino'],
   },
   cavaleiro: {
     id: 'cavaleiro', name: 'Cavaleiro', texture: 'hero-cavaleiro', minLevel: SECOND_CLASS_LEVEL,
-    description: 'Espadão de duas mãos. Ganha o Golpe Devastador. +40 Vida, +25% Dano, +2 Armadura.',
+    description: 'Lança e espadão: libera Investida de Lança, Golpe Devastador, Brandir Lança e passivas de ataque. +40 Vida, +25% Dano, +2 Armadura.',
     statBonus: { maxHp: 40, armor: 2, might: 0.25, speed: 10 }, grantsSkill: 'impacto',
   },
   paladino: {
     id: 'paladino', name: 'Paladino', texture: 'hero-paladino', minLevel: SECOND_CLASS_LEVEL,
-    description: 'Guerreiro sagrado. Ganha a Aura Sagrada, que fere e cura. +60 Vida, +4 Armadura.',
+    description: 'Guerreiro sagrado: libera Aura Sagrada, Cruz Sagrada, Escudo Bumerangue e passivas de defesa e cura. +60 Vida, +4 Armadura.',
     statBonus: { maxHp: 60, armor: 4, regen: 0.5 }, grantsSkill: 'aura',
   },
 
@@ -62,29 +62,29 @@ export const CLASSES: Record<ClassId, ClassDef> = {
   },
   bruxo: {
     id: 'bruxo', name: 'Bruxo', texture: 'hero-bruxo', minLevel: SECOND_CLASS_LEVEL,
-    description: 'Mestre dos elementos: Corrente de Raios, Nevasca, Meteoros, Fúria dos Céus e Pântano. +30% Dano, +15% Área, +20 Vida.',
+    description: 'Mestre dos elementos: libera Corrente de Raios, Nevasca, Meteoros, Fúria dos Céus e Pântano. +30% Dano, +15% Área, +20 Vida.',
     statBonus: { maxHp: 20, might: 0.3, area: 0.15 }, grantsSkill: 'raio',
   },
   professor: {
     id: 'professor', name: 'Professor', texture: 'hero-professor', minLevel: SECOND_CLASS_LEVEL,
-    description: 'Sábio da academia: Livros Voadores, Espinhos da Terra e passivas de suporte (INT, vida, esquiva). Ataques 15% mais rápidos, +25 Vida.',
+    description: 'Sábio da academia: libera Livros Voadores, Espinhos da Terra e passivas de suporte (INT, vida, esquiva). Ataques 15% mais rápidos, +25 Vida.',
     statBonus: { maxHp: 25, haste: 0.15, area: 0.1, magnet: 60 }, grantsSkill: 'livro',
   },
 
   // ---- Arqueiro → Caçador ou Patrulheiro
   arqueiro: {
     id: 'arqueiro', name: 'Arqueiro', texture: 'hero-arqueiro', minLevel: PROFESSION_LEVEL,
-    description: 'Ágil e certeiro: atira flechas no inimigo mais próximo. +15 Velocidade.',
+    description: 'Ágil e certeiro: ganha a Flecha e a árvore de habilidades (Disparo Duplo, Chuva de Flechas...). +15 Velocidade.',
     statBonus: { speed: 15 }, grantsSkill: 'flecha', choices: ['cacador', 'patrulheiro'],
   },
   cacador: {
     id: 'cacador', name: 'Caçador de Sombras', texture: 'hero-cacador-sombras', minLevel: SECOND_CLASS_LEVEL,
-    description: 'Some nas sombras. Ganha a Saraivada das Sombras. +25 Vida, ataques 10% mais rápidos, +15 Velocidade.',
+    description: 'Some nas sombras: libera Saraivada das Sombras, Armadilhas, Falcão e veneno. +25 Vida, ataques 10% mais rápidos, +15 Velocidade.',
     statBonus: { maxHp: 25, haste: 0.1, speed: 15 }, grantsSkill: 'chuva',
   },
   patrulheiro: {
     id: 'patrulheiro', name: 'Atirador de Elite', texture: 'hero-atirador', minLevel: SECOND_CLASS_LEVEL,
-    description: 'Mira perfeita. Ganha o Tiro Perfurante. +30 Vida, +25% Dano, +1 Armadura.',
+    description: 'Mira perfeita: libera Tiro Perfurante, Flecha Explosiva e passivas de crítico. +30 Vida, +25% Dano, +1 Armadura.',
     statBonus: { maxHp: 30, might: 0.25, armor: 1 }, grantsSkill: 'tiro',
   },
 };

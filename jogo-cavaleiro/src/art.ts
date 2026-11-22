@@ -1004,6 +1004,28 @@ function drawProjectiles(scene: Phaser.Scene) {
     c.quadraticCurveTo(13, 32, 20, 20);
     c.fill();
   });
+  single(scene, 'proj-escudo', 26, 26, (c) => {
+    // escudo redondo girando (visto de frente)
+    paint(c, ell(c, 13, 13, 11.5, 11.5), vgrad(c, 2, 24, '#8ab0ff', '#2a4a9a'), 1.3, '#0e1a3a');
+    paint(c, ell(c, 13, 13, 7.5, 7.5), vgrad(c, 6, 20, '#e8eef8', '#9aa8c0'), 0.9, '#3a4a6a');
+    c.fillStyle = '#ffd04a';
+    c.beginPath();
+    c.arc(13, 13, 2.6, 0, TAU);
+    c.fill();
+  });
+  single(scene, 'fx-armadilha', 40, 28, (c) => {
+    // armadilha no chão: placa de metal com pavio aceso
+    paint(c, ell(c, 20, 16, 17, 9), vgrad(c, 7, 25, '#8a8a90', '#3a3a40'), 1.2, '#16161a');
+    paint(c, ell(c, 20, 15, 10, 5), vgrad(c, 10, 20, '#c8a050', '#6a4a20'), 0.8, '#2a1a08');
+    c.fillStyle = '#ff5a1a';
+    c.beginPath();
+    c.arc(20, 14, 2.4, 0, TAU);
+    c.fill();
+    c.fillStyle = 'rgba(255,220,120,0.8)';
+    c.beginPath();
+    c.arc(20, 13.5, 1.1, 0, TAU);
+    c.fill();
+  });
   single(scene, 'fx-meteoro', 36, 60, (c) => {
     // caindo de cima para baixo, com rastro de fogo
     const trail = c.createLinearGradient(0, 0, 0, 44);

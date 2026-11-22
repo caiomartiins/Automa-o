@@ -1,0 +1,304 @@
+import Phaser from 'phaser';
+import { Skill } from './Skill';
+
+/**
+ * Habilidades das árvores do Espadachim (Cavaleiro / Paladino) e do Arqueiro
+ * (Caçador de Sombras / Atirador de Elite). O dano final passa por damageEnemy():
+ * Atq de status (FOR ou DES), HIT x Flee, elemento, cartas e passivas.
+ */
+
+/** Impacto Explosivo: explosão de fogo em volta do jogador que empurra */
+export class MagnumSkill extends Skill {
+  readonly id = 'explosao' as const;
+  private timer = 600;
+  get damage() { return (30 + 10 * (this.level - 1)) * this.g.stats.might; }
+  get cooldown() { return (this.level >= 4 ? 2200 : 2700) / this.g.stats.haste; }
+  get radius() { return (85 + 10 * this.level + (this.level >= 5 ? 20 : 0)) * this.g.stats.area; }
+
+  update(dt: number) {
+    this.timer -= dt;
+    if (this.timer > 0) return;
+    const p = this.g.player;
+    if (!this.g.nearestEnemies(p.x, p.y, 1, this.radius).length) {
+      this.timer = 150;
+      return;
+    }
+    this.timer = this.cooldown;
+    this.g.playerAttacked();
+    this.g.fx.ring(p.x, p.y, this.radius * 0.3, 3.2, 300, 0xffb040, 0.35);
+    this.g.explode(p.x, p.y, this.radius, this.damage, 340, 0xff6a20, this.id);
+    this.g.cameras.main.shake(90, 0.004);
+  }
+}
+
+/** Brandir Lança: grande leque à frente (e atrás no nível 5) */
+export class BrandishSkill extends Skill {
+  readonly id = 'brandir' as const;
+  private timer = 700;
+  private readonly arc = Phaser.Math.DegToRad(150);
+  get damage() { return (40 + 14 * (this.level - 1)) * this.g.stats.might; }
+  get cooldown() { return (this.level >= 4 ? 1900 : 2300) / this.g.stats.haste; }
+  get range() { return (120 + 12 * this.level) * this.g.stats.area; }
+
+  update(dt: number) {
+    this.timer -= dt;
+    if (this.timer > 0) return;
+    const p = this.g.player;
+    if (!this.g.nearestEnemies(p.x, p.y, 1, this.range).length) {
+      this.timer = 150;
+      return;
+    }
+    this.timer = this.cooldown;
+    this.g.playerAttacked();
+    const angle = this.g.facing.angle();
+    this.sweep(angle);
+    if (this.level >= 5) this.sweep(angle + Math.PI);
+  }
+
+  private sweep(angle: number) {
+    const p = this.g.player;
+    const r = this.range;
+    this.g.fx.slash(p.x, p.y, angle, r, 0xffe080);
+    this.g.fx.slash(p.x, p.y, angle, r * 0.7, 0xffffff);
+    for (const e of this.g.queryEnemies(p.x, p.y, r, this.near).slice()) {
+      if (!e.active) continue;
+      const dx = e.x - p.x;
+      const dy = e.y - p.y;
+      if (dx * dx + dy * dy > (r + e.def.radius) ** 2) continue;
+      if (Math.abs(Phaser.Math.Angle.Wrap(Math.atan2(dy, dx) - angle)) <= this.arc / 2) this.g.damageEnemy(e, this.damage, 220, p.x, p.y, this.id);
+    }
+  }
+}
+
+/** Escudo Bumerangue: escudo arremessado que atravessa os inimigos */
+export class ShieldBoomerangSkill extends Skill {
+  readonly id = 'bumerangue' as const;
+  private timer = 500;
+  get damage() { return (36 + 12 * (this.level - 1)) * this.g.stats.might; }
+  get cooldown() { return 1300 / this.g.stats.haste; }
+  get count() { return [1, 1, 2, 2, 3][this.level - 1]; }
+  get pierce() { return 3 + (this.level >= 2 ? 1 : 0) + (this.level >= 4 ? 1 : 0); }
+
+  update(dt: number) {
+    this.timer -= dt;
+    if (this.timer > 0) return;
+    const p = this.g.player;
+    const targets = this.g.nearestEnemies(p.x, p.y, this.count, 480);
+    if (!targets.length) {
+      this.timer = 200;
+      return;
+    }
+    this.timer = this.cooldown;
+    this.g.playerAttacked();
+    for (let i = 0; i < this.count; i++) {
+      const t = targets[i % targets.length];
+      const a = Math.atan2(t.y - p.y, t.x - p.x) + (i >= targets.length ? (i % 2 ? 0.3 : -0.3) : 0);
+      this.g.projectiles.fire('proj-escudo', p.x, p.y - 8, a, { src: this.id, speed: 470, damage: this.damage, pierce: this.pierce, radius: 13, life: 1200, knockback: 180 });
+    }
+  }
+}
+
+/** Cruz Sagrada: feixes de luz em cruz a partir do jogador */
+export class GrandCrossSkill extends Skill {
+  readonly id = 'cruz' as const;
+  private timer = 800;
+  get damage() { return (35 + 12 * (this.level - 1)) * this.g.stats.might; }
+  get cooldown() { return (this.level >= 4 ? 2200 : 2700) / this.g.stats.haste; }
+  get length() { return (140 + 15 * this.level) * this.g.stats.area; }
+
+  update(dt: number) {
+    this.timer -= dt;
+    if (this.timer > 0) return;
+    const p = this.g.player;
+    const len = this.length;
+    if (!this.g.nearestEnemies(p.x, p.y, 1, len).length) {
+      this.timer = 200;
+      return;
+    }
+    this.timer = this.cooldown;
+    this.g.playerAttacked();
+    const dirs = this.level >= 5 ? 8 : 4;
+    const half = 22;
+    this.g.fx.ring(p.x, p.y, 18, 3, 300, 0xfff0a0, 0.5);
+    for (let d = 0; d < dirs; d++) this.g.fx.lance(p.x, p.y, (d / dirs) * Math.PI * 2, len, half * 2, 0xfff6c0);
+    for (const e of this.g.queryEnemies(p.x, p.y, len, this.near).slice()) {
+      if (!e.active) continue;
+      const dx = e.x - p.x;
+      const dy = e.y - p.y;
+      const d = Math.hypot(dx, dy);
+      if (d > len + e.def.radius) continue;
+      // distância do inimigo até o feixe mais próximo
+      const a = Math.atan2(dy, dx);
+      const step = (Math.PI * 2) / dirs;
+      const off = Math.abs(Phaser.Math.Angle.Wrap(a - Math.round(a / step) * step));
+      if (Math.sin(off) * d <= half + e.def.radius) this.g.damageEnemy(e, this.damage, 160, p.x, p.y, this.id);
+    }
+  }
+}
+
+/** Disparo Duplo: duas flechas fortes seguidas */
+export class DoubleStrafeSkill extends Skill {
+  readonly id = 'duplo' as const;
+  private timer = 400;
+  get damage() { return (28 + 9 * (this.level - 1)) * this.g.stats.might; }
+  get cooldown() { return (this.level >= 4 ? 1250 : 1550) / this.g.stats.haste; }
+  get targets() { return 1 + (this.level >= 3 ? 1 : 0) + (this.level >= 5 ? 1 : 0); }
+
+  update(dt: number) {
+    this.timer -= dt;
+    if (this.timer > 0) return;
+    const p = this.g.player;
+    const targets = this.g.nearestEnemies(p.x, p.y, this.targets, 560);
+    if (!targets.length) {
+      this.timer = 150;
+      return;
+    }
+    this.timer = this.cooldown;
+    this.g.playerAttacked();
+    for (const t of targets) {
+      const a = Math.atan2(t.y - p.y, t.x - p.x);
+      for (let k = 0; k < 2; k++) {
+        this.g.time.delayedCall(k * 110, () => {
+          this.g.projectiles.fire('proj-flecha', p.x, p.y - 4, a, { src: this.id, speed: 700, damage: this.damage, pierce: 1, radius: 8, life: 1000, knockback: 120, scale: 1.4, tint: 0xfff0c0 });
+        });
+      }
+    }
+  }
+}
+
+/** Chuva de Flechas: flechas caem sobre um grupo e empurram */
+export class ArrowShowerSkill extends Skill {
+  readonly id = 'rajada' as const;
+  private timer = 700;
+  get damage() { return (20 + 7 * (this.level - 1)) * this.g.stats.might; }
+  get cooldown() { return (this.level >= 4 ? 1900 : 2300) / this.g.stats.haste; }
+  get radius() { return (70 + 8 * this.level) * this.g.stats.area; }
+  get areas() { return this.level >= 5 ? 3 : this.level >= 3 ? 2 : 1; }
+
+  update(dt: number) {
+    this.timer -= dt;
+    if (this.timer > 0) return;
+    const p = this.g.player;
+    const targets = this.g.nearestEnemies(p.x, p.y, 8, 480);
+    if (!targets.length) {
+      this.timer = 200;
+      return;
+    }
+    this.timer = this.cooldown;
+    Phaser.Utils.Array.Shuffle(targets);
+    for (let i = 0; i < this.areas; i++) {
+      const t = targets[i % targets.length];
+      const { x, y } = t;
+      const r = this.radius;
+      for (let k = 0; k < 5; k++) {
+        const a = Math.random() * Math.PI * 2;
+        const d = Math.sqrt(Math.random()) * r;
+        this.g.fx.lance(x + Math.cos(a) * d, y + Math.sin(a) * d - 46, Math.PI / 2, 46, 10, 0xd8b070);
+      }
+      this.g.time.delayedCall(140, () => this.g.explode(x, y, r, this.damage, 240, 0xd8b070, this.id));
+    }
+  }
+}
+
+/** Armadilha Explosiva: armadilhas no chão que explodem quando pisadas */
+export class TrapSkill extends Skill {
+  readonly id = 'armadilha' as const;
+  private timer = 600;
+  private traps: { img: Phaser.GameObjects.Image; until: number }[] = [];
+  get damage() { return (40 + 14 * (this.level - 1)) * this.g.stats.might; }
+  get cooldown() { return (this.level >= 4 ? 1400 : 1800) / this.g.stats.haste; }
+  get maxTraps() { return 1 + this.level; }
+  get radius() { return (70 + (this.level >= 3 ? 12 : 0) + (this.level >= 5 ? 14 : 0)) * this.g.stats.area; }
+
+  update(dt: number) {
+    const now = this.g.elapsed;
+    for (let i = this.traps.length - 1; i >= 0; i--) {
+      const t = this.traps[i];
+      const hit = this.g.queryEnemies(t.img.x, t.img.y, 26, this.near).some((e) => e.active && (e.x - t.img.x) ** 2 + (e.y - t.img.y) ** 2 < (26 + e.def.radius) ** 2);
+      if (hit) {
+        this.g.explode(t.img.x, t.img.y, this.radius, this.damage, 260, 0xff8a3a, this.id);
+        this.g.cameras.main.shake(70, 0.003);
+      }
+      if (hit || now >= t.until) {
+        t.img.destroy();
+        this.traps.splice(i, 1);
+      }
+    }
+    this.timer -= dt;
+    if (this.timer > 0) return;
+    this.timer = this.cooldown;
+    if (this.traps.length >= this.maxTraps) return;
+    const p = this.g.player;
+    // deixa a armadilha um pouco atrás do jogador (os inimigos vêm seguindo)
+    const x = p.x - this.g.facing.x * 30;
+    const y = p.y - this.g.facing.y * 30 + 10;
+    const img = this.g.add.image(x, y, 'fx-armadilha').setScale(0.5).setDepth(-1e6 + 2);
+    this.traps.push({ img, until: now + 14000 });
+  }
+
+  destroy() {
+    this.traps.forEach((t) => t.img.destroy());
+  }
+}
+
+/** Ataque do Falcão: mergulhos sobre inimigos da tela */
+export class FalconSkill extends Skill {
+  readonly id = 'falcao' as const;
+  private timer = 800;
+  get damage() { return (22 + 8 * (this.level - 1)) * this.g.stats.might; }
+  get cooldown() { return (this.level >= 3 ? 1700 : 2100) / this.g.stats.haste; }
+  get dives() { return [2, 3, 3, 4, 5][this.level - 1]; }
+
+  update(dt: number) {
+    this.timer -= dt;
+    if (this.timer > 0) return;
+    const p = this.g.player;
+    const targets = this.g.nearestEnemies(p.x, p.y, 16, 520);
+    if (!targets.length) {
+      this.timer = 200;
+      return;
+    }
+    this.timer = this.cooldown;
+    Phaser.Utils.Array.Shuffle(targets);
+    for (let i = 0; i < this.dives; i++) {
+      const t = targets[i % targets.length];
+      this.g.time.delayedCall(i * 120, () => {
+        if (!t.active) return;
+        const { x, y } = t;
+        this.g.fx.lance(x - 70, y - 90, Math.atan2(90, 70), 110, 14, 0xc89a6a);
+        this.g.explode(x, y, 40 * this.g.stats.area, this.damage, 80, 0xe8d0a0, this.id);
+      });
+    }
+  }
+}
+
+/** Flecha Explosiva: flecha que explode em área */
+export class ExplosiveArrowSkill extends Skill {
+  readonly id = 'explosiva' as const;
+  private timer = 500;
+  get damage() { return (22 + 7 * (this.level - 1)) * this.g.stats.might; }
+  get cooldown() { return (this.level >= 4 ? 1400 : 1700) / this.g.stats.haste; }
+  get count() { return [1, 1, 2, 2, 3][this.level - 1]; }
+  get blast() { return (48 + 6 * this.level) * this.g.stats.area; }
+
+  update(dt: number) {
+    this.timer -= dt;
+    if (this.timer > 0) return;
+    const p = this.g.player;
+    const targets = this.g.nearestEnemies(p.x, p.y, this.count, 560);
+    if (!targets.length) {
+      this.timer = 150;
+      return;
+    }
+    this.timer = this.cooldown;
+    this.g.playerAttacked();
+    for (let i = 0; i < this.count; i++) {
+      const t = targets[i % targets.length];
+      const a = Math.atan2(t.y - p.y, t.x - p.x) + (i >= targets.length ? (i % 2 ? 0.2 : -0.2) : 0);
+      this.g.projectiles.fire('proj-flecha', p.x, p.y - 4, a, {
+        src: this.id, speed: 560, damage: this.damage, pierce: 1, radius: 8, life: 1100, knockback: 150, scale: 1.3, tint: 0xff9a50, explode: this.blast, explodeColor: 0xff7a2a,
+      });
+    }
+  }
+}
+

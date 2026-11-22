@@ -43,26 +43,25 @@ Todos os heróis usam sprites recortados das imagens enviadas. A fonte em PNG fi
 - **HP** = (HP base + 7 por nível) × (1 + VIT/100). **DEF dura** (equipamento e classe) reduz em %; **DEF macia** (VIT/2) subtrai.
 - **Crítico** = 1% + SOR × 0,3%: nunca erra e causa ×1,5.
 - **Confirmação:** os pontos de status ficam pendentes (valor em azul, botão **−** para tirar) até tocar em **Confirmar**; **Desfazer** devolve tudo. Não dá para voltar ao jogo com pontos pendentes. A escolha de classe também precisa ser marcada e depois confirmada.
-- **Habilidades (Espadachim e Arqueiro):** sobem sozinhas; a cada 2 níveis de classe, a de menor nível sobe.
+- **Aprendiz:** o Golpe de Espada sobe sozinho a cada 2 níveis de classe.
 
-## Árvore de habilidades do Mago (`src/data/skilltree.ts`)
+## Árvores de habilidades (`src/data/skilltree.ts`)
 
-Cada nível de classe dá **1 ponto de habilidade** (e cada nível de base vale meio nível de classe). Os pontos são gastos na janela **Habilidades** (botão na janela de Status) e só valem depois de **Confirmar**. As habilidades do Mago continuam valendo depois de virar Bruxo ou Professor. A classe nova dá a habilidade inicial de graça (Bola de Fogo, Corrente de Raios ou Livros Voadores).
+Todas as classes (menos o Aprendiz) usam árvore. Regras de build:
 
-| Mago | Bruxo | Professor |
-|---|---|---|
-| Bola de Fogo | Corrente de Raios (Relâmpago 1) | Livros Voadores |
-| Lança de Gelo (congela) | Domínio Elemental (passiva: Fogo/Água/Vento) | Espinhos da Terra |
-| Relâmpago | Nevasca (Rajada Congelante 2) | Dracologia (passiva: +INT) |
-| Parede de Fogo (Bola de Fogo 3) | Fúria dos Céus (Corrente 3, Tempestade 3) | Lembrança Arcana (Livros 2: lança magias de Mago de graça) |
-| Rajada Congelante (Lança de Gelo 3) | Chuva de Meteoros (Tempestade 2, Parede 1) | Vulcão (Espinhos 2: Fogo/Terra) |
-| Tempestade de Raios (Relâmpago 3) | Pântano (Nevasca 1: deixa lento) | Dilúvio (Dracologia 2: HP e regeneração) |
-| Foco Arcano (passiva: dano mágico) | | Conjuração Livre (Lembrança 1: vel. de ataque e movimento) |
-| Ataque Espiritual (Fantasma) | | Vendaval (Vulcão 1: Flee e Vento) |
-| Barreira Arcana (Espiritual 2: menos dano recebido) | | |
+- **1 ponto por nível de classe** (cada nível de base também vale meio nível de classe).
+- **Teto de pontos:** 12 na 1ª classe e 18 na 2ª (30 no total). Maximizar 8 habilidades custaria 40, então não dá para pegar tudo.
+- **Limite:** no máximo **4 habilidades ativas** e **4 passivas** aprendidas.
+- Os pontos ficam pendentes até **Confirmar**; **Desfazer** cancela. **Esquecer** (com segundo toque para confirmar) remove uma habilidade, libera a vaga e devolve os pontos gastos nela, se nenhuma outra depender dela.
+- A 1ª classe dá a habilidade inicial de graça (Escudo Giratório, Bola de Fogo ou Flecha) e o Golpe de Espada do Aprendiz só continua para o Espadachim. A 2ª classe libera a árvore nova e dá 1 ponto na hora.
 
-Todas as habilidades vão até o nível 5. As magias somam a Matq (INT), o elemento contra o monstro e as passivas.
-- **Equipamentos** (`src/data/equipment.ts`): são comprados com zeny na loja (cabeça, corpo, arma, mão esquerda, capa, calçado e 2 acessórios), ficam salvos e valem em todas as partidas. O Ferreiro refina a arma equipada.
+| Linha | 1ª classe | 2ª classe A | 2ª classe B |
+|---|---|---|---|
+| Espadachim | Golpe de Espada, Escudo Giratório, Impacto Explosivo · passivas: Perícia com Espada, Vigor Inabalável, Recuperar HP, Fúria | **Cavaleiro:** Investida de Lança, Golpe Devastador, Brandir Lança · Contra-Ataque, Rapidez com Duas Mãos, Montaria, Perícia com Lança | **Paladino:** Aura Sagrada, Escudo Bumerangue, Cruz Sagrada · Fé, Cura Divina, Defensor |
+| Mago | Bola de Fogo, Lança de Gelo, Relâmpago, Parede de Fogo, Rajada Congelante, Tempestade de Raios, Ataque Espiritual · Foco Arcano, Barreira Arcana | **Bruxo:** Corrente de Raios, Nevasca, Fúria dos Céus, Chuva de Meteoros, Pântano · Domínio Elemental | **Professor:** Livros Voadores, Espinhos da Terra · Dracologia, Lembrança Arcana, Vulcão, Dilúvio, Conjuração Livre, Vendaval |
+| Arqueiro | Flecha, Disparo Duplo, Chuva de Flechas · Olhos de Coruja, Olhos de Águia, Concentração | **Caçador de Sombras:** Saraivada das Sombras, Armadilha Explosiva, Ataque do Falcão · Flechas Envenenadas, Caça às Feras, Passo Sombrio | **Atirador de Elite:** Tiro Perfurante, Flecha Explosiva · Mira Certeira, Tiro Fatal, Respiração Calma, Pés Ligeiros |
+
+Todas as habilidades vão até o nível 5. Ativas corpo a corpo usam FOR, à distância usam DES e magias usam INT.
 
 ## Sistemas de RPG (`src/data/rpg.ts`)
 

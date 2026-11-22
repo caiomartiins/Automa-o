@@ -3,6 +3,8 @@ export type SkillId =
   | 'fogo' | 'raio' | 'meteoro' | 'livro'
   | 'gelo' | 'relampago' | 'alma' | 'parede' | 'congelar' | 'tempestade'
   | 'nevasca' | 'trovao' | 'pantano' | 'espinhos'
+  | 'explosao' | 'brandir' | 'bumerangue' | 'cruz'
+  | 'duplo' | 'rajada' | 'armadilha' | 'falcao' | 'explosiva'
   | 'flecha' | 'chuva' | 'tiro';
 
 import type { DamageKind, Element, Size, StatusId } from './rpg';
@@ -224,6 +226,98 @@ export const SKILLS: Record<SkillId, SkillDef> = {
       '+8 dano, área maior.',
       '+1 espinho, +8 dano.',
       '+1 espinho, +8 dano, recarga menor.',
+    ],
+  },
+
+  // ---- Espadachim / Cavaleiro / Paladino: árvore
+  explosao: {
+    id: 'explosao', name: 'Impacto Explosivo', maxLevel: 5, color: 0xff8a3a, element: 'fogo', kind: 'melee', status: { id: 'queimando', chance: 0.25 },
+    levelDesc: [
+      'Explosão de fogo ao seu redor que empurra os inimigos para longe.',
+      '+10 dano, área maior.',
+      '+10 dano, área maior.',
+      '+10 dano, recarga menor.',
+      '+10 dano, área bem maior.',
+    ],
+  },
+  brandir: {
+    id: 'brandir', name: 'Brandir Lança', maxLevel: 5, color: 0xffd04a, element: 'neutro', kind: 'melee', status: { id: 'sangrando', chance: 0.2 }, sizeMod: { grande: 1.2 },
+    levelDesc: [
+      'Gira a lança num grande leque à frente, acertando todos de uma vez.',
+      '+14 dano, alcance maior.',
+      '+14 dano, alcance maior.',
+      '+14 dano, recarga menor.',
+      'Gira para trás também! +14 dano.',
+    ],
+  },
+  bumerangue: {
+    id: 'bumerangue', name: 'Escudo Bumerangue', maxLevel: 5, color: 0x8ab0ff, element: 'neutro', kind: 'melee', status: { id: 'atordoado', chance: 0.12 },
+    levelDesc: [
+      'Arremessa o escudo, que atravessa vários inimigos.',
+      '+10 dano, atravessa +1.',
+      '+1 escudo, +10 dano.',
+      '+10 dano, atravessa +1.',
+      '+1 escudo, +10 dano.',
+    ],
+  },
+  cruz: {
+    id: 'cruz', name: 'Cruz Sagrada', maxLevel: 5, color: 0xfff0a0, element: 'sagrado', kind: 'melee', status: { id: 'atordoado', chance: 0.15 },
+    levelDesc: [
+      'Uma cruz de luz sagrada se abre ao seu redor. Muito forte contra mortos-vivos e demônios.',
+      '+12 dano, cruz maior.',
+      '+12 dano, cruz maior.',
+      '+12 dano, recarga menor.',
+      'Cruz dupla (em X também)! +12 dano.',
+    ],
+  },
+  duplo: {
+    id: 'duplo', name: 'Disparo Duplo', maxLevel: 5, color: 0xe8c890, element: 'neutro', kind: 'ranged', sizeMod: { grande: 1.1 },
+    levelDesc: [
+      'Duas flechas fortes seguidas no inimigo mais próximo.',
+      '+9 dano.',
+      'Mira em +1 inimigo. +9 dano.',
+      '+9 dano, recarga menor.',
+      'Mira em +1 inimigo. +9 dano.',
+    ],
+  },
+  rajada: {
+    id: 'rajada', name: 'Chuva de Flechas', maxLevel: 5, color: 0xd8b070, element: 'neutro', kind: 'ranged',
+    levelDesc: [
+      'Uma chuva de flechas cai sobre um grupo de inimigos e os empurra.',
+      '+7 dano, área maior.',
+      'Duas chuvas por vez! +7 dano.',
+      '+7 dano, recarga menor.',
+      'Três chuvas por vez! +7 dano.',
+    ],
+  },
+  armadilha: {
+    id: 'armadilha', name: 'Armadilha Explosiva', maxLevel: 5, color: 0xff9a3a, element: 'fogo', kind: 'ranged', status: { id: 'queimando', chance: 0.3 },
+    levelDesc: [
+      'Deixa armadilhas no chão que explodem quando um inimigo pisa.',
+      '+1 armadilha ao mesmo tempo, +14 dano.',
+      '+1 armadilha, +14 dano, explosão maior.',
+      '+1 armadilha, +14 dano, recarga menor.',
+      '+1 armadilha, +14 dano, explosão maior.',
+    ],
+  },
+  falcao: {
+    id: 'falcao', name: 'Ataque do Falcão', maxLevel: 5, color: 0xc89a6a, element: 'neutro', kind: 'ranged',
+    levelDesc: [
+      'Seu falcão mergulha sobre vários inimigos da tela.',
+      '+1 mergulho, +8 dano.',
+      '+8 dano, recarga menor.',
+      '+1 mergulho, +8 dano.',
+      '+1 mergulho, +8 dano.',
+    ],
+  },
+  explosiva: {
+    id: 'explosiva', name: 'Flecha Explosiva', maxLevel: 5, color: 0xff7a3a, element: 'fogo', kind: 'ranged', status: { id: 'queimando', chance: 0.3 },
+    levelDesc: [
+      'Flecha com pólvora que explode em área ao acertar.',
+      '+10 dano, explosão maior.',
+      '+1 flecha, +10 dano.',
+      '+10 dano, recarga menor.',
+      '+1 flecha, +10 dano.',
     ],
   },
 

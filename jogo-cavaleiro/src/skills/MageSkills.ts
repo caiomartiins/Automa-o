@@ -42,7 +42,7 @@ export class IceBoltSkill extends Skill {
 export class SoulSkill extends Skill {
   readonly id = 'alma' as const;
   private timer = 500;
-  get damage() { return (12 + 4 * (this.level - 1)) * this.g.stats.might; }
+  get damage() { return (15 + 5 * (this.level - 1)) * this.g.stats.might; }
   get cooldown() { return (this.level >= 5 ? 1150 : 1400) / this.g.stats.haste; }
   get count() { return [2, 3, 3, 4, 5][this.level - 1]; }
   get pierce() { return this.level >= 3 ? 3 : 2; }
@@ -140,7 +140,7 @@ export class ThunderstormSkill extends Skill {
 export class FrostDiverSkill extends Skill {
   readonly id = 'congelar' as const;
   private timer = 800;
-  get damage() { return (26 + 8 * (this.level - 1)) * this.g.stats.might; }
+  get damage() { return (34 + 10 * (this.level - 1)) * this.g.stats.might; }
   get cooldown() { return (this.level >= 4 ? 1900 : 2300) / this.g.stats.haste; }
   get pierce() { return 2 + this.level; }
 
@@ -217,9 +217,9 @@ abstract class ZoneSkill extends Skill {
 /** Parede de Fogo: chamas à frente do jogador que queimam e empurram */
 export class FireWallSkill extends ZoneSkill {
   readonly id = 'parede' as const;
-  protected tick = 300;
+  protected tick = 400;
   protected knockback = 170;
-  protected zoneDamage() { return (8 + 3 * (this.level - 1)) * this.g.stats.might; }
+  protected zoneDamage() { return (6 + 2 * (this.level - 1)) * this.g.stats.might; }
   get cooldown() { return (this.level >= 4 ? 3800 : 4600) / this.g.stats.haste; }
   get segments() { return 3 + Math.min(this.level, 4); }
   get duration() { return 2800 + 300 * this.level; }

@@ -1,10 +1,10 @@
 import Phaser from 'phaser';
 import type { GameScene } from './GameScene';
 import type { StatusData } from './StatusScene';
-import { CLASSES, type ClassId } from '../data/classes';
+import { CLASSES, LINES, lineOf, type ClassId } from '../data/classes';
 import { SKILLS, type SkillId } from '../data/skills';
 import { ELEMENTS } from '../data/rpg';
-import { TREE, TREE_CLASSES, nodeColor, nodeMax, nodeName, treeNode, type TreeId, type TreeNode } from '../data/skilltree';
+import { MAX_ACTIVE, MAX_PASSIVE, TREE, TREE_PARENT, nodeColor, nodeMax, nodeName, treeNode, type TreeId, type TreeNode } from '../data/skilltree';
 import { darken, dim, isTouch, onResize, uiButton, uiPanel, uiScale, uiWindow, WIN, wtext } from '../ui';
 
 export interface SkillTreeData {
@@ -14,6 +14,8 @@ export interface SkillTreeData {
   sel?: TreeId;
   /** Pontos colocados e ainda não confirmados */
   pending?: Partial<Record<TreeId, number>>;
+  /** Habilidade esperando o segundo toque para ser esquecida */
+  forgetArm?: TreeId | null;
 }
 
 /**
@@ -29,8 +31,8 @@ export class SkillTreeScene extends Phaser.Scene {
 
   init(data: SkillTreeData) {
     const g = this.scene.get('Game') as GameScene;
-    const tab = data.tab ?? (TREE_CLASSES.includes(g.classId) ? g.classId : 'mago');
-    this.data_ = { reason: data.reason, tab, sel: data.sel ?? TREE.find((n) => n.cls === tab)!.id, pending: data.pending ?? {} };
+    const tab = data.tab ?? g.classId;
+    this.data_ = { reason: data.reason, tab, sel: data.sel ?? TREE.find((n) => n.cls === tab)!.id, pending: data.pending ?? {}, forgetArm: data.forgetArm ?? null };
   }
 
   private get g() {
@@ -49,7 +51,21 @@ export class SkillTreeScene extends Phaser.Scene {
   }
 
   private redraw(patch: Partial<SkillTreeData> = {}) {
-    this.scene.restart({ ...this.data_, ...patch });
+    // qualquer outra ação cancela o "esquecer" armado
+    this.scene.restart({ ...this.data_, forgetArm: null, ...patch });
+  }
+
+  /** Esquecer: 1º toque arma, 2º toque confirma (devolve os pontos gastos) */
+  forget(id: TreeId) {
+    if (this.pendingTotal() || this.g.forgetBlock(id)) return false;
+    if (this.data_.forgetArm !== id) {
+      this.redraw({ forgetArm: id, sel: id });
+      return false;
+    }
+    const refund = this.g.forget(id);
+    this.g.events.emit('toast', `${nodeName(treeNode(id))} esquecida. ${refund} ponto${refund === 1 ? '' : 's'} devolvido${refund === 1 ? '' : 's'}.`, '#ffd27a');
+    this.redraw({ sel: id });
+    return true;
   }
 
   /** +1 ponto (pendente) na habilidade */
@@ -116,11 +132,14 @@ export class SkillTreeScene extends Phaser.Scene {
     const c = win.c;
     let y = win.top + 8;
 
-    // ---- abas: Mago, Bruxo, Professor (as que não são suas aparecem como prévia)
+    // ---- abas: 1ª classe e as duas 2ª classes da linha (as que não são suas aparecem como prévia)
+    const first = TREE_PARENT[g.classId] ?? g.classId;
+    const tabs = LINES[lineOf(first)!].classes;
     const tabW = (w - pad * 2 - 12) / 3;
-    TREE_CLASSES.forEach((cls, i) => {
+    tabs.forEach((cls, i) => {
       const own = g.canUseTab(cls);
-      const label = own ? CLASSES[cls].name : `${CLASSES[cls].name} (prévia)`;
+      const name = CLASSES[cls].name.replace('Caçador de Sombras', 'Caçador S.').replace('Atirador de Elite', 'Atirador');
+      const label = own ? name : `${name} (prévia)`;
       c.add(uiButton(this, pad + tabW / 2 + i * (tabW + 6), y + tabH / 2, tabW, tabH, label, () => {
         if (this.data_.tab !== cls) this.redraw({ tab: cls, sel: TREE.find((n) => n.cls === cls)!.id });
       }, { size: (own ? 14 : 12) * k, primary: this.data_.tab === cls }).c);
@@ -132,9 +151,11 @@ export class SkillTreeScene extends Phaser.Scene {
     bar.fillStyle(WIN.border).fillRect(pad, y, w - pad * 2, headH);
     bar.fillStyle(0xd6e3f5).fillRect(pad + 1, y + 1, w - pad * 2 - 2, headH - 2);
     c.add(bar);
-    c.add(wtext(this, pad + 8, y + headH / 2, `Nv de classe ${g.jobLevel}  (${CLASSES[g.classId].name})`, 13 * k, '#1c2a46', true).setOrigin(0, 0.5));
+    // limites da build: 4 ativas e 4 passivas
+    const slots = g.slotCount(this.level);
+    c.add(wtext(this, pad + 8, y + headH / 2, `Ativas ${slots.active}/${MAX_ACTIVE}   Passivas ${slots.passive}/${MAX_PASSIVE}`, 13 * k, '#1c2a46', true).setOrigin(0, 0.5));
     const left = this.pointsLeft();
-    c.add(wtext(this, w - pad - 8, y + headH / 2, `Pontos de habilidade: ${left}${this.pendingTotal() ? `  (${this.pendingTotal()} a confirmar)` : ''}`, 13 * k, left > 0 ? WIN.accent : WIN.label, true).setOrigin(1, 0.5));
+    c.add(wtext(this, w - pad - 8, y + headH / 2, `Pontos: ${left}${this.pendingTotal() ? ` (${this.pendingTotal()} a confirmar)` : ''}   ganhos ${g.classPoints}/${g.classPointCap()}`, 13 * k, left > 0 ? WIN.accent : WIN.label, true).setOrigin(1, 0.5));
     y += headH + 6;
 
     // ---- grade de habilidades
@@ -209,12 +230,13 @@ export class SkillTreeScene extends Phaser.Scene {
 
     const bs = Math.min(34 * k, h * 0.4);
     const by = h - bs / 2 - 6;
-    if (!reqOk) {
-      const miss = n.req.filter((r) => this.level(r.id) < r.lv).map((r) => `${nodeName(treeNode(r.id))} ${r.lv}`).join(', ');
+    const limited = reqOk && block?.startsWith('Limite');
+    if (!reqOk || limited) {
+      const miss = limited ? (n.passive ? `4 passivas` : `4 ativas`) : n.req.filter((r) => this.level(r.id) < r.lv).map((r) => `${nodeName(treeNode(r.id))} ${r.lv}`).join(', ');
       const ry = ly + lvTxt.height + 2;
       // cabe embaixo do nível sem encostar nos botões? senão fica à esquerda dos botões
       const free = h - bs - 8 - ry > 14 * k;
-      const req = wtext(this, tx, free ? ry : by, `Requer: ${miss}`, 10 * k, WIN.bad).setOrigin(0, free ? 0 : 0.5)
+      const req = wtext(this, tx, free ? ry : by, limited ? `Limite: ${miss}` : `Requer: ${miss}`, 10 * k, limited ? WIN.gold : WIN.bad).setOrigin(0, free ? 0 : 0.5)
         .setWordWrapWidth(free ? w - tx - 6 : w - tx - bs * 2 - 18);
       // não cabe sem encostar nos botões: mostra só o aviso (a lista aparece nos detalhes)
       if (free ? ry + req.height > h - bs - 8 : req.height > bs) req.setText('Faltam requisitos');
@@ -238,7 +260,8 @@ export class SkillTreeScene extends Phaser.Scene {
       if (lv < max) lines.push(`Próximo (Nv ${lv + 1}): ${n.passive.per(lv + 1)}`);
     } else {
       const sk = SKILLS[n.id as SkillId];
-      desc = `${sk.levelDesc[0]}  [${ELEMENTS[sk.element].name}, magia: dano pela INT]`;
+      const kind = sk.kind === 'magic' ? 'magia: dano pela INT' : sk.kind === 'ranged' ? 'à distância: dano pela DES' : 'corpo a corpo: dano pela FOR';
+      desc = `${sk.levelDesc[0]}  [${ELEMENTS[sk.element].name}, ${kind}]`;
       if (lv > 0 && lv < max) lines.push(`Próximo (Nv ${lv + 1}): ${sk.levelDesc[lv]}`);
       if (lv === 0) lines.push('Aprender: Nv 1');
     }
@@ -248,7 +271,18 @@ export class SkillTreeScene extends Phaser.Scene {
     }
     const block = this.g.learnBlock(n.id, this.level, this.pointsLeft());
     if (block === `Só para ${CLASSES[n.cls].name}`) lines.push(`Prévia: disponível ao virar ${CLASSES[n.cls].name}.`);
+    else if (block?.startsWith('Limite')) lines.push(`${block}: a build já está completa nesse tipo de habilidade.`);
     c.add(wtext(this, x + 10, y + 8, `${nodeName(n)}  (Nv ${lv}/${max})`, 15 * k, WIN.accent, true));
+    // botão Esquecer (troca de build): pede um segundo toque para confirmar
+    if (this.g.nodeLevel(n.id) > 0 && this.g.canUseTab(n.cls)) {
+      const why = this.pendingTotal() ? 'Confirme antes' : this.g.forgetBlock(n.id);
+      const armed = this.data_.forgetArm === n.id;
+      const fw = Math.min((armed ? 250 : 120) * k, w - 16);
+      const label = why ? 'Esquecer' : armed ? `Toque de novo: esquecer (+${this.g.paidLv[n.id] ?? 0} pts)` : 'Esquecer';
+      // canto de baixo do painel, longe do título
+      c.add(uiButton(this, x + w - 8 - fw / 2, y + h - 8 - 13 * k, fw, 26 * k, label, () => this.forget(n.id), { size: 12 * k, enabled: !why, primary: armed }).c);
+      if (why && !this.pendingTotal()) lines.push(`Não dá para esquecer: ${why}.`);
+    }
     c.add(wtext(this, x + 10, y + 8 + 24 * k, [desc, ...lines].join('\n'), 12 * k, WIN.text)
       .setLineSpacing(3).setWordWrapWidth(w - 20));
   }
