@@ -1,10 +1,11 @@
 import Phaser from 'phaser';
 import { Enemy } from '../objects/Enemy';
 import { Pickup } from '../objects/Pickup';
-import { ZUMBI, BAFOME, MINOTAURO, BOSS_LEVEL_EVERY, BOSS_ROTATION, HARD_FROM, SHOP_LEVEL_EVERY, levelScale, ENEMIES, MAX_ENEMY_RADIUS, dmgScale, hpScale, speedScale, threatLevel, type EnemyDef } from '../data/enemies';
+import { ZUMBI, BAFOME, MINOTAURO, LICH, BOSS_LEVEL_EVERY, BOSS_ROTATION, HARD_FROM, SHOP_LEVEL_EVERY, levelScale, ENEMIES, MAX_ENEMY_RADIUS, dmgScale, hpScale, speedScale, threatLevel, type EnemyDef } from '../data/enemies';
 import { BafomeAI } from '../boss';
 import { ZombieAI } from '../miniboss';
 import { MinotaurAI } from '../minotaur';
+import { LichAI } from '../lich';
 import { CLASSES, LINES, lineOf, type ClassDef, type ClassId, type LineId } from '../data/classes';
 import { feetOffset, heroScale, needsShadow } from '../sprites';
 import { BASE_STATS, type Stats } from '../data/stats';
@@ -799,7 +800,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       }
     }
 
-    // chefes por nível (nível 4 Carniçal, 8 Bafome, 12 Carniçal, 16 Minotauro...)
+    // chefes por nível (5 Carniçal, 10 Bafome, 15 Carniçal, 20 Minotauro, 25 Carniçal, 30 Lorde Ossário...)
     if (this.pendingBossEvents > 0 && !this.choosing) {
       const bossTurn = this.bossEventsDone % 2 === 1;
       const bossAlive = !!this.boss && this.boss.active && !!this.boss.def.boss;
@@ -832,9 +833,9 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     this.events.emit('announce', round ? `Um Carniçal mais forte surgiu! (${round + 1}ª vez)` : 'Um Carniçal faminto surgiu!');
   }
 
-  private spawnBoss(id: 'bafome' | 'minotauro') {
+  private spawnBoss(id: 'bafome' | 'minotauro' | 'lich') {
     const round = this.nextRound(id);
-    const def = id === 'bafome' ? BAFOME : MINOTAURO;
+    const def = id === 'bafome' ? BAFOME : id === 'minotauro' ? MINOTAURO : LICH;
     const p = this.ringPosition();
     const e = this.spawnEnemy(def, p.x, p.y, true);
     if (!e) return;
@@ -842,10 +843,11 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     e.hp = e.maxHp = Math.ceil(e.maxHp * (1 + round * 1.5));
     const power = { dmg: 1 + round * 0.6, cd: Math.max(0.5, 1 - round * 0.3), enraged: round > 0 };
     this.boss = e;
-    this.bossAIs.push(id === 'bafome' ? new BafomeAI(this, e, power) : new MinotaurAI(this, e, power));
+    this.bossAIs.push(id === 'bafome' ? new BafomeAI(this, e, power) : id === 'minotauro' ? new MinotaurAI(this, e, power) : new LichAI(this, e, power));
     this.cameras.main.shake(500, 0.008);
-    this.cameras.main.flash(300, id === 'bafome' ? 80 : 120, id === 'bafome' ? 0 : 60, id === 'bafome' ? 90 : 20);
-    const name = id === 'bafome' ? 'O BAFOME DESPERTOU!' : 'O MINOTAURO BRUTAL CHEGOU!';
+    const flash = { bafome: [80, 0, 90], minotauro: [120, 60, 20], lich: [30, 140, 70] }[id];
+    this.cameras.main.flash(300, flash[0], flash[1], flash[2]);
+    const name = { bafome: 'O BAFOME DESPERTOU!', minotauro: 'O MINOTAURO BRUTAL CHEGOU!', lich: 'O LORDE OSSÁRIO ERGUEU-SE DAS SOMBRAS!' }[id];
     this.events.emit('announce', round ? `${name}\nVOLTOU MUITO MAIS FORTE! Desvie dos ataques!` : name);
   }
 
@@ -1140,7 +1142,8 @@ export class GameScene extends Phaser.Scene implements RpgHost {
         if (p) p.magnetized = true;
         this.fx.ring(x, y, 20, 9, 900, item.glow, 0.6);
         this.cameras.main.flash(400, (item.glow >> 16) & 255, (item.glow >> 8) & 255, item.glow & 255);
-        this.events.emit('announce', `✦ ARMA MÍTICA! ${item.name} caiu do ${monster === 'bafome' ? 'Bafome' : 'Minotauro'}! ✦`);
+        const from = [BAFOME, MINOTAURO, LICH, ZUMBI].find((d) => d.id === monster)?.name ?? 'chefe';
+        this.events.emit('announce', `✦ ARMA MÍTICA! ${item.name} caiu do ${from}! ✦`);
       }
     }
   }

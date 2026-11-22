@@ -184,6 +184,10 @@ export const CARDS: CardDef[] = [
     apply: (g) => { g.stats.armor += 2; add(g.mods.raceDmg, 'humanoide', 0.1); },
   },
   {
+    monster: 'lich', name: 'Carta Lorde Ossário', desc: '+15% de dano mágico, +5% de crítico e +3 INT',
+    apply: (g) => { g.mods.kindDmg.magic += 0.15; g.mods.crit += 0.05; g.addAttr('int', 3); },
+  },
+  {
     monster: 'bafome', name: 'Carta Bafome', desc: '+5 FOR e o Golpe de Espada acerta em 360°',
     apply: (g) => { g.addAttr('for', 5); g.mods.swordSpin = true; },
   },

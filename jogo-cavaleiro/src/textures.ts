@@ -41,6 +41,14 @@ export function createFxTextures(scene: Phaser.Scene) {
     g.fillCircle(16, 16, 16);
   });
 
+  // anel vazado de raio 64 (ondas de choque)
+  make(scene, 'fx-anel', 128, 128, (g) => {
+    g.lineStyle(7, 0xffffff, 1);
+    g.strokeCircle(64, 64, 60);
+    g.lineStyle(3, 0xffffff, 0.5);
+    g.strokeCircle(64, 64, 52);
+  });
+
   // sombra oval no chão (para sprites sem sombra desenhada)
   make(scene, 'fx-sombra', 44, 14, (g) => {
     for (let i = 6; i >= 1; i--) {

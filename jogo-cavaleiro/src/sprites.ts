@@ -19,6 +19,7 @@ import missUrl from './assets/fx-miss.webp?inline';
 import critUrl from './assets/fx-crit.webp?inline';
 import impactoUrl from './assets/fx-impacto.webp?inline';
 import fxSombraUrl from './assets/fx-cacador.webp?inline';
+import lichUrl from './assets/lich.webp?inline';
 import projSombraUrl from './assets/proj-sombra.webp?inline';
 
 /** Imagens soltas (efeitos e a fonte dos números de dano) */
@@ -87,6 +88,21 @@ const SPRITE_SCALE = 0.72;
 const FEET_Y = 122;
 
 const SHEETS: SheetDef[] = [
+  {
+    // Lorde Ossário: folha em alta resolução (quadros 300x236, pés na linha 226)
+    key: 'en-lich', url: lichUrl, cellW: 300, cellH: 236, feetY: 226, scale: SPRITE_SCALE,
+    frames: ['idle0', 'idle1', 'move0', 'move1', 'move2', 'cast', 'hurt', 'die', 'orb0', 'orb1', 'orb2', 'sweep', 'raise', 'slam0', 'slam1', 'punch'],
+    anims: [
+      { name: 'move', frames: ['move0', 'move1', 'move2', 'move1'], rate: 6, repeat: -1 },
+      { name: 'idle', frames: ['idle1', 'idle0'], rate: 4, repeat: 0 },
+      { name: 'orb', frames: ['orb0', 'orb1', 'orb2'], rate: 4, repeat: 0 },
+      { name: 'sweep', frames: ['punch', 'sweep'], rate: 6, repeat: 0 },
+      { name: 'slam', frames: ['raise', 'slam0', 'slam1'], rate: 4, repeat: 0 },
+      { name: 'raise', frames: ['raise'], rate: 1, repeat: 0 },
+      { name: 'cast', frames: ['cast'], rate: 1, repeat: 0 },
+      { name: 'die', frames: ['hurt', 'die'], rate: 2.5, repeat: 0 },
+    ],
+  },
   {
     key: 'en-minotauro', url: minotauroUrl, cellW: 160, cellH: 128, scale: SPRITE_SCALE,
     frames: [

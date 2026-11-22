@@ -66,14 +66,21 @@ export const MINOTAURO: EnemyDef = {
   element: 'terra', race: 'bruto', size: 'grande', lv: 30
 };
 
+/** Lorde Ossário: o chefe mais forte (3º do rodízio: nível 30) */
+export const LICH: EnemyDef = {
+  id: 'lich', name: 'Lorde Ossário', texture: 'en-lich', hp: 9000, speed: 74, damage: 46, xp: 360, radius: 38,
+  from: 0, weight: 0, knockback: 0, scale: 1.9, boss: true,
+  element: 'mortovivo', race: 'mortovivo', size: 'grande', lv: 40
+};
+
 /**
  * Calendário dos chefes: a cada 2 minutos, alternando mini-chefe e chefe.
  * 2:00 Carniçal, 4:00 Bafome, 6:00 Carniçal, 8:00 Minotauro, 10:00 Carniçal, 12:00 Bafome...
  * Cada volta deixa o mesmo chefe mais forte.
  */
 export const BOSS_EVERY = 120;
-/** Chefes por nível: a cada 4 níveis (4 Carniçal, 8 Bafome, 12 Carniçal, 16 Minotauro...) */
-export const BOSS_LEVEL_EVERY = 4;
+/** Chefes por nível: a cada 5 níveis (5 Carniçal, 10 Bafome, 15 Carniçal, 20 Minotauro, 25 Carniçal, 30 Lorde Ossário...) */
+export const BOSS_LEVEL_EVERY = 5;
 /** Loja no meio da partida a cada 10 níveis */
 export const SHOP_LEVEL_EVERY = 10;
 
@@ -85,7 +92,7 @@ export function levelScale(playerLevel: number) {
   const n = Math.max(0, playerLevel - 7);
   return { hp: 1 + n * 0.3, dmg: 1 + n * 0.12, speed: Math.min(0.4, n * 0.02) };
 }
-export const BOSS_ROTATION = ['bafome', 'minotauro'] as const;
+export const BOSS_ROTATION = ['bafome', 'minotauro', 'lich'] as const;
 
 
 /**
@@ -100,4 +107,4 @@ export const speedScale = (seconds: number) => 1 + Math.min(0.5, (seconds / 60) 
 export const threatLevel = (seconds: number) => 1 + Math.floor(seconds / 60);
 
 /** Maior raio de colisão entre todos os inimigos (usado nas buscas espaciais) */
-export const MAX_ENEMY_RADIUS = Math.max(...[...ENEMIES, BAFOME, ZUMBI, MINOTAURO].map((d) => d.radius));
+export const MAX_ENEMY_RADIUS = Math.max(...[...ENEMIES, BAFOME, ZUMBI, MINOTAURO, LICH].map((d) => d.radius));

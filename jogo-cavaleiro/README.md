@@ -89,6 +89,12 @@ Todas as habilidades vão até o nível 5. Ativas corpo a corpo usam FOR, à dis
 - **Loja de Equipamentos e Ferreiro** (entre partidas, com o zeny guardado no navegador): refino da arma de +1 a +10. A partir do +5 o refino pode falhar e a arma volta a +0.
 - **Janela de status:** aparece ao pausar e mostra atributos, cartas, habilidades, equipamento e mascote.
 
+## Calendário de chefes
+
+A cada 5 níveis, alternando mini-chefe e chefe: **5** Carniçal, **10** Bafome, **15** Carniçal, **20** Minotauro, **25** Carniçal, **30** Lorde Ossário, e o rodízio recomeça (cada volta do mesmo chefe vem muito mais forte).
+
+**Lorde Ossário** (`src/lich.ts`), o chefe mais forte: Esfera da Alma (esferas verdes que perseguem), Ceifa Sombria (golpe giratório de perto), Explosão Profana (ondas de choque que se espalham), Passo Fantasma + Raio Necrótico (some, reaparece perto e dispara um raio em linha). Com metade da vida: fúria, invoca fantasmas e esqueletos e faz cair uma Chuva de Caveiras. Solta a Coroa Ossária, o Manto das Almas, a carta dele e a arma mítica Foice das Almas (brilho verde).
+
 ## Inimigos e chefes
 Gosma, Morcego, Cogumelo Andante, Esqueleto, Fantasma, Orc e Cavaleiro Negro (elite) aparecem conforme o tempo passa. A cada minuto vem uma horda.
 

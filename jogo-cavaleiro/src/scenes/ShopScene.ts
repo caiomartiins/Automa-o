@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { MAX_REFINE, REFINE_DMG, refineChance, refineCost } from '../data/rpg';
 import { COLLECTION, EQUIPMENT, ITEM_SLOT_NAME, SETS, activeSets, describe, equipById, slotsFor, type ItemSlot, type Slot } from '../data/equipment';
-import { ENEMIES, BAFOME, MINOTAURO, ZUMBI } from '../data/enemies';
+import { ENEMIES, BAFOME, MINOTAURO, ZUMBI, LICH } from '../data/enemies';
 import { loadSave, writeSave } from '../save';
 import type { GameScene } from './GameScene';
 import { dim, isPortrait, isTouch, onResize, uiButton, uiPanel, uiScale, uiWindow, WIN, wtext } from '../ui';
@@ -10,7 +10,7 @@ type Cat = ItemSlot | 'colecao';
 const CATEGORIES: Cat[] = ['arma', 'cabeca', 'corpo', 'escudo', 'capa', 'calcado', 'acessorio', 'colecao'];
 const CAT_NAME = (c: Cat) => (c === 'colecao' ? 'Coleção' : ITEM_SLOT_NAME[c]);
 /** Nome do monstro que solta um item raro */
-const MONSTER_NAME = (id: string) => [...ENEMIES, BAFOME, MINOTAURO, ZUMBI].find((m) => m.id === id)?.name ?? id;
+const MONSTER_NAME = (id: string) => [...ENEMIES, BAFOME, MINOTAURO, ZUMBI, LICH].find((m) => m.id === id)?.name ?? id;
 
 /**
  * Loja de equipamentos (entre partidas): o zeny serve para comprar equipamento.
