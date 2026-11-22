@@ -10,7 +10,7 @@ import { feetOffset, heroScale, needsShadow } from '../sprites';
 import { BASE_STATS, type Stats } from '../data/stats';
 import { SKILLS, type SkillId } from '../data/skills';
 import type { Upgrade } from '../data/upgrades';
-import { EQUIPMENT, equipById, type EquipStats } from '../data/equipment';
+import { EQUIPMENT, RARE_DUPLICATE_ZENY, activeSets, collectionBonuses, equipById, type EquipDef, type EquipStats } from '../data/equipment';
 import type { Skill } from '../skills/Skill';
 import { createSkill } from '../skills';
 import { MAX_ACTIVE, MAX_PASSIVE, POINT_CAP_FIRST, POINT_CAP_SECOND, TREE, TREE_CLASSES, TREE_PARENT, nodeMax, treeNode, type PassiveId, type TreeId } from '../data/skilltree';
@@ -59,6 +59,15 @@ export interface RunResult {
   zeny: number;
   zenyTotal: number;
   cards: number;
+}
+
+/** Itens raros por monstro */
+const RARE_BY_MONSTER = new Map<string, EquipDef[]>();
+for (const item of EQUIPMENT) {
+  if (!item.drop) continue;
+  const list = RARE_BY_MONSTER.get(item.drop.monster) ?? [];
+  list.push(item);
+  RARE_BY_MONSTER.set(item.drop.monster, list);
 }
 
 /** Experiência para o próximo nível de classe */
@@ -154,6 +163,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
   /** Zeny desta partida já guardado na conta ao usar a loja no meio da partida */
   zenyBanked = 0;
   private appliedEquip: Record<string, string | undefined> = {};
+  private appliedStats: EquipStats[] = [];
   private appliedRefine = 0;
   private bossRound: Record<string, number> = {};
   private bossAIs: { update(dt: number): boolean }[] = [];
@@ -1051,6 +1061,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       }
       this.dropPickup('zeny', 25 + Math.floor(Math.random() * 30), x, y + 20);
       if (Math.random() < 0.35) this.dropPickup('carta', 0, x + 24, y, def.id);
+      this.rollRare(def.id, x, y);
       this.gainJob(15);
       this.events.emit('toast', 'Carniçal derrotado!', '#9aff8a');
       return;
@@ -1072,6 +1083,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       this.dropPickup('zeny', 60 + Math.floor(Math.random() * 60), x - 30, y + 10);
       if (cardOf(def.id)) this.dropPickup('carta', 0, x + 30, y + 10, def.id);
       if (def.id === 'bafome') this.dropPickup('pena', 1, x, y + 36);
+      this.rollRare(def.id, x, y);
       this.gainJob(50);
       this.events.emit('announce', `${def.name} foi derrotado!`);
       return;
@@ -1099,6 +1111,32 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     if (r() < DROPS.pena * luck * elite) this.dropPickup('pena', 1, x + off(), y + off());
     if (cardOf(def.id) && r() < DROPS.carta * luck * (def.elite ? 12 : 1)) this.dropPickup('carta', 0, x, y, def.id);
     if (PETS[def.id] && r() < DROPS.ovo * luck) this.dropPickup('ovo', 0, x + off(), y + off(), def.id);
+    this.rollRare(def.id, x, y, luck);
+  }
+
+  /** Itens raros que só caem deste monstro */
+  private rollRare(monster: string, x: number, y: number, luck = 1 + this.attr('sor') * ATTR_FX.sorDrop + this.mods.drop) {
+    const list = RARE_BY_MONSTER.get(monster);
+    if (!list) return;
+    for (const item of list) {
+      if (Math.random() < item.drop!.chance * luck) this.dropPickup('equip', 0, x + Phaser.Math.Between(-20, 20), y + Phaser.Math.Between(-10, 20), item.id);
+    }
+  }
+
+  /** Pegou um equipamento raro: entra na coleção (ou vira zeny, se repetido) */
+  private collectEquip(id: string) {
+    const item = equipById(id);
+    if (!item) return;
+    const save = loadSave();
+    if (save.owned.includes(id)) {
+      this.zenyRun += RARE_DUPLICATE_ZENY;
+      this.events.emit('toast', `${item.name} repetido: +${RARE_DUPLICATE_ZENY} zeny`, '#ffd27a');
+      return;
+    }
+    save.owned.push(id);
+    writeSave(save);
+    this.events.emit('announce', `Item raro: ${item.name}! Equipe na loja. (Coleção ${save.owned.length}/${EQUIPMENT.length})`);
+    this.cameras.main.flash(250, 255, 230, 150);
   }
 
   private dropPickup(kind: ItemKind, value: number, x: number, y: number, extra = '') {
@@ -1142,6 +1180,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       }
       case 'carta': this.collectCard(extra); break;
       case 'ovo': this.equipPet(extra, true); break;
+      case 'equip': this.collectEquip(extra); break;
     }
   }
 
@@ -1156,13 +1195,10 @@ export class GameScene extends Phaser.Scene implements RpgHost {
 
   // ---------------------------------------------------------------- equipamento e atributos
 
-  /** Soma ou remove (sign = -1) os efeitos de um conjunto de itens */
-  private equipEffects(equip: Record<string, string | undefined>, sign: 1 | -1) {
+  /** Soma ou remove (sign = -1) uma lista de efeitos (itens, conjuntos, coleção) */
+  private equipEffects(list: EquipStats[], sign: 1 | -1) {
     const t = { atk: 0, matk: 0, def: 0, hp: 0, speed: 0, crit: 0, flee: 0, aspd: 0, regen: 0, magnet: 0 };
-    for (const id of Object.values(equip)) {
-      const item = equipById(id);
-      if (!item) continue;
-      const st = item.stats;
+    for (const st of list) {
       for (const key of Object.keys(t) as (keyof typeof t)[]) t[key] += st[key] ?? 0;
       for (const [a, v] of Object.entries(st.attrs ?? {})) this.addAttr(a as Attr, sign * v!);
     }
@@ -1181,9 +1217,22 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     return t;
   }
 
-  /** Aplica os itens equipados e o refino da arma */
+  /** Efeitos do equipamento: itens equipados + conjuntos completos + bônus da coleção */
+  private equipStatsList(equip: Record<string, string | undefined>) {
+    const list: EquipStats[] = [];
+    for (const id of Object.values(equip)) {
+      const item = equipById(id);
+      if (item) list.push(item.stats);
+    }
+    for (const st of activeSets(equip)) list.push(st.bonus);
+    for (const m of collectionBonuses(loadSave().owned.length)) list.push(m.bonus);
+    return list;
+  }
+
+  /** Aplica os itens equipados, conjuntos, coleção e o refino da arma */
   private applyEquipment(equip: Record<string, string | undefined>, refine: number) {
-    this.equipTotals = this.equipEffects(equip, 1);
+    this.appliedStats = this.equipStatsList(equip);
+    this.equipTotals = this.equipEffects(this.appliedStats, 1);
     this.appliedEquip = { ...equip };
     // o refino só vale se houver uma arma equipada
     this.appliedRefine = equip.arma ? refine * REFINE_DMG : 0;
@@ -1193,7 +1242,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
   /** Depois de comprar na loja no meio da partida: troca os efeitos antigos pelos novos */
   reapplyEquipment() {
     const save = loadSave();
-    this.equipEffects(this.appliedEquip, -1);
+    this.equipEffects(this.appliedStats, -1);
     this.mods.dmgAll -= this.appliedRefine;
     this.applyEquipment(save.equip, save.refine);
     this.hp = Math.min(this.hp, this.stats.maxHp);

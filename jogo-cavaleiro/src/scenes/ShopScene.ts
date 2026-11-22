@@ -1,11 +1,16 @@
 import Phaser from 'phaser';
 import { MAX_REFINE, REFINE_DMG, refineChance, refineCost } from '../data/rpg';
-import { EQUIPMENT, ITEM_SLOT_NAME, describe, equipById, slotsFor, type ItemSlot, type Slot } from '../data/equipment';
+import { COLLECTION, EQUIPMENT, ITEM_SLOT_NAME, SETS, activeSets, describe, equipById, slotsFor, type ItemSlot, type Slot } from '../data/equipment';
+import { ENEMIES, BAFOME, MINOTAURO, ZUMBI } from '../data/enemies';
 import { loadSave, writeSave } from '../save';
 import type { GameScene } from './GameScene';
 import { dim, isPortrait, isTouch, onResize, uiButton, uiPanel, uiScale, uiWindow, WIN, wtext } from '../ui';
 
-const CATEGORIES: ItemSlot[] = ['arma', 'cabeca', 'corpo', 'escudo', 'capa', 'calcado', 'acessorio'];
+type Cat = ItemSlot | 'colecao';
+const CATEGORIES: Cat[] = ['arma', 'cabeca', 'corpo', 'escudo', 'capa', 'calcado', 'acessorio', 'colecao'];
+const CAT_NAME = (c: Cat) => (c === 'colecao' ? 'Coleção' : ITEM_SLOT_NAME[c]);
+/** Nome do monstro que solta um item raro */
+const MONSTER_NAME = (id: string) => [...ENEMIES, BAFOME, MINOTAURO, ZUMBI].find((m) => m.id === id)?.name ?? id;
 
 /**
  * Loja de equipamentos (entre partidas): o zeny serve para comprar equipamento.
@@ -14,7 +19,9 @@ const CATEGORIES: ItemSlot[] = ['arma', 'cabeca', 'corpo', 'escudo', 'capa', 'ca
 export class ShopScene extends Phaser.Scene {
   private message = '';
   private effect: '' | 'sucesso' | 'falha' = '';
-  private cat: ItemSlot = 'arma';
+  private cat: Cat = 'arma';
+  /** Página da lista de itens */
+  private page = 0;
   /** Aberta no meio da partida (a cada 10 níveis): volta ao jogo em vez do menu */
   private inRun = false;
 
@@ -51,13 +58,13 @@ export class ShopScene extends Phaser.Scene {
       CATEGORIES.forEach((cat, i) => {
         const bx = pad + (i % perRow) * (tw + 6) + tw / 2;
         const by = listY + Math.floor(i / perRow) * (tabH + 6) + tabH / 2;
-        c.add(uiButton(this, bx, by, tw, tabH, ITEM_SLOT_NAME[cat], () => this.pick(cat), { size: 12 * k, primary: cat === this.cat }).c);
+        c.add(uiButton(this, bx, by, tw, tabH, CAT_NAME(cat), () => this.pick(cat), { size: 12 * k, primary: cat === this.cat }).c);
       });
       listY += 2 * (tabH + 6) + 4;
     } else {
       const tw = 130 * k;
       CATEGORIES.forEach((cat, i) => {
-        c.add(uiButton(this, pad + tw / 2, listY + i * (tabH + 6) + tabH / 2, tw, tabH, ITEM_SLOT_NAME[cat], () => this.pick(cat), { size: 13 * k, primary: cat === this.cat }).c);
+        c.add(uiButton(this, pad + tw / 2, listY + i * (tabH + 6) + tabH / 2, tw, tabH, CAT_NAME(cat), () => this.pick(cat), { size: 13 * k, primary: cat === this.cat }).c);
       });
       listX = pad + tw + 10;
     }
@@ -68,8 +75,22 @@ export class ShopScene extends Phaser.Scene {
     const listW = w - listX - pad;
     const listH = h - (listY - 0) - refineH - bottomH - 22;
     c.add(uiPanel(this, listX, listY, listW, listH));
-    const items = EQUIPMENT.filter((e) => e.slot === this.cat);
-    const rowH = Math.min(58 * k, (listH - 8) / Math.max(items.length, 1));
+    if (this.cat === 'colecao') this.buildCollection(c, listX, listY, listW, listH, k);
+    const cat = this.cat;
+    const all = cat === 'colecao' ? [] : EQUIPMENT.filter((e) => e.slot === cat);
+    // páginas: linhas de no mínimo 50 (x escala) de altura
+    const pagerH = 30 * k;
+    const perPage = Math.max(1, Math.floor((listH - 8 - pagerH) / (50 * k)));
+    const pages = Math.max(1, Math.ceil(all.length / perPage));
+    this.page = Math.min(this.page, pages - 1);
+    const items = all.slice(this.page * perPage, (this.page + 1) * perPage);
+    const rowH = Math.min(58 * k, (listH - 8 - (pages > 1 ? pagerH : 0)) / Math.max(items.length, 1));
+    if (pages > 1) {
+      const py = listY + listH - pagerH / 2 - 4;
+      c.add(uiButton(this, listX + listW / 2 - 90 * k, py, 70 * k, pagerH - 4, '◀', () => { this.page--; this.scene.restart(); }, { size: 13 * k, enabled: this.page > 0 }).c);
+      c.add(wtext(this, listX + listW / 2, py, `${this.page + 1} / ${pages}`, 13 * k, WIN.label, true).setOrigin(0.5));
+      c.add(uiButton(this, listX + listW / 2 + 90 * k, py, 70 * k, pagerH - 4, '▶', () => { this.page++; this.scene.restart(); }, { size: 13 * k, enabled: this.page < pages - 1 }).c);
+    }
     const icon = 30 * k;
     const btnW = 120 * k;
     items.forEach((item, i) => {
@@ -79,7 +100,8 @@ export class ShopScene extends Phaser.Scene {
       c.add(this.add.rectangle(listX + 10 + icon / 2, cy, icon + 4, icon + 4, 0xdde6f3).setStrokeStyle(1, WIN.panelBorder));
       c.add(this.add.image(listX + 10 + icon / 2, cy, item.icon).setDisplaySize(icon, icon).setTint(item.tint));
       const tx = listX + 20 + icon;
-      c.add(wtext(this, tx, cy - 9 * k, item.name, 14 * k, WIN.text, true).setOrigin(0, 0.5));
+      const nameCol = item.drop ? '#7a2ab0' : item.legend ? WIN.gold : WIN.text;
+      c.add(wtext(this, tx, cy - 9 * k, item.drop ? `${item.name}  ★ raro` : item.legend ? `${item.name}  ★ lendário` : item.name, 14 * k, nameCol, true).setOrigin(0, 0.5));
       c.add(wtext(this, tx, cy + 10 * k, describe(item.stats), 11 * k, WIN.label).setOrigin(0, 0.5).setWordWrapWidth(listW - icon - btnW - 50));
 
       const owned = save.owned.includes(item.id);
@@ -89,7 +111,12 @@ export class ShopScene extends Phaser.Scene {
       let enabled = true;
       let primary = false;
       let action: () => void;
-      if (!owned) {
+      if (!owned && item.drop) {
+        // raro: não vende; mostra de onde cai
+        label = `Cai: ${MONSTER_NAME(item.drop.monster)}`;
+        enabled = false;
+        action = () => {};
+      } else if (!owned) {
         label = `Comprar ${item.price} z`;
         enabled = save.zeny >= item.price;
         action = () => {
@@ -179,8 +206,57 @@ export class ShopScene extends Phaser.Scene {
     g.events.emit('status-closed');
   }
 
-  private pick(cat: ItemSlot) {
+  /** Aba Coleção: itens que você já tem, metas com bônus e conjuntos */
+  private buildCollection(c: Phaser.GameObjects.Container, x: number, y: number, w: number, h: number, k: number) {
+    const save = loadSave();
+    const have = new Set(save.owned);
+    const n = EQUIPMENT.filter((e) => have.has(e.id)).length;
+    let cy = y + 10;
+    c.add(wtext(this, x + 12, cy, `Coleção: ${n} / ${EQUIPMENT.length} itens`, 15 * k, WIN.accent, true));
+    cy += 24 * k;
+    // grade de ícones: os que faltam aparecem apagados
+    const icon = 26 * k;
+    const gap = 6;
+    const perRow = Math.max(1, Math.floor((w - 24) / (icon + gap)));
+    EQUIPMENT.forEach((e, i) => {
+      const ix = x + 12 + (i % perRow) * (icon + gap) + icon / 2;
+      const iy = cy + Math.floor(i / perRow) * (icon + gap) + icon / 2;
+      const got = have.has(e.id);
+      c.add(this.add.rectangle(ix, iy, icon + 2, icon + 2, got ? (e.drop ? 0xeedcff : e.legend ? 0xfff0c0 : 0xdde6f3) : 0xeef1f5).setStrokeStyle(1, WIN.panelBorder));
+      const img = this.add.image(ix, iy, e.icon).setDisplaySize(icon - 2, icon - 2);
+      if (got) img.setTint(e.tint);
+      else img.setTint(0xb0b8c4).setAlpha(0.35);
+      c.add(img);
+    });
+    cy += Math.ceil(EQUIPMENT.length / perRow) * (icon + gap) + 8;
+    // metas da coleção
+    c.add(wtext(this, x + 12, cy, 'Metas (bônus permanentes, mesmo sem equipar):', 13 * k, WIN.text, true));
+    cy += 20 * k;
+    const lines = COLLECTION.map((m) => `${n >= m.count ? '✓' : '○'} ${m.count} itens: ${m.desc}`).join('\n');
+    const t1 = wtext(this, x + 16, cy, lines, 12 * k, WIN.text).setLineSpacing(3).setWordWrapWidth(w - 30);
+    c.add(t1);
+    cy += t1.height + 10;
+    // conjuntos
+    const on = new Set(activeSets(save.equip).map((st) => st.id));
+    c.add(wtext(this, x + 12, cy, 'Conjuntos (equipe todas as peças):', 13 * k, WIN.text, true));
+    cy += 20 * k;
+    const setLines = SETS.map((st) => {
+      const got = st.items.filter((id) => have.has(id)).length;
+      const names = st.items.map((id) => equipById(id)!.name).join(' + ');
+      return `${on.has(st.id) ? '✓ ATIVO' : `${got}/${st.items.length}`}  ${st.name}: ${names} → ${describe(st.bonus)}`;
+    }).join('\n');
+    const t2 = wtext(this, x + 16, cy, setLines, 11 * k, WIN.label).setLineSpacing(3).setWordWrapWidth(w - 30);
+    c.add(t2);
+    // se não couber, reduz a fonte
+    if (cy + t2.height > y + h - 6) {
+      const f = Math.max(0.6, (y + h - 6 - cy) / t2.height);
+      t2.setFontSize(11 * k * f);
+    }
+  }
+
+  private pick(cat: Cat) {
     this.cat = cat;
+    this.page = 0;
     this.scene.restart();
   }
 

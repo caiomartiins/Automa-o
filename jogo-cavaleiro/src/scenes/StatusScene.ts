@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import type { GameScene } from './GameScene';
 import { CLASSES } from '../data/classes';
 import { ATTRS, ATTR_IDS, CARDS } from '../data/rpg';
-import { SLOTS_LEFT, SLOTS_RIGHT, SLOT_NAME, describe, equipById, type Slot } from '../data/equipment';
+import { EQUIPMENT, SLOTS_LEFT, SLOTS_RIGHT, SLOT_NAME, activeSets, describe, equipById, type Slot } from '../data/equipment';
 import { loadSave } from '../save';
 import { heroScale } from '../sprites';
 import { dim, headline, isTouch, onResize, uiButton, uiPanel, uiScale, uiWindow, WIN, wtext } from '../ui';
@@ -175,8 +175,17 @@ export class StatusScene extends Phaser.Scene {
         return `${cd.name}${n > 1 ? ` x${n}` : ''}: ${cd.desc}`;
       }).join('\n')
       : 'nenhuma ainda (raras nos monstros; os chefes sempre soltam a deles)';
-    c.add(wtext(this, x + 12, cy + 22 * k, lines, 11 * k, count.size ? WIN.text : '#a9bad6').setLineSpacing(3)
+    const cardTxt = wtext(this, x + 12, cy + 22 * k, lines, 11 * k, count.size ? WIN.text : '#a9bad6').setLineSpacing(3)
+      .setWordWrapWidth(w - 24);
+    c.add(cardTxt);
+    // conjuntos ativos e coleção
+    const save = loadSave();
+    const sets = activeSets(save.equip);
+    const owned = EQUIPMENT.filter((e) => save.owned.includes(e.id)).length;
+    const sy = Math.min(y + h - 34 * k, cardTxt.y + cardTxt.height + 8);
+    c.add(wtext(this, x + 12, sy, `Conjuntos: ${sets.length ? sets.map((st) => `${st.name} (${describe(st.bonus)})`).join('; ') : 'nenhum completo'}`, 11 * k, sets.length ? WIN.good : WIN.label, true)
       .setWordWrapWidth(w - 24));
+    c.add(wtext(this, x + 12, sy + 17 * k, `Coleção: ${owned}/${EQUIPMENT.length} itens (veja na Loja)`, 11 * k, WIN.label, true));
   }
 
   /** Seção "Status": atributos (valor, custo, botões +1 e +5) e os valores calculados */

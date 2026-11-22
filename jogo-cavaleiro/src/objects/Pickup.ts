@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 
 import { ITEMS, type ItemKind } from '../data/rpg';
+import { equipById } from '../data/equipment';
 
 export type PickupKind = ItemKind;
 
@@ -21,8 +22,12 @@ export class Pickup extends Phaser.GameObjects.Image {
     this.value = value;
     this.extra = extra;
     this.magnetized = false;
-    const tex = kind === 'comida' ? 'comida' : kind === 'xp' ? (value >= 10 ? 'gem3' : value >= 3 ? 'gem2' : 'gem1') : ITEMS[kind]!.texture;
-    this.setTexture(tex).setScale(0.5).setPosition(x, y).setActive(true).setVisible(true).setDepth(-100000);
+    // equipamento raro: o próprio ícone do item, maior e colorido
+    const eq = kind === 'equip' ? equipById(extra) : undefined;
+    const tex = eq ? eq.icon : kind === 'comida' ? 'comida' : kind === 'xp' ? (value >= 10 ? 'gem3' : value >= 3 ? 'gem2' : 'gem1') : ITEMS[kind]!.texture;
+    this.setTexture(tex).setScale(eq ? 0.75 : 0.5).setPosition(x, y).setActive(true).setVisible(true).setDepth(-100000);
+    if (eq) this.setTint(eq.tint);
+    else this.clearTint();
   }
 
   release() {

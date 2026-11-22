@@ -50,6 +50,10 @@ export interface EquipDef {
   icon: string;
   tint: number;
   stats: EquipStats;
+  /** Item raro: não é vendido, só cai do monstro indicado */
+  drop?: { monster: string; chance: number };
+  /** Item lendário (o mais caro da loja) */
+  legend?: boolean;
 }
 
 export const EQUIPMENT: EquipDef[] = [
@@ -90,7 +94,70 @@ export const EQUIPMENT: EquipDef[] = [
   { id: 'luva-precisa', name: 'Luva Precisa', slot: 'acessorio', price: 250, icon: 'eq-anel', tint: 0x6ad0ff, stats: { attrs: { des: 3 } } },
   { id: 'trevo', name: 'Trevo da Sorte', slot: 'acessorio', price: 250, icon: 'eq-colar', tint: 0x7aff8a, stats: { attrs: { sor: 3 } } },
   { id: 'ima', name: 'Ímã de Bolso', slot: 'acessorio', price: 180, icon: 'eq-colar', tint: 0xb8c4d4, stats: { magnet: 0.4 } },
+
+  // ---- lendários da loja (meta de zeny do fim do jogo)
+  { id: 'lamina-dragao', name: 'Lâmina do Dragão', slot: 'arma', price: 3200, legend: true, icon: 'eq-espada', tint: 0xff6a3a, stats: { atk: 0.45, attrs: { for: 3 } } },
+  { id: 'cajado-arcano', name: 'Cajado Arcanista', slot: 'arma', price: 3200, legend: true, icon: 'eq-cajado', tint: 0x7ad8ff, stats: { matk: 0.5, attrs: { int: 3 } } },
+  { id: 'arco-elfico', name: 'Arco Élfico', slot: 'arma', price: 3200, legend: true, icon: 'eq-arco', tint: 0x9aff8a, stats: { atk: 0.4, crit: 0.06, attrs: { des: 3 } } },
+  { id: 'coroa', name: 'Coroa Real', slot: 'cabeca', price: 2800, legend: true, icon: 'eq-tiara', tint: 0xffd04a, stats: { def: 3, attrs: { for: 2, agi: 2, vit: 2, int: 2, des: 2, sor: 2 } } },
+  { id: 'placas', name: 'Armadura de Placas', slot: 'corpo', price: 2400, legend: true, icon: 'eq-armadura', tint: 0xe8eef8, stats: { def: 9, hp: 50, speed: -8 } },
+  { id: 'escudo-sagrado', name: 'Escudo Sagrado', slot: 'escudo', price: 2600, legend: true, icon: 'eq-escudo', tint: 0xfff0a0, stats: { def: 8, hp: 30, regen: 0.5 } },
+  { id: 'capa-valquiria', name: 'Capa da Valquíria', slot: 'capa', price: 2200, legend: true, icon: 'eq-capa', tint: 0xe8f0ff, stats: { def: 3, hp: 25, flee: 0.04 } },
+  { id: 'botas-vento', name: 'Botas do Vento', slot: 'calcado', price: 2400, legend: true, icon: 'eq-bota', tint: 0x9ae8ff, stats: { speed: 40, flee: 0.04, aspd: 0.05 } },
+  { id: 'anel-rei', name: 'Anel do Rei', slot: 'acessorio', price: 3000, legend: true, icon: 'eq-anel', tint: 0xffd04a, stats: { attrs: { for: 3, int: 3, des: 3 } } },
+
+  // ---- raros: só caem dos monstros (chance multiplicada pela Sorte)
+  { id: 'foice-bafome', name: 'Foice do Bafome', slot: 'arma', price: 0, drop: { monster: 'bafome', chance: 0.35 }, icon: 'eq-espada', tint: 0x9a3a4a, stats: { atk: 0.38, crit: 0.05, attrs: { for: 2 } } },
+  { id: 'manto-infernal', name: 'Manto Infernal', slot: 'capa', price: 0, drop: { monster: 'bafome', chance: 0.35 }, icon: 'eq-capa', tint: 0x5a1a2a, stats: { def: 3, atk: 0.1, matk: 0.1 } },
+  { id: 'machado-minotauro', name: 'Machado do Minotauro', slot: 'arma', price: 0, drop: { monster: 'minotauro', chance: 0.35 }, icon: 'eq-espada', tint: 0xa87a4a, stats: { atk: 0.42, hp: 20, aspd: -0.06 } },
+  { id: 'botas-brutas', name: 'Botas Brutas', slot: 'calcado', price: 0, drop: { monster: 'minotauro', chance: 0.35 }, icon: 'eq-bota', tint: 0x7a4a2a, stats: { speed: 20, def: 2, hp: 20 } },
+  { id: 'mortalha', name: 'Mortalha do Carniçal', slot: 'corpo', price: 0, drop: { monster: 'zumbi', chance: 0.25 }, icon: 'eq-manto', tint: 0x6a7a5a, stats: { def: 4, hp: 30, regen: 0.5 } },
+  { id: 'cajado-osso', name: 'Cajado de Ossos', slot: 'arma', price: 0, drop: { monster: 'zumbi', chance: 0.25 }, icon: 'eq-cajado', tint: 0xe8e0c8, stats: { matk: 0.36, crit: 0.03 } },
+  { id: 'elmo-negro', name: 'Elmo Negro', slot: 'cabeca', price: 0, drop: { monster: 'cavaleiro-negro', chance: 0.05 }, icon: 'eq-elmo', tint: 0x3a3a4a, stats: { def: 4, hp: 15, atk: 0.06 } },
+  { id: 'colar-presas', name: 'Colar de Presas', slot: 'acessorio', price: 0, drop: { monster: 'orc', chance: 0.0015 }, icon: 'eq-colar', tint: 0xe8d8b0, stats: { attrs: { for: 2, vit: 2 } } },
+  { id: 'brinco-morcego', name: 'Brinco de Morcego', slot: 'acessorio', price: 0, drop: { monster: 'morcego', chance: 0.001 }, icon: 'eq-anel', tint: 0x5a4a6a, stats: { flee: 0.03, attrs: { agi: 2 } } },
+  { id: 'veu-fantasma', name: 'Véu Fantasma', slot: 'capa', price: 0, drop: { monster: 'fantasma', chance: 0.0015 }, icon: 'eq-capa', tint: 0xc8d0ff, stats: { flee: 0.06, matk: 0.05 } },
+  { id: 'escudo-ossos', name: 'Escudo de Ossos', slot: 'escudo', price: 0, drop: { monster: 'esqueleto', chance: 0.0015 }, icon: 'eq-escudo', tint: 0xe8e0c8, stats: { def: 4, hp: 10 } },
+  { id: 'chapeu-cogumelo', name: 'Chapéu de Cogumelo', slot: 'cabeca', price: 0, drop: { monster: 'cogumelo', chance: 0.0015 }, icon: 'eq-chapeu', tint: 0xd04a3a, stats: { hp: 25, regen: 0.3 } },
+  { id: 'gema-gosmenta', name: 'Gema Gosmenta', slot: 'acessorio', price: 0, drop: { monster: 'gosma', chance: 0.001 }, icon: 'eq-colar', tint: 0x5ab0ff, stats: { magnet: 0.3, attrs: { sor: 2 } } },
 ];
+
+/** Zeny recebido quando cai um raro que você já tem */
+export const RARE_DUPLICATE_ZENY = 250;
+
+/**
+ * Conjuntos: equipar todas as peças dá um bônus extra.
+ */
+export interface SetDef { id: string; name: string; items: string[]; bonus: EquipStats }
+export const SETS: SetDef[] = [
+  { id: 'andarilho', name: 'Andarilho', items: ['gorro', 'capa-viagem', 'sandalias'], bonus: { speed: 15, magnet: 0.2 } },
+  { id: 'cacador', name: 'Caçador', items: ['couro-caca', 'aljava', 'arco'], bonus: { atk: 0.1, flee: 0.04 } },
+  { id: 'sabio', name: 'Sábio', items: ['tiara', 'manto-sabio', 'grimorio'], bonus: { matk: 0.15, regen: 0.5 } },
+  { id: 'ferro', name: 'Guardião de Ferro', items: ['elmo', 'malha', 'escudo-torre'], bonus: { def: 4, hp: 40 } },
+  { id: 'demonio', name: 'Pacto Demoníaco', items: ['chifres', 'foice-bafome', 'manto-infernal'], bonus: { atk: 0.15, matk: 0.15, crit: 0.05 } },
+  { id: 'real', name: 'Realeza', items: ['coroa', 'anel-rei', 'capa-valquiria'], bonus: { attrs: { for: 3, agi: 3, vit: 3, int: 3, des: 3, sor: 3 } } },
+];
+
+/** Conjuntos completos com o que está equipado */
+export function activeSets(equip: Partial<Record<string, string>>) {
+  const on = new Set(Object.values(equip));
+  return SETS.filter((st) => st.items.every((id) => on.has(id)));
+}
+
+/**
+ * Coleção: quanto mais itens diferentes você tiver (comprados ou de drop),
+ * mais bônus permanentes (valem em todas as partidas, mesmo sem equipar).
+ */
+export const COLLECTION: { count: number; desc: string; bonus: EquipStats }[] = [
+  { count: 10, desc: '+20 de Vida', bonus: { hp: 20 } },
+  { count: 20, desc: '+5% de dano (físico e mágico)', bonus: { atk: 0.05, matk: 0.05 } },
+  { count: 30, desc: '+1 em todos os atributos', bonus: { attrs: { for: 1, agi: 1, vit: 1, int: 1, des: 1, sor: 1 } } },
+  { count: 40, desc: '+10% de velocidade de ataque', bonus: { aspd: 0.1 } },
+  { count: EQUIPMENT.length, desc: 'Coleção completa: +3 em todos os atributos', bonus: { attrs: { for: 3, agi: 3, vit: 3, int: 3, des: 3, sor: 3 } } },
+];
+
+/** Bônus da coleção alcançados com esta quantidade de itens */
+export const collectionBonuses = (owned: number) => COLLECTION.filter((m) => owned >= m.count);
 
 export const equipById = (id: string | null | undefined) => (id ? EQUIPMENT.find((e) => e.id === id) : undefined);
 

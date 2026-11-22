@@ -197,7 +197,7 @@ export const cardOf = (monster: string) => CARDS.find((c) => c.monster === monst
 
 // ------------------------------------------------------------------ itens
 
-export type ItemKind = 'xp' | 'comida' | 'pocao1' | 'pocao2' | 'pocao3' | 'asa' | 'pena' | 'zeny' | 'carta' | 'ovo';
+export type ItemKind = 'xp' | 'comida' | 'pocao1' | 'pocao2' | 'pocao3' | 'asa' | 'pena' | 'zeny' | 'carta' | 'ovo' | 'equip';
 
 export const ITEMS: Partial<Record<ItemKind, { name: string; texture: string }>> = {
   pocao1: { name: 'Poção Vermelha', texture: 'item-pocao1' },
