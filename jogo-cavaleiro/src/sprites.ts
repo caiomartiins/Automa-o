@@ -12,6 +12,7 @@ import arqueiroUrl from './assets/arqueiro.webp?inline';
 import atiradorUrl from './assets/atirador.webp?inline';
 import cacadorSombrasUrl from './assets/cacador-sombras.webp?inline';
 import bafomeUrl from './assets/bafome.webp?inline';
+import zumbiUrl from './assets/zumbi.webp?inline';
 
 /**
  * Personagens com arte em PNG (spritesheet de quadros 128x128, pés na linha 122,
@@ -52,6 +53,19 @@ const SPRITE_SCALE = 0.72;
 const FEET_Y = 122;
 
 const SHEETS: SheetDef[] = [
+  {
+    key: 'en-zumbi', url: zumbiUrl, cellW: 160, cellH: 128, scale: SPRITE_SCALE,
+    frames: [
+      'idle0', 'idle1', 'idle2', 'idle3', 'walk0', 'walk1', 'walk2', 'walk3', 'walk4', 'walk5', 'walk6', 'walk7',
+      'atk0', 'atk1', 'atk2', 'atk3', 'atk4', 'atk5', 'atk6', 'hurt0', 'hurt1', 'hurt2',
+      'die0', 'die1', 'die2', 'die3', 'die4', 'die5', 'die6',
+    ],
+    anims: [
+      { name: 'move', frames: ['walk0', 'walk1', 'walk2', 'walk3', 'walk4', 'walk5', 'walk6', 'walk7'], rate: 8, repeat: -1 },
+      { name: 'attack', frames: ['atk0', 'atk1', 'atk2', 'atk3', 'atk4', 'atk5', 'atk6'], rate: 12, repeat: 0 },
+      { name: 'die', frames: ['die0', 'die1', 'die2', 'die3', 'die4', 'die5', 'die6'], rate: 8, repeat: 0 },
+    ],
+  },
   {
     key: 'en-bafome', url: bafomeUrl, cellW: 160, cellH: 128, scale: SPRITE_SCALE,
     frames: ['idle0', 'idle1', 'idle2', 'walk0', 'walk1', 'walk2', 'atk0', 'atk1', 'atk2', 'cast0', 'cast1', 'cast2', 'hurt0', 'hurt1', 'die0', 'die1', 'die2'],

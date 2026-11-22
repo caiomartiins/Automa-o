@@ -23,6 +23,8 @@ export interface EnemyDef {
   tint?: number;
   elite?: boolean;
   boss?: boolean;
+  /** Mini-chefe: barra de vida e prêmio menor que um chefe */
+  miniboss?: boolean;
   element: Element;
   race: Race;
   size: Size;
@@ -43,10 +45,19 @@ export const ENEMIES: EnemyDef[] = [
 
 /** Bafome: primeiro chefe de verdade, aparece quando o jogador chega ao nível 10 */
 export const BAFOME: EnemyDef = {
-  id: 'bafome', name: 'Bafome', texture: 'en-bafome', hp: 4200, speed: 72, damage: 34, xp: 220, radius: 34,
+  id: 'bafome', name: 'Bafome', texture: 'en-bafome', hp: 3200, speed: 72, damage: 34, xp: 220, radius: 34,
   from: 0, weight: 0, knockback: 0, scale: 2.9, boss: true, element: 'sombrio', race: 'demonio', size: 'grande'
 };
 export const BAFOME_LEVEL = 10;
+
+/** Carniçal: mini-chefe zumbi. Aparece aos 2 minutos e depois a cada 3min30s */
+export const ZUMBI: EnemyDef = {
+  id: 'zumbi', name: 'Carniçal', texture: 'en-zumbi', hp: 900, speed: 58, damage: 22, xp: 45, radius: 24,
+  from: 0, weight: 0, knockback: 0.1, scale: 2.1, miniboss: true,
+  element: 'mortovivo', race: 'mortovivo', size: 'grande',
+};
+export const ZUMBI_FIRST = 120;
+export const ZUMBI_INTERVAL = 210;
 
 /** Chefes: um a cada 5 minutos, alternando (com mais vida a cada volta) */
 export const BOSSES: EnemyDef[] = [
@@ -73,4 +84,4 @@ export const speedScale = (seconds: number) => 1 + Math.min(0.5, (seconds / 60) 
 export const threatLevel = (seconds: number) => 1 + Math.floor(seconds / 60);
 
 /** Maior raio de colisão entre todos os inimigos (usado nas buscas espaciais) */
-export const MAX_ENEMY_RADIUS = Math.max(...[...ENEMIES, ...BOSSES, BAFOME].map((d) => d.radius));
+export const MAX_ENEMY_RADIUS = Math.max(...[...ENEMIES, ...BOSSES, BAFOME, ZUMBI].map((d) => d.radius));

@@ -150,6 +150,10 @@ export const CARDS: CardDef[] = [
   { monster: 'cogumelo', name: 'Carta Cogumelo', desc: '+3 VIT', apply: (g) => g.addAttr('vit', 3) },
   { monster: 'esqueleto', name: 'Carta Esqueleto', desc: '+20% de dano contra Morto-vivo', apply: (g) => add(g.mods.raceDmg, 'mortovivo', 0.2) },
   { monster: 'fantasma', name: 'Carta Fantasma', desc: '5% de chance de anular um golpe recebido', apply: (g) => (g.mods.ignoreHit += 0.05) },
+  {
+    monster: 'zumbi', name: 'Carta Carniçal', desc: '+40 de vida máxima e +2 VIT',
+    apply: (g) => { g.stats.maxHp += 40; g.hp += 40; g.addAttr('vit', 2); },
+  },
   { monster: 'orc', name: 'Carta Orc', desc: '+15% de dano corpo a corpo', apply: (g) => (g.mods.kindDmg.melee += 0.15) },
   {
     monster: 'cavaleiro-negro', name: 'Carta Cavaleiro Negro', desc: '+2 de armadura e +10% de dano contra Humanoides',

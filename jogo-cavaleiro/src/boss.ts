@@ -15,8 +15,8 @@ interface Orb {
 
 /** Tempos de recarga (ms) e quantidades por fase */
 const PHASES = [
-  { slash: 2100, roar: 3600, geyser: 5200, dash: 7000, orbs: 5, spots: 6, slashDmg: 42, orbDmg: 26, geyserDmg: 34, dashDmg: 38, speed: 1 },
-  { slash: 1500, roar: 2500, geyser: 3800, dash: 4600, orbs: 8, spots: 9, slashDmg: 52, orbDmg: 32, geyserDmg: 42, dashDmg: 48, speed: 1.35 },
+  { slash: 2400, roar: 4000, geyser: 5800, dash: 7800, orbs: 5, spots: 5, slashDmg: 36, orbDmg: 22, geyserDmg: 29, dashDmg: 32, speed: 1 },
+  { slash: 1800, roar: 2900, geyser: 4300, dash: 5200, orbs: 7, spots: 8, slashDmg: 44, orbDmg: 27, geyserDmg: 36, dashDmg: 40, speed: 1.25 },
 ];
 
 /**
@@ -129,11 +129,11 @@ export class BafomeAI {
   /** Invoca servos em volta dele */
   private summon() {
     const { g, e } = this;
-    this.nextSummon = g.elapsed + 14000;
+    this.nextSummon = g.elapsed + 18000;
     const skeleton = ENEMIES.find((d) => d.id === 'esqueleto')!;
     const knight = ENEMIES.find((d) => d.id === 'cavaleiro-negro')!;
-    for (let k = 0; k < 6; k++) {
-      const a = (k / 6) * Math.PI * 2;
+    for (let k = 0; k < 5; k++) {
+      const a = (k / 5) * Math.PI * 2;
       g.spawnMinion(k === 0 ? knight : skeleton, e.x + Math.cos(a) * 110, e.y + Math.sin(a) * 110);
     }
     g.fx.ring(e.x, e.y, 30, 5, 500, 0x6a1a7a, 0.5);

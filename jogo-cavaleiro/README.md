@@ -71,6 +71,12 @@ Gosma, Morcego, Cogumelo Andante, Esqueleto, Fantasma, Orc e Cavaleiro Negro (el
 - **Investida das Sombras:** uma faixa no chão avisa, e ele atravessa a tela em alta velocidade.
 - **Fúria (com metade da vida):** fica vermelho e mais rápido, ataca com mais frequência, as esferas passam a perseguir o jogador e ele invoca servos (5 esqueletos e um Cavaleiro Negro) a cada 14 segundos.
 
+**Carniçal** (mini-chefe zumbi, sprite próprio, IA em `src/miniboss.ts`) aparece aos 2 minutos e depois a cada 3min30s, mais forte a cada vez:
+- **Garras Pútridas:** de perto, ele para, ataca com as garras e envenena.
+- **Investida Faminta:** de média distância, dispara na direção do jogador.
+
+Ao ser derrotado, solta gemas, zeny e tem 35% de chance de soltar a Carta Carniçal.
+
 Além dele, a cada 5 minutos aparece um chefe de tempo (Rei Gosma, depois Lorde Esqueleto...).
 
 ## Estrutura

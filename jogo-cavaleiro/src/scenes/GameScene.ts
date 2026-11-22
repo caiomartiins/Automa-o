@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
 import { Enemy } from '../objects/Enemy';
 import { Pickup } from '../objects/Pickup';
-import { BAFOME, BAFOME_LEVEL, BOSSES, BOSS_INTERVAL, ENEMIES, MAX_ENEMY_RADIUS, dmgScale, hpScale, speedScale, threatLevel, type EnemyDef } from '../data/enemies';
+import { ZUMBI, ZUMBI_FIRST, ZUMBI_INTERVAL, BAFOME, BAFOME_LEVEL, BOSSES, BOSS_INTERVAL, ENEMIES, MAX_ENEMY_RADIUS, dmgScale, hpScale, speedScale, threatLevel, type EnemyDef } from '../data/enemies';
 import { BafomeAI } from '../boss';
+import { ZombieAI } from '../miniboss';
 import { CLASSES, LINES, lineOf, type ClassDef, type ClassId, type LineId } from '../data/classes';
 import { feetOffset, heroScale, needsShadow } from '../sprites';
 import { BASE_STATS, type Stats } from '../data/stats';
@@ -120,6 +121,9 @@ export class GameScene extends Phaser.Scene implements RpgHost {
   private bossCount = 0;
   private bafomeSpawned = false;
   private bossAI: BafomeAI | null = null;
+  private miniAIs: ZombieAI[] = [];
+  private nextMiniAt = ZUMBI_FIRST;
+  private miniCount = 0;
   /** Chefe vivo no momento (a barra de vida aparece no HUD) */
   boss: Enemy | null = null;
   /** Linhagem escolhida no nível 5 (null enquanto ainda é Aprendiz) */
@@ -184,6 +188,9 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     this.boss = null;
     this.bafomeSpawned = false;
     this.bossAI = null;
+    this.miniAIs = [];
+    this.nextMiniAt = ZUMBI_FIRST;
+    this.miniCount = 0;
     this.invulnUntil = 0;
     this.hurtUntil = 0;
     this.frame = 0;
@@ -274,6 +281,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
 
     this.collectEnemies();
     this.updateBafome(dt);
+    this.miniAIs = this.miniAIs.filter((ai) => ai.update());
     this.updatePlayer(dt);
     this.updatePet(dt);
     this.skills.forEach((s) => s.update(dt));
@@ -653,6 +661,21 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       }
     }
 
+    // mini-chefe Carniçal: aos 2 minutos e depois a cada 3min30s (mais forte a cada vez)
+    if (t >= this.nextMiniAt) {
+      this.nextMiniAt += ZUMBI_INTERVAL;
+      const p = this.ringPosition();
+      const e = this.spawnEnemy(ZUMBI, p.x, p.y, true);
+      if (e) {
+        e.hp = e.maxHp = Math.ceil(e.maxHp * (1 + this.miniCount * 0.5));
+        this.miniCount++;
+        this.miniAIs.push(new ZombieAI(this, e));
+        if (!this.boss) this.boss = e;
+        this.cameras.main.shake(250, 0.005);
+        this.events.emit('announce', 'Um Carniçal faminto surgiu!');
+      }
+    }
+
     // a cada 5 minutos, um chefe (alternando entre os chefes, cada volta mais forte)
     if (t >= this.nextBossAt && !this.boss) {
       this.nextBossAt += BOSS_INTERVAL;
@@ -863,6 +886,21 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     this.kills++;
     this.fx.ring(x, y, def.radius, 1.8, 200, 0xffffff, 0.5);
     this.burst(x, y, def.elite || def.boss ? 12 : 4);
+    if (def.miniboss) {
+      // mini-chefe: queda animada, gemas, zeny e chance de carta
+      if (this.boss === e) this.boss = null;
+      const corpse = this.add.sprite(x, y, def.texture).setScale(e.scaleX).setFlipX(e.flipX).setDepth(y).play(`${def.texture}-die`);
+      this.tweens.add({ targets: corpse, alpha: 0, delay: 1600, duration: 600, onComplete: () => corpse.destroy() });
+      for (let k = 0; k < 5; k++) {
+        const a = (k / 5) * Math.PI * 2;
+        this.dropPickup('xp', Math.ceil(def.xp / 5), x + Math.cos(a) * 30, y + Math.sin(a) * 30);
+      }
+      this.dropPickup('zeny', 25 + Math.floor(Math.random() * 30), x, y + 20);
+      if (Math.random() < 0.35) this.dropPickup('carta', 0, x + 24, y, def.id);
+      this.gainJob(15);
+      this.events.emit('toast', 'Carniçal derrotado!', '#9aff8a');
+      return;
+    }
     if (def.boss) {
       // chefe derrotado: animação de morte, chuva de gemas e comida
       if (this.boss === e) this.boss = null;
