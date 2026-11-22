@@ -5,11 +5,11 @@ import { ATTRS, ATTR_IDS, CARDS } from '../data/rpg';
 import { SLOTS_LEFT, SLOTS_RIGHT, SLOT_NAME, describe, equipById, type Slot } from '../data/equipment';
 import { loadSave } from '../save';
 import { heroScale } from '../sprites';
-import { dim, headline, isTouch, onResize, uiArrow, uiButton, uiPanel, uiScale, uiWindow, WIN, wtext } from '../ui';
+import { dim, headline, isTouch, onResize, uiButton, uiPanel, uiScale, uiWindow, WIN, wtext } from '../ui';
 
 export interface StatusData {
   /** Aberta ao subir de nível ou pela pausa */
-  reason: 'levelup' | 'pause';
+  reason: 'levelup' | 'pause' | 'start';
   tab?: 'geral' | 'especial';
 }
 
@@ -34,16 +34,29 @@ export class StatusScene extends Phaser.Scene {
     const { width, height } = this.scale;
     const k = uiScale(this);
     const touch = isTouch(this);
-    const levelUp = this.data_.reason === 'levelup';
+    const levelUp = this.data_.reason !== 'pause';
+    const start = this.data_.reason === 'start';
+    const portrait = height > width;
     dim(this, 0.4);
 
-    const w = Math.min(620 * k, width - 20);
+    const w = Math.min(760 * k, width - 20);
     const pad = 10;
     const tabH = 26 * k;
-    const slotH = 38 * k;
+    // linhas grandes para os botões de atributo; encolhe só se não couber na tela
+    let slotH = 36 * k;
+    let rowH = 42 * k;
+    const derivedH = (r: number) => (portrait ? 6 * r * 0.72 + 8 : 0);
+    const statHOf = (r: number) => 26 * k + r * 6 + 12 + derivedH(r);
+    const fixed = 24 * k + 2 + 8 + 26 * k + 6 + 12 + 8 + 10 + 34 * k + 12 + (levelUp ? 44 * k : 0) + 12;
+    const total = () => fixed + slotH * 4 + statHOf(rowH);
+    // se não couber: primeiro encolhe os slots de equipamento, depois as linhas de atributo
+    if (total() > height) slotH = Math.max(22 * k, (height - fixed - statHOf(rowH)) / 4);
+    if (total() > height) {
+      const f = Math.max(0.6, (height - fixed - slotH * 4) / statHOf(rowH));
+      rowH *= f;
+    }
     const eqH = slotH * 4 + 12;
-    const rowH = 23 * k;
-    const statH = 22 * k + rowH * 6 + 10;
+    const statH = statHOf(rowH);
     const btnH = 34 * k;
     const bannerH = levelUp ? 44 * k : 0;
     const h = 24 * k + 2 + 8 + tabH + 6 + eqH + 8 + statH + 10 + btnH + 12;
@@ -51,7 +64,8 @@ export class StatusScene extends Phaser.Scene {
     const y0 = Math.max(6 + bannerH, (height - h + bannerH) / 2);
 
     if (levelUp) {
-      const t = headline(this, width / 2, y0 - bannerH / 2 - 2, `NÍVEL ${g.level}!   Pontos de status: ${g.attrPoints}`, 24 * k, '#ffe9a0').setOrigin(0.5);
+      const msg = start ? `Distribua seus ${g.attrPoints} pontos iniciais!` : `NÍVEL ${g.level}!   Pontos de status: ${g.attrPoints}`;
+      const t = headline(this, width / 2, y0 - bannerH / 2 - 2, msg, 24 * k, '#ffe9a0').setOrigin(0.5);
       this.tweens.add({ targets: t, scale: { from: 0.7, to: 1 }, duration: 300, ease: 'Back.Out' });
     }
 
@@ -77,10 +91,10 @@ export class StatusScene extends Phaser.Scene {
     y += eqH + 8;
 
     // ---- seção Status
-    this.buildStatus(c, g, pad, y, w - pad * 2, statH, rowH, k);
+    this.buildStatus(c, g, pad, y, w - pad * 2, statH, rowH, k, portrait);
     y += statH + 10;
 
-    const label = levelUp ? (touch ? 'Continuar' : 'Continuar  [Espaço]') : (touch ? 'Voltar ao jogo' : 'Voltar ao jogo  [P]');
+    const label = start ? (touch ? 'Começar' : 'Começar  [Espaço]') : levelUp ? (touch ? 'Continuar' : 'Continuar  [Espaço]') : (touch ? 'Voltar ao jogo' : 'Voltar ao jogo  [P]');
     c.add(uiButton(this, w / 2, y + btnH / 2, 220 * k, btnH, label, () => this.close(), { size: 14 * k, primary: true }).c);
 
     const kb = this.input.keyboard!;
@@ -151,67 +165,79 @@ export class StatusScene extends Phaser.Scene {
       .setWordWrapWidth(w - 24));
   }
 
-  /** Seção "Status": atributos (valor, ▶, custo) e os valores calculados */
-  private buildStatus(c: Phaser.GameObjects.Container, g: GameScene, x: number, y: number, w: number, h: number, rowH: number, k: number) {
-    const headH = 22 * k;
-    // barra de título interna da seção
+  /** Seção "Status": atributos (valor, custo, botões +1 e +5) e os valores calculados */
+  private buildStatus(c: Phaser.GameObjects.Container, g: GameScene, x: number, y: number, w: number, h: number, rowH: number, k: number, portrait: boolean) {
+    const headH = 26 * k;
     const bar = this.add.graphics();
     bar.fillStyle(WIN.border).fillRect(x, y, w, headH);
     bar.fillStyle(0xd6e3f5).fillRect(x + 1, y + 1, w - 2, headH - 2);
     c.add(bar);
-    c.add(wtext(this, x + 8, y + headH / 2, '▲  Status', 13 * k, '#1c2a46', true).setOrigin(0, 0.5));
-    c.add(wtext(this, x + w - 8, y + headH / 2, `Pontos de status: ${g.attrPoints}`, 12 * k, g.attrPoints > 0 ? WIN.accent : WIN.label, true).setOrigin(1, 0.5));
+    c.add(wtext(this, x + 8, y + headH / 2, '▲  Status', 14 * k, '#1c2a46', true).setOrigin(0, 0.5));
+    c.add(wtext(this, x + w - 8, y + headH / 2, `Pontos de status: ${g.attrPoints}`, 14 * k, g.attrPoints > 0 ? WIN.accent : WIN.label, true).setOrigin(1, 0.5));
     const top = y + headH;
     c.add(uiPanel(this, x, top, w, h - headH));
 
-    const pct = (v: number) => Math.round(v * 100);
-    const attrW = Math.min(240 * k, w * 0.42);
-    // ---- atributos
+    // ---- atributos: nome | valor (+bônus) | custo | +1 | +5
+    const attrW = portrait ? w : Math.min(430 * k, w * 0.6);
+    const btnH = Math.min(36 * k, rowH - 6);
+    const btnW = Math.max(btnH * 1.35, 46 * k);
     ATTR_IDS.forEach((a, i) => {
-      const ry = top + 5 + i * rowH + rowH / 2;
-      if (i % 2) c.add(this.add.rectangle(x + 1, ry - rowH / 2, w - 2, rowH, WIN.rowAlt).setOrigin(0));
-      c.add(wtext(this, x + 10, ry, ATTRS[a].short, 13 * k, WIN.label, true).setOrigin(0, 0.5));
+      const ry = top + 6 + i * rowH + rowH / 2;
+      if (i % 2) c.add(this.add.rectangle(x + 1, ry - rowH / 2, attrW - 2, rowH, WIN.rowAlt).setOrigin(0));
+      c.add(this.add.rectangle(x + 6, ry, 5, rowH * 0.6, ATTRS[a].color).setOrigin(0, 0.5));
+      c.add(wtext(this, x + 18, ry, ATTRS[a].short, 17 * k, WIN.text, true).setOrigin(0, 0.5));
+      const vx = x + attrW * 0.34;
+      c.add(wtext(this, vx, ry, String(g.attrs[a]), 19 * k, WIN.text, true).setOrigin(1, 0.5));
       const bonus = g.bonusAttrs[a];
-      c.add(wtext(this, x + attrW * 0.5, ry, String(g.attrs[a]), 13 * k, WIN.text, true).setOrigin(1, 0.5));
-      if (bonus) c.add(wtext(this, x + attrW * 0.5 + 3, ry, `+${bonus}`, 11 * k, WIN.good, true).setOrigin(0, 0.5));
+      if (bonus) c.add(wtext(this, vx + 4, ry, `+${bonus}`, 13 * k, WIN.good, true).setOrigin(0, 0.5));
       const cost = g.attrCostOf(a);
-      const can = g.attrPoints >= cost;
-      c.add(uiArrow(this, x + attrW * 0.74, ry, Math.min(20 * k, rowH - 3), () => {
+      const can = g.attrPoints >= cost && g.attrs[a] < 99;
+      c.add(wtext(this, x + attrW * 0.52, ry, `custo ${cost}`, 12 * k, can ? WIN.label : WIN.muted).setOrigin(0.5, 0.5));
+      const b1x = x + attrW - 12 - btnW * 1.5 - 8;
+      const b5x = x + attrW - 12 - btnW / 2;
+      c.add(uiButton(this, b1x, ry, btnW, btnH, '+1', () => {
         if (g.spendAttr(a)) this.scene.restart(this.data_);
-      }, can).c);
-      c.add(wtext(this, x + attrW - 8, ry, String(cost), 12 * k, can ? WIN.text : WIN.muted).setOrigin(1, 0.5));
+      }, { size: 16 * k, enabled: can, primary: can }).c);
+      c.add(uiButton(this, b5x, ry, btnW, btnH, '+5', () => {
+        if (g.spendAttrMany(a, 5)) this.scene.restart(this.data_);
+      }, { size: 16 * k, enabled: can }).c);
     });
-    c.add(this.add.rectangle(x + attrW, top + 4, 1, h - headH - 8, WIN.panelBorder).setOrigin(0));
 
-    // ---- valores calculados (duas colunas, como na referência)
+    // ---- valores calculados
+    const pct = (v: number) => `${Math.round(v * 100)}%`;
     const archer = g.line === 'arqueiro';
-    const phys = archer ? g.attrDamage('ranged') : g.attrDamage('melee');
     const eq = g.equipTotals;
+    const [m0, m1] = g.matk();
     const left: [string, string][] = [
-      ['Atq', `${pct(phys)} + ${pct(eq.atk)}`],
-      ['Matq', `${pct(g.attrDamage('magic'))} + ${pct(eq.matk)}`],
-      ['Vida', `${Math.ceil(Math.max(0, g.hp))} / ${g.stats.maxHp}`],
-      ['Crítico', `${pct(g.critChance())}%`],
-      ['Pontos', `${g.attrPoints}`],
+      [archer ? 'Atq (DES)' : 'Atq (FOR)', `${g.physAtk(archer ? 'ranged' : 'melee')}${eq.atk ? ` + ${pct(eq.atk)}` : ''}`],
+      ['Matq', `${m0}~${m1}${eq.matk ? ` + ${pct(eq.matk)}` : ''}`],
+      ['HIT', `${g.hit()}`],
+      ['Crítico', pct(g.critChance())],
+      ['HP', `${Math.ceil(Math.max(0, g.hp))} / ${g.stats.maxHp}`],
       ['Nv classe', `${g.jobLevel}`],
     ];
     const right: [string, string][] = [
-      ['Def', `${g.stats.armor - eq.def} + ${eq.def}`],
+      ['Def', `${pct(g.hardDef())} + ${g.softDef()}`],
+      ['Flee', `${g.flee()}`],
+      ['Esq. perfeita', `${(g.perfectDodge() * 100).toFixed(1)}%`],
+      ['Aspd', pct(g.stats.haste)],
       ['Mov', `${Math.round(g.stats.speed)}`],
-      ['Esquiva', `${pct(g.evadeChance())}%`],
-      ['Aspd', `${pct(g.stats.haste)}%`],
-      ['Regen', `${g.stats.regen.toFixed(1)}/s`],
       ['Zeny', `${g.zenyRun} z`],
     ];
-    const colW = (w - attrW) / 2;
+    const dRow = portrait ? rowH * 0.72 : rowH;
+    const dTop = portrait ? top + 6 + rowH * 6 + 6 : top + 6;
+    const dx = portrait ? x : x + attrW;
+    const colW = (w - (portrait ? 0 : attrW)) / 2;
+    if (portrait) c.add(this.add.rectangle(x + 4, dTop - 3, w - 8, 1, WIN.panelBorder).setOrigin(0));
     const col = (rows: [string, string][], cx: number) => rows.forEach(([a, b], i) => {
-      const ry = top + 5 + i * rowH + rowH / 2;
-      c.add(wtext(this, cx + 10, ry, a, 12 * k, WIN.label, true).setOrigin(0, 0.5));
-      c.add(wtext(this, cx + colW - 10, ry, b, 12 * k, WIN.text, true).setOrigin(1, 0.5));
+      const ry = dTop + i * dRow + dRow / 2;
+      c.add(wtext(this, cx + 10, ry, a, 13 * k, WIN.label, true).setOrigin(0, 0.5));
+      c.add(wtext(this, cx + colW - 10, ry, b, 13 * k, WIN.text, true).setOrigin(1, 0.5));
     });
-    col(left, x + attrW);
-    col(right, x + attrW + colW);
-    c.add(this.add.rectangle(x + attrW + colW, top + 4, 1, h - headH - 8, WIN.panelBorder).setOrigin(0));
+    col(left, dx);
+    col(right, dx + colW);
+    if (!portrait) c.add(this.add.rectangle(x + attrW, top + 4, 1, h - headH - 8, WIN.panelBorder).setOrigin(0));
+    c.add(this.add.rectangle(dx + colW, dTop, 1, dRow * 6, WIN.panelBorder).setOrigin(0));
   }
 
   /** Fecha a janela e volta ao jogo */

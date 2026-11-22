@@ -58,27 +58,46 @@ export type Attrs = Record<Attr, number>;
 export const ATTR_IDS: Attr[] = ['for', 'agi', 'vit', 'int', 'des', 'sor'];
 
 export const ATTRS: Record<Attr, { short: string; name: string; desc: string; color: number }> = {
-  for: { short: 'FOR', name: 'Força', desc: '+3% de dano corpo a corpo', color: 0xff7a6a },
-  agi: { short: 'AGI', name: 'Agilidade', desc: '+1,5% de velocidade de ataque e +0,4% de esquiva', color: 0x7ae0a0 },
-  vit: { short: 'VIT', name: 'Vitalidade', desc: '+6 de vida, +regeneração e resistência a estados', color: 0xffc06a },
-  int: { short: 'INT', name: 'Inteligência', desc: '+3% de dano mágico', color: 0x9a8aff },
-  des: { short: 'DES', name: 'Destreza', desc: '+3% de dano à distância', color: 0x6ad0ff },
-  sor: { short: 'SOR', name: 'Sorte', desc: '+0,6% de crítico e mais itens raros', color: 0xffe36a },
+  for: { short: 'FOR', name: 'Força', desc: 'Atq corpo a corpo: FOR + (FOR/10)². A cada 10 pontos o bônus cresce muito', color: 0xff7a6a },
+  agi: { short: 'AGI', name: 'Agilidade', desc: 'Flee (esquiva) +1 por ponto e velocidade de ataque', color: 0x7ae0a0 },
+  vit: { short: 'VIT', name: 'Vitalidade', desc: '+1% de HP por ponto, defesa macia e resistência a estados', color: 0xffc06a },
+  int: { short: 'INT', name: 'Inteligência', desc: 'Matq: de INT + (INT/7)² até INT + (INT/5)²', color: 0x9a8aff },
+  des: { short: 'DES', name: 'Destreza', desc: 'HIT +1 por ponto (acertar), Atq à distância: DES + (DES/10)²', color: 0x6ad0ff },
+  sor: { short: 'SOR', name: 'Sorte', desc: 'Crítico +0,3% por ponto, esquiva perfeita e mais itens', color: 0xffe36a },
 };
 
-/** Efeito de cada ponto de atributo */
+/**
+ * Regras no estilo do RPG clássico.
+ * O "Atq de status" vira multiplicador de dano: Atq / 40 (Atq 40 = +100% de dano).
+ */
 export const ATTR_FX = {
-  forDmg: 0.03, desDmg: 0.03, intDmg: 0.03,
-  agiAspd: 0.015, agiFlee: 0.004,
-  vitHp: 6, vitRegen: 0.03, vitResist: 0.01,
-  sorCrit: 0.006, sorDrop: 0.02,
+  atkDiv: 40,
+  agiAspd: 0.012, dexAspd: 0.003,
+  vitRegen: 0.03, vitResist: 0.01,
+  sorDrop: 0.02,
+  /** Pontos iniciais para distribuir no começo da partida */
+  startPoints: 48,
+  /** Chance base de acertar: base + HIT - Flee (limitada entre 5% e 95%) */
+  hitBase: 85,
+  /** HP extra por nível de base */
+  hpPerLevel: 7,
 };
 
-/** Pontos de status ganhos ao chegar no nível `level` */
-export const statPointsForLevel = (level: number) => Math.floor(level / 5) + 4;
+/** Pontos de status ganhos ao chegar no nível `level` (igual ao clássico) */
+export const statPointsForLevel = (level: number) => Math.floor((level - 1) / 5) + 3;
 
 /** Custo em pontos para subir um atributo que está em `value` (fica mais caro a cada 10) */
 export const attrCost = (value: number) => Math.floor((value - 1) / 10) + 2;
+
+/** Atq de status (físico): atributo principal + (principal/10)² + secundários */
+export function statusAtk(main: number, other: number, luk: number) {
+  return main + Math.floor(main / 10) ** 2 + Math.floor(other / 5) + Math.floor(luk / 5);
+}
+
+/** Faixa de Matq pela INT */
+export function matkRange(int: number): [number, number] {
+  return [int + Math.floor(int / 7) ** 2, int + Math.floor(int / 5) ** 2];
+}
 
 /** Peso de cada atributo na distribuição automática, por linhagem */
 export const ATTR_FOCUS: Record<string, Partial<Attrs>> = {

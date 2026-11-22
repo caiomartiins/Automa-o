@@ -32,13 +32,18 @@ O Golpe de Espada do Aprendiz continua com todos. Cada habilidade vai até o ní
 ## Sprites desenhados à mão
 Todos os heróis usam sprites recortados das imagens enviadas. A fonte em PNG fica em `sprites/` e o jogo usa as versões WebP de `src/assets/`, registradas em `src/sprites.ts`. Os monstros ainda usam a arte gerada em `src/art.ts`.
 
-## Evolução do personagem
+## Evolução do personagem (regras no estilo do RPG clássico)
 
-- **Ao subir de nível** abre a janela **Equipamento + Status**: slots de equipamento dos dois lados, o personagem no meio e os atributos com o botão ▶. A pausa abre a mesma janela.
-- **Pontos de status:** cada nível dá `nível/5 + 4` pontos. Subir um atributo custa 2 pontos, e o custo aumenta 1 a cada 10 pontos no atributo.
-- **O dano vem dos atributos e do equipamento:** FOR, DES e INT dão +3% de dano corpo a corpo, à distância e mágico por ponto. Não há mais escolha de bônus ao subir de nível.
+- **Começo da partida:** todos os atributos em 1 e **48 pontos** para distribuir (abre a janela de Status).
+- **Pontos por nível:** ⌊(nível − 1) / 5⌋ + 3. Subir um atributo custa ⌊(valor − 1) / 10⌋ + 2 pontos (máximo 99).
+- **Ao subir de nível** abre a janela **Equipamento + Status**, com os botões **+1** e **+5** em cada atributo. A pausa abre a mesma janela.
+- **Atq de status** (dano físico): FOR + ⌊FOR/10⌋² + ⌊DES/5⌋ + ⌊SOR/5⌋ (para arqueiros a DES ocupa o lugar da FOR). **Matq:** de INT + ⌊INT/7⌋² até INT + ⌊INT/5⌋². No dano, Atq ou Matq ÷ 40 vira bônus (Atq 40 = +100%).
+- **HIT** = nível + DES + SOR/3 e **Flee** = nível + AGI + SOR/5. Golpes físicos acertam com 85% + HIT − Flee do monstro (entre 5% e 95%); se errar, aparece "Miss". Magia e crítico nunca erram. Cada monstro tem nível, que sobe com o tempo e com o seu nível.
+- **Esquiva:** contra golpes comuns, usa o seu Flee contra o HIT do monstro. Os ataques avisados dos chefes só podem ser evitados pela **esquiva perfeita** (0,1% por SOR), ou seja, desviando de verdade.
+- **HP** = (HP base + 7 por nível) × (1 + VIT/100). **DEF dura** (equipamento e classe) reduz em %; **DEF macia** (VIT/2) subtrai.
+- **Crítico** = 1% + SOR × 0,3%: nunca erra e causa ×1,5.
 - **Habilidades** sobem sozinhas: a cada 2 níveis de classe, a de menor nível sobe.
-- **Equipamentos** (`src/data/equipment.ts`): são comprados com zeny na loja (cabeça, corpo, arma, mão esquerda, capa, calçado e 2 acessórios), ficam salvos e valem em todas as partidas. O Ferreiro refina a arma equipada, e cada arma guarda o próprio refino.
+- **Equipamentos** (`src/data/equipment.ts`): são comprados com zeny na loja (cabeça, corpo, arma, mão esquerda, capa, calçado e 2 acessórios), ficam salvos e valem em todas as partidas. O Ferreiro refina a arma equipada.
 
 ## Sistemas de RPG (`src/data/rpg.ts`)
 

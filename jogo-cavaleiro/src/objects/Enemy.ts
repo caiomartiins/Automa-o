@@ -26,6 +26,10 @@ export class Enemy extends Phaser.GameObjects.Sprite {
   shieldHitAt = 0;
   /** Chefe bloqueando com escudo (recebe bem menos dano) */
   blocking = false;
+  /** Nível do monstro, acerto (HIT) e esquiva (Flee) */
+  mlv = 1;
+  hit = 20;
+  flee = 1;
   /** Até quando cada estado dura (tempo da partida, em ms) e o dano por tique */
   statusUntil: Record<StatusId, number> = { queimando: 0, envenenado: 0, sangrando: 0, atordoado: 0, congelado: 0 };
   statusDot: Record<StatusId, number> = { queimando: 0, envenenado: 0, sangrando: 0, atordoado: 0, congelado: 0 };

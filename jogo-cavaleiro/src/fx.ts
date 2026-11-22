@@ -3,7 +3,7 @@ import Phaser from 'phaser';
 export const FX_DEPTH = 1_000_000;
 
 type Obj = Phaser.GameObjects.Image | Phaser.GameObjects.BitmapText | Phaser.GameObjects.Graphics;
-type Kind = 'fade' | 'lance' | 'ring' | 'number' | 'crit' | 'float' | 'pop' | 'fall';
+type Kind = 'fade' | 'lance' | 'ring' | 'number' | 'crit' | 'float' | 'miss' | 'pop' | 'fall';
 
 interface Item {
   obj: Obj;
@@ -26,6 +26,7 @@ export class Fx {
   private items: Item[] = [];
   private pools = new Map<string, Obj[]>();
   private numbers = 0;
+  private misses = 0;
 
   constructor(private scene: Phaser.Scene, public maxNumbers: number) {}
 
@@ -134,9 +135,12 @@ export class Fx {
 
   /** "Miss": o golpe errou (esquiva) */
   miss(x: number, y: number) {
+    // limite de "Miss" na tela ao mesmo tempo (muitos erros seguidos pesam no celular)
+    if (this.misses >= Math.max(4, this.maxNumbers / 3)) return;
+    this.misses++;
     const { img, pool } = this.image('fx-miss');
     img.setPosition(x, y).setScale(0.3).setDepth(FX_DEPTH + 2);
-    this.push(img, 'float', 700, pool, { y0: y });
+    this.push(img, 'miss', 600, pool, { y0: y });
   }
 
   update(dt: number) {
@@ -148,7 +152,8 @@ export class Fx {
       if (k >= 1) {
         it.obj.setActive(false).setVisible(false);
         it.pool.push(it.obj);
-        if (it.kind === 'number') this.numbers--;
+        if (it.kind === 'number' || it.kind === 'crit') this.numbers--;
+        if (it.kind === 'miss') this.misses--;
         items[i] = items[items.length - 1];
         items.pop();
         continue;
@@ -184,6 +189,7 @@ export class Fx {
           o.setScale(it.s0 * (1 + 0.9 * Math.max(0, 1 - it.age / 130)));
           o.setAlpha(k < 0.6 ? 1 : 1 - (k - 0.6) * 2.5);
           break;
+        case 'miss':
         case 'float':
           o.y = it.y0 - 30 * k;
           o.setAlpha(k < 0.5 ? 1 : 1 - (k - 0.5) * 2);

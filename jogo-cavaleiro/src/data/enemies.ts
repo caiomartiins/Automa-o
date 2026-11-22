@@ -28,38 +28,42 @@ export interface EnemyDef {
   element: Element;
   race: Race;
   size: Size;
+  /** Nível base do monstro (define acerto e esquiva) */
+  lv?: number;
+  /** Monstro ágil: esquiva extra */
+  agile?: boolean;
 }
 
 export const ENEMIES: EnemyDef[] = [
-  { id: 'gosma', name: 'Gosma', texture: 'en-gosma', hp: 10, speed: 55, damage: 6, xp: 1, radius: 11, from: 0, weight: 10, knockback: 1, element: 'agua', race: 'amorfo', size: 'pequeno' },
-  { id: 'morcego', name: 'Morcego', texture: 'en-morcego', hp: 8, speed: 105, damage: 5, xp: 1, radius: 10, from: 40, weight: 6, knockback: 1, element: 'vento', race: 'bruto', size: 'pequeno' },
-  { id: 'cogumelo', name: 'Cogumelo Andante', texture: 'en-cogumelo', hp: 18, speed: 62, damage: 8, xp: 2, radius: 12, from: 75, weight: 6, knockback: 0.9, element: 'terra', race: 'planta', size: 'pequeno' },
-  { id: 'esqueleto', name: 'Esqueleto', texture: 'en-esqueleto', hp: 30, speed: 72, damage: 10, xp: 2, radius: 12, from: 110, weight: 6, knockback: 0.8, element: 'mortovivo', race: 'mortovivo', size: 'medio' },
-  { id: 'fantasma', name: 'Fantasma', texture: 'en-fantasma', hp: 24, speed: 88, damage: 9, xp: 2, radius: 12, from: 140, weight: 5, knockback: 1, element: 'fantasma', race: 'mortovivo', size: 'medio' },
-  { id: 'orc', name: 'Orc', texture: 'en-orc', hp: 55, speed: 48, damage: 14, xp: 4, radius: 15, from: 170, weight: 4, knockback: 0.5, element: 'terra', race: 'humanoide', size: 'grande' },
+  { id: 'gosma', name: 'Gosma', texture: 'en-gosma', hp: 10, speed: 55, damage: 6, xp: 1, radius: 11, from: 0, weight: 10, knockback: 1, element: 'agua', race: 'amorfo', size: 'pequeno', lv: 1 },
+  { id: 'morcego', name: 'Morcego', texture: 'en-morcego', hp: 8, speed: 105, damage: 5, xp: 1, radius: 10, from: 40, weight: 6, knockback: 1, element: 'vento', race: 'bruto', size: 'pequeno', lv: 5, agile: true },
+  { id: 'cogumelo', name: 'Cogumelo Andante', texture: 'en-cogumelo', hp: 18, speed: 62, damage: 8, xp: 2, radius: 12, from: 75, weight: 6, knockback: 0.9, element: 'terra', race: 'planta', size: 'pequeno', lv: 6 },
+  { id: 'esqueleto', name: 'Esqueleto', texture: 'en-esqueleto', hp: 30, speed: 72, damage: 10, xp: 2, radius: 12, from: 110, weight: 6, knockback: 0.8, element: 'mortovivo', race: 'mortovivo', size: 'medio', lv: 10 },
+  { id: 'fantasma', name: 'Fantasma', texture: 'en-fantasma', hp: 24, speed: 88, damage: 9, xp: 2, radius: 12, from: 140, weight: 5, knockback: 1, element: 'fantasma', race: 'mortovivo', size: 'medio', lv: 12, agile: true },
+  { id: 'orc', name: 'Orc', texture: 'en-orc', hp: 55, speed: 48, damage: 14, xp: 4, radius: 15, from: 170, weight: 4, knockback: 0.5, element: 'terra', race: 'humanoide', size: 'grande', lv: 14 },
   {
     id: 'cavaleiro-negro', name: 'Cavaleiro Negro', texture: 'en-cavaleiro-negro', hp: 320, speed: 52, damage: 22, xp: 25, radius: 17,
-    from: 240, weight: 0.4, knockback: 0.15, elite: true, scale: 1.15, element: 'sombrio', race: 'humanoide', size: 'grande'
+    from: 240, weight: 0.4, knockback: 0.15, elite: true, scale: 1.15, element: 'sombrio', race: 'humanoide', size: 'grande', lv: 20
   },
 ];
 
 /** Bafome: primeiro chefe (4:00 e depois a cada 8 minutos, alternando com o Minotauro) */
 export const BAFOME: EnemyDef = {
   id: 'bafome', name: 'Bafome', texture: 'en-bafome', hp: 3200, speed: 72, damage: 34, xp: 220, radius: 34,
-  from: 0, weight: 0, knockback: 0, scale: 2.9, boss: true, element: 'sombrio', race: 'demonio', size: 'grande'
+  from: 0, weight: 0, knockback: 0, scale: 2.9, boss: true, element: 'sombrio', race: 'demonio', size: 'grande', lv: 25
 };
 
 /** Carniçal: mini-chefe zumbi. Aparece aos 2 minutos e depois a cada 3min30s */
 export const ZUMBI: EnemyDef = {
   id: 'zumbi', name: 'Carniçal', texture: 'en-zumbi', hp: 900, speed: 58, damage: 22, xp: 45, radius: 24,
   from: 0, weight: 0, knockback: 0.1, scale: 2.1, miniboss: true,
-  element: 'mortovivo', race: 'mortovivo', size: 'grande',
+  element: 'mortovivo', race: 'mortovivo', size: 'grande', lv: 15
 };
 /** Minotauro: segundo chefe */
 export const MINOTAURO: EnemyDef = {
   id: 'minotauro', name: 'Minotauro Brutal', texture: 'en-minotauro', hp: 4800, speed: 86, damage: 40, xp: 240, radius: 32,
   from: 0, weight: 0, knockback: 0, scale: 2.7, boss: true,
-  element: 'terra', race: 'bruto', size: 'grande',
+  element: 'terra', race: 'bruto', size: 'grande', lv: 30
 };
 
 /**

@@ -18,7 +18,7 @@ import { SpatialGrid } from '../spatialGrid';
 import { Fx, FX_DEPTH } from '../fx';
 import { Projectiles } from '../projectiles';
 import {
-  ATTR_FX, ATTR_IDS, DROPS, attrCost, statPointsForLevel, MAPS, PETS, REFINE_DMG, STATUS, cardOf, elementMult, emptyMods,
+  ATTR_FX, ATTR_IDS, DROPS, attrCost, matkRange, statPointsForLevel, statusAtk, MAPS, PETS, REFINE_DMG, STATUS, cardOf, elementMult, emptyMods,
   type Attr, type Attrs, type MapDef, type Mods, type PetDef, type RpgHost, type StatusId,
 } from '../data/rpg';
 import { loadSave, writeSave } from '../save';
@@ -172,6 +172,17 @@ export class GameScene extends Phaser.Scene implements RpgHost {
   create() {
     const perf = isTouch(this) ? PERF.mobile : PERF.desktop;
     this.stats = { ...BASE_STATS };
+    this.bonusAttrs = { for: 0, agi: 0, vit: 0, int: 0, des: 0, sor: 0 };
+    this.attrs = { for: 1, agi: 1, vit: 1, int: 1, des: 1, sor: 1 };
+    this.level = 1;
+    // O HP máximo = (HP fixo + HP por nível) × (1 + VIT/100), como no clássico.
+    // Somar no maxHp (classe, equipamento, cartas) mexe só na parte fixa.
+    let flatHp = this.stats.maxHp;
+    Object.defineProperty(this.stats, 'maxHp', {
+      configurable: true, enumerable: true,
+      get: () => this.effectiveHp(flatHp),
+      set: (v: number) => { flatHp += v - this.effectiveHp(flatHp); },
+    });
     this.hp = this.stats.maxHp;
     this.level = 1;
     this.xp = 0;
@@ -212,7 +223,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     this.decorPool = [];
     this.mods = emptyMods();
     this.attrs = { for: 1, agi: 1, vit: 1, int: 1, des: 1, sor: 1 };
-    this.attrPoints = 0;
+    this.attrPoints = ATTR_FX.startPoints;
     this.cards = [];
     this.items = { asa: 0, pena: 0 };
     this.zenyRun = 0;
@@ -276,6 +287,8 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     });
 
     this.scene.launch('UI');
+    // começo da partida: distribuir os 48 pontos iniciais
+    this.time.delayedCall(60, () => this.openLevelScreens('start'));
   }
 
   update(_time: number, delta: number) {
@@ -428,7 +441,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
 
   private onEnemyTouch(e: Enemy) {
     if (e.isStopped(this.elapsed)) return;
-    const hit = this.hurtPlayer(e.damage);
+    const hit = this.hurtPlayer(e.damage, false, e.hit);
     // cogumelos podem envenenar
     if (hit && e.def.id === 'cogumelo' && Math.random() < 0.2) this.afflictPlayer('veneno', 3000);
   }
@@ -445,10 +458,11 @@ export class GameScene extends Phaser.Scene implements RpgHost {
   }
 
   /** Dano no jogador (contato, ataques do chefe). `heavy` ignora parte da armadura. */
-  hurtPlayer(amount: number, heavy = false): boolean {
+  hurtPlayer(amount: number, heavy = false, monsterHit = 20): boolean {
     if (this.over || this.elapsed < this.invulnUntil) return false;
-    // esquiva (AGI, mascote) e cartas que anulam o golpe
-    if (Math.random() < this.evadeChance()) {
+    // ataques de chefe (avisados) só podem ser evitados pela esquiva perfeita; golpes comuns usam Flee
+    const dodge = heavy ? this.perfectDodge() : this.evadeChance(monsterHit) + this.perfectDodge();
+    if (Math.random() < dodge) {
       this.invulnUntil = this.elapsed + 250;
       this.fx.miss(this.player.x, this.player.y - 34);
       return false;
@@ -458,7 +472,8 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       this.fx.ring(this.player.x, this.player.y, 22, 1.6, 250, 0xc8c8ff, 0.5);
       return false;
     }
-    const dmg = Math.max(1, Math.round(amount - this.stats.armor * (heavy ? 0.5 : 1)));
+    // DEF dura (%) e DEF macia (VIT); ataques de chefe ignoram metade da DEF dura
+    const dmg = Math.max(1, Math.round(amount * (1 - this.hardDef() * (heavy ? 0.5 : 1)) - this.softDef()));
     this.hp -= dmg;
     this.invulnUntil = this.elapsed + PLAYER_IFRAMES;
     this.hurtUntil = this.elapsed + 100;
@@ -471,17 +486,69 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     return true;
   }
 
-  /** Bônus de dano dos atributos para cada tipo de dano */
-  attrDamage(kind: 'melee' | 'ranged' | 'magic') {
-    return kind === 'melee' ? this.attr('for') * ATTR_FX.forDmg : kind === 'ranged' ? this.attr('des') * ATTR_FX.desDmg : this.attr('int') * ATTR_FX.intDmg;
+  // ---------------------------------------------------------------- fórmulas no estilo clássico
+
+  private effectiveHp(flat: number) {
+    return Math.round((flat + (this.level - 1) * ATTR_FX.hpPerLevel) * (1 + this.attr('vit') / 100));
   }
 
-  evadeChance() {
-    return Math.min(0.4, this.attr('agi') * ATTR_FX.agiFlee + this.mods.evade);
+  /** Atq de status físico (corpo a corpo usa FOR, à distância usa DES) */
+  physAtk(kind: 'melee' | 'ranged') {
+    return kind === 'ranged'
+      ? statusAtk(this.attr('des'), this.attr('for'), this.attr('sor'))
+      : statusAtk(this.attr('for'), this.attr('des'), this.attr('sor'));
+  }
+
+  matk(): [number, number] {
+    return matkRange(this.attr('int'));
+  }
+
+  /** Bônus de dano dos atributos (Atq ou Matq ÷ 40) para cada tipo de dano */
+  attrDamage(kind: 'melee' | 'ranged' | 'magic') {
+    if (kind === 'magic') {
+      const [a, b] = this.matk();
+      return (a + b) / 2 / ATTR_FX.atkDiv;
+    }
+    return this.physAtk(kind) / ATTR_FX.atkDiv;
+  }
+
+  /** HIT do jogador: nível + DES + SOR/3 */
+  hit() {
+    return this.level + this.attr('des') + Math.floor(this.attr('sor') / 3);
+  }
+
+  /** Flee do jogador: nível + AGI + SOR/5 */
+  flee() {
+    return this.level + this.attr('agi') + Math.floor(this.attr('sor') / 5);
+  }
+
+  /** Esquiva perfeita: 0,1% por ponto de SOR (desvia até de chefes) */
+  perfectDodge() {
+    return this.attr('sor') * 0.001;
+  }
+
+  /** Chance de o golpe de um monstro acertar o jogador */
+  monsterHitChance(monsterHit: number) {
+    return Phaser.Math.Clamp(ATTR_FX.hitBase + monsterHit - this.flee(), 5, 95) / 100;
+  }
+
+  /** Chance de esquivar de um monstro comum (Flee + bônus de equipamento e mascote) */
+  evadeChance(monsterHit = 20) {
+    return Math.min(0.95, 1 - this.monsterHitChance(monsterHit) + this.mods.evade);
   }
 
   critChance() {
-    return Math.min(0.6, this.attr('sor') * ATTR_FX.sorCrit + this.mods.crit);
+    return Math.min(0.6, (1 + this.attr('sor') * 0.3) / 100 + this.mods.crit);
+  }
+
+  /** DEF dura: redução em % (equipamento e classe) */
+  hardDef() {
+    return Math.min(0.6, this.stats.armor * 0.02);
+  }
+
+  /** DEF macia: VIT/2, subtraída do dano */
+  softDef() {
+    return Math.floor(this.attr('vit') / 2);
   }
 
   /** Pena da Ressurreição: volta com metade da vida */
@@ -770,6 +837,11 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     const boss = def.boss || def.miniboss;
     const lv = boss ? { hp: 1, dmg: 1, speed: 0 } : levelScale(this.level);
     e.spawn(def, x, y, hpScale(ts) * lv.hp, dmgScale(ts) * lv.dmg, def.boss ? 1 : speedScale(t) + lv.speed);
+    // nível do monstro: define o acerto (HIT) e a esquiva (Flee)
+    const mlv = (def.lv ?? 1) + Math.floor(t / 60) * 2 + Math.max(0, this.level - 7) * 2;
+    e.mlv = mlv;
+    e.flee = Math.round(mlv * (def.agile ? 1.5 : 1));
+    e.hit = Math.round(mlv * 1.5 + 20);
     e.setDepth(y);
     return e;
   }
@@ -819,16 +891,26 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       const sk = src ? SKILLS[src] : null;
       let mult = (1 + this.mods.dmgAll) * (1 + (this.jobLevel - 1) * 0.02);
       let elemMult = 1;
+      const crit = Math.random() < this.critChance();
+      if (sk && sk.kind !== 'magic' && !crit) {
+        const chance = Phaser.Math.Clamp(ATTR_FX.hitBase + this.hit() - e.flee, 5, 95) / 100;
+        if (Math.random() > chance) {
+          this.fx.miss(e.x, e.y - 24);
+          return;
+        }
+      }
       if (sk) {
-        const attrBonus = this.attrDamage(sk.kind);
+        // Matq varia entre o mínimo e o máximo da INT
+        const attrBonus = sk.kind === 'magic'
+          ? Phaser.Math.Between(...this.matk()) / ATTR_FX.atkDiv
+          : this.attrDamage(sk.kind);
         mult *= 1 + attrBonus + this.mods.kindDmg[sk.kind];
         elemMult = elementMult(sk.element, e.def.element);
         mult *= elemMult * (1 + (this.mods.elemDmg[sk.element] ?? 0));
         mult *= sk.sizeMod?.[e.def.size] ?? 1;
       }
       mult *= 1 + (this.mods.raceDmg[e.def.race] ?? 0);
-      const crit = Math.random() < this.critChance();
-      if (crit) mult *= 1.8;
+      if (crit) mult *= 1.5;
       if (e.blocking) mult *= 0.2;
       const dmg = Math.max(1, Math.round(amount * mult * Phaser.Math.FloatBetween(0.9, 1.1)));
       e.hp -= dmg;
@@ -1091,17 +1173,23 @@ export class GameScene extends Phaser.Scene implements RpgHost {
   /** Efeitos fixos que mudam quando um atributo muda */
   private attrEffects(a: Attr, n: number) {
     if (a === 'agi') this.stats.haste += ATTR_FX.agiAspd * n;
-    if (a === 'vit') {
-      this.stats.maxHp += ATTR_FX.vitHp * n;
-      this.hp += ATTR_FX.vitHp * n;
-      this.stats.regen += ATTR_FX.vitRegen * n;
-    }
+    if (a === 'des') this.stats.haste += ATTR_FX.dexAspd * n;
+    if (a === 'vit') this.stats.regen += ATTR_FX.vitRegen * n;
+  }
+
+  /** Muda um atributo mantendo a vida atual proporcional ao novo HP máximo */
+  private changeAttr(fn: () => void) {
+    const before = this.stats.maxHp;
+    fn();
+    this.hp += this.stats.maxHp - before;
   }
 
   /** Bônus de atributo de equipamento ou carta (não gasta pontos) */
   addAttr(a: Attr, n: number) {
-    this.bonusAttrs[a] += n;
-    this.attrEffects(a, n);
+    this.changeAttr(() => {
+      this.bonusAttrs[a] += n;
+      this.attrEffects(a, n);
+    });
   }
 
   /** Custo em pontos para subir o atributo */
@@ -1114,9 +1202,18 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     const cost = this.attrCostOf(a);
     if (this.attrPoints < cost || this.attrs[a] >= 99) return false;
     this.attrPoints -= cost;
-    this.attrs[a]++;
-    this.attrEffects(a, 1);
+    this.changeAttr(() => {
+      this.attrs[a]++;
+      this.attrEffects(a, 1);
+    });
     return true;
+  }
+
+  /** Gasta vários pontos de uma vez (botão +5); devolve quantos subiu */
+  spendAttrMany(a: Attr, times: number) {
+    let n = 0;
+    while (n < times && this.spendAttr(a)) n++;
+    return n;
   }
 
   // ---------------------------------------------------------------- nível de classe
@@ -1220,7 +1317,9 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     let gained = 0;
     while (this.xp >= this.xpNext) {
       this.xp -= this.xpNext;
+      const hpBefore = this.stats.maxHp;
       this.level++;
+      this.hp += this.stats.maxHp - hpBefore;
       this.xpNext = xpForLevel(this.level);
       const pts = statPointsForLevel(this.level);
       this.attrPoints += pts;
@@ -1241,13 +1340,13 @@ export class GameScene extends Phaser.Scene implements RpgHost {
   }
 
   /** Ao upar: escolha de classe (se for a hora) e depois a janela de Equipamento/Status */
-  private openLevelScreens() {
+  openLevelScreens(reason: 'levelup' | 'start' = 'levelup') {
     if (this.choosing) return;
     this.choosing = true;
     this.scene.pause();
     const choice = this.classChoice();
     if (choice) this.scene.launch('LevelUp', choice);
-    else this.scene.launch('Status', { reason: 'levelup' });
+    else this.scene.launch('Status', { reason });
   }
 
   /** Dados da tela de escolha de classe, se o nível já permitir (senão null) */
