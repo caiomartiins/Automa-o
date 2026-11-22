@@ -3,7 +3,7 @@ import Phaser from 'phaser';
 export const FX_DEPTH = 1_000_000;
 
 type Obj = Phaser.GameObjects.Image | Phaser.GameObjects.BitmapText | Phaser.GameObjects.Graphics;
-type Kind = 'fade' | 'lance' | 'ring' | 'number' | 'crit' | 'float' | 'miss' | 'pop' | 'fall';
+type Kind = 'fade' | 'lance' | 'ring' | 'number' | 'crit' | 'float' | 'miss' | 'pop' | 'fall' | 'balloon';
 
 interface Item {
   obj: Obj;
@@ -119,17 +119,23 @@ export class Fx {
       ?? this.scene.add.bitmapText(0, 0, 'dmg2', '').setOrigin(0.5).setLetterSpacing(-12);
     const s0 = crit ? 0.5 : small ? 0.22 : 0.32;
     t.setText(text).setPosition(x, y).setScale(s0).setTint(crit ? 0xffe23a : color).setAlpha(1)
-      .setActive(true).setVisible(true).setDepth(FX_DEPTH + (crit ? 3 : 1));
+      .setActive(true).setVisible(true).setDepth(FX_DEPTH + (crit ? 12 : 1));
     this.numbers++;
     this.push(t, crit ? 'crit' : 'number', crit ? 850 : 620, pool, { y0: y, s0 });
     if (crit) {
-      // estrela de impacto atrás e o selo "Crit" em cima
+      // balão (estrela de impacto) atrás do número amarelo, maior que ele e subindo junto;
+      // tudo acima dos números normais, e o mais novo por cima dos outros
       const { img, pool: ip } = this.image('fx-impacto');
-      img.setPosition(x, y + 2).setScale(0.2).setDepth(FX_DEPTH + 2).setRotation(Math.random() * 0.6 - 0.3);
-      this.push(img, 'pop', 320, ip, { s0: 0.2, alpha: 0.95 });
+      const bs = Math.max(0.3, (t.displayWidth * 1.7) / 178);
+      img.setPosition(x, y + 2).setScale(bs).setDepth(FX_DEPTH + 11).setRotation(Math.random() * 0.5 - 0.25);
+      this.push(img, 'balloon', 850, ip, { s0: bs, y0: y + 2, alpha: 1 });
       const c = this.image('fx-crit');
-      c.img.setPosition(x, y - 24).setScale(0.26).setDepth(FX_DEPTH + 3);
-      this.push(c.img, 'float', 850, c.pool, { y0: y - 24 });
+      c.img.setPosition(x, y - 26).setScale(0.28).setDepth(FX_DEPTH + 13);
+      this.push(c.img, 'float', 850, c.pool, { y0: y - 26 });
+      const list = this.scene.children;
+      list.bringToTop(img);
+      list.bringToTop(t);
+      list.bringToTop(c.img);
     }
   }
 
@@ -193,6 +199,12 @@ export class Fx {
         case 'float':
           o.y = it.y0 - 30 * k;
           o.setAlpha(k < 0.5 ? 1 : 1 - (k - 0.5) * 2);
+          break;
+        case 'balloon':
+          // estoura grande, assenta e sobe junto com o número; some no fim
+          o.y = it.y0 - 38 * k;
+          o.setScale(it.s0 * (it.age < 90 ? 0.5 + (it.age / 90) * 0.75 : 1.25 - 0.25 * Math.min(1, (it.age - 90) / 120)));
+          o.setAlpha(k < 0.6 ? it.alpha : it.alpha * (1 - (k - 0.6) * 2.5));
           break;
         case 'pop':
           o.setScale(it.s0 * (1 + 0.35 * k));
