@@ -66,7 +66,7 @@ export const MINOTAURO: EnemyDef = {
   element: 'terra', race: 'bruto', size: 'grande', lv: 30
 };
 
-/** Lorde Ossário: o chefe mais forte (3º do rodízio: nível 30) */
+/** Lorde Ossário: o chefe mais forte (3º do rodízio: nível 45) */
 export const LICH: EnemyDef = {
   id: 'lich', name: 'Lorde Ossário', texture: 'en-lich', hp: 9000, speed: 74, damage: 46, xp: 360, radius: 38,
   from: 0, weight: 0, knockback: 0, scale: 1.9, boss: true,
@@ -79,8 +79,10 @@ export const LICH: EnemyDef = {
  * Cada volta deixa o mesmo chefe mais forte.
  */
 export const BOSS_EVERY = 120;
-/** Chefes por nível: a cada 5 níveis (5 Carniçal, 10 Bafome, 15 Carniçal, 20 Minotauro, 25 Carniçal, 30 Lorde Ossário...) */
-export const BOSS_LEVEL_EVERY = 5;
+/** Mini-chefe (Carniçal) a cada 10 níveis: 10, 20, 30... */
+export const MINI_LEVEL_EVERY = 10;
+/** Chefe a cada 15 níveis: 15 Bafome, 30 Minotauro, 45 Lorde Ossário, e o rodízio recomeça mais forte */
+export const BOSS_LEVEL_EVERY = 15;
 /** Loja no meio da partida a cada 10 níveis */
 export const SHOP_LEVEL_EVERY = 10;
 

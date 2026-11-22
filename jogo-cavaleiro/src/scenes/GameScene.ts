@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { Enemy } from '../objects/Enemy';
 import { Pickup } from '../objects/Pickup';
-import { ZUMBI, BAFOME, MINOTAURO, LICH, BOSS_LEVEL_EVERY, BOSS_ROTATION, HARD_FROM, SHOP_LEVEL_EVERY, levelScale, ENEMIES, MAX_ENEMY_RADIUS, dmgScale, hpScale, speedScale, threatLevel, type EnemyDef } from '../data/enemies';
+import { ZUMBI, BAFOME, MINOTAURO, LICH, BOSS_LEVEL_EVERY, MINI_LEVEL_EVERY, BOSS_ROTATION, HARD_FROM, SHOP_LEVEL_EVERY, levelScale, ENEMIES, MAX_ENEMY_RADIUS, dmgScale, hpScale, speedScale, threatLevel, type EnemyDef } from '../data/enemies';
 import { BafomeAI } from '../boss';
 import { ZombieAI } from '../miniboss';
 import { MinotaurAI } from '../minotaur';
@@ -156,8 +156,10 @@ export class GameScene extends Phaser.Scene implements RpgHost {
   private nextWaveAt = 60;
   /** Calendário de chefes: a cada 2 min, alternando mini-chefe e chefe */
   /** Chefes por nível: a cada 4 níveis, alternando mini-chefe e chefe */
-  private bossEventsDone = 0;
-  private pendingBossEvents = 0;
+  private miniDone = 0;
+  private pendingMini = 0;
+  private bossDone = 0;
+  private pendingBoss = 0;
   /** Loja durante a partida a cada 10 níveis */
   private shopVisits = 0;
   private pendingShop = false;
@@ -243,8 +245,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     this.over = false;
     this.spawnTimer = 600;
     this.nextWaveAt = 60;
-    this.bossEventsDone = 0;
-    this.pendingBossEvents = 0;
+    this.miniDone = this.pendingMini = this.bossDone = this.pendingBoss = 0;
     this.shopVisits = 0;
     this.pendingShop = false;
     this.zenyBanked = 0;
@@ -800,15 +801,18 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       }
     }
 
-    // chefes por nível (5 Carniçal, 10 Bafome, 15 Carniçal, 20 Minotauro, 25 Carniçal, 30 Lorde Ossário...)
-    if (this.pendingBossEvents > 0 && !this.choosing) {
-      const bossTurn = this.bossEventsDone % 2 === 1;
+    // mini-chefe a cada 10 níveis e chefe a cada 15 (calendários independentes)
+    if (!this.choosing) {
+      if (this.pendingMini > 0) {
+        this.pendingMini--;
+        this.miniDone++;
+        this.spawnMiniBoss();
+      }
       const bossAlive = !!this.boss && this.boss.active && !!this.boss.def.boss;
-      if (!(bossTurn && bossAlive)) {
-        this.pendingBossEvents--;
-        if (bossTurn) this.spawnBoss(BOSS_ROTATION[Math.floor(this.bossEventsDone / 2) % BOSS_ROTATION.length]);
-        else this.spawnMiniBoss();
-        this.bossEventsDone++;
+      if (this.pendingBoss > 0 && !bossAlive) {
+        this.pendingBoss--;
+        this.spawnBoss(BOSS_ROTATION[this.bossDone % BOSS_ROTATION.length]);
+        this.bossDone++;
       }
     }
   }
@@ -1682,8 +1686,10 @@ export class GameScene extends Phaser.Scene implements RpgHost {
         this.shopVisits = shops;
         this.pendingShop = true;
       }
-      const events = Math.floor(this.level / BOSS_LEVEL_EVERY);
-      if (events > this.bossEventsDone + this.pendingBossEvents) this.pendingBossEvents = events - this.bossEventsDone;
+      const minis = Math.floor(this.level / MINI_LEVEL_EVERY);
+      if (minis > this.miniDone + this.pendingMini) this.pendingMini = minis - this.miniDone;
+      const bosses = Math.floor(this.level / BOSS_LEVEL_EVERY);
+      if (bosses > this.bossDone + this.pendingBoss) this.pendingBoss = bosses - this.bossDone;
       this.events.emit('levelup', this.level, gained);
       this.fx.ring(this.player.x, this.player.y, 24, 4, 450, 0x9fe6ff, 0.5);
       this.openLevelScreens();

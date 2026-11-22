@@ -32,7 +32,7 @@ const GREEN = 0x6aff9a;
 const VIOLET = 0x8a3ad0;
 
 /**
- * Lorde Ossário: o chefe mais forte (nível 30, depois do Bafome e do Minotauro).
+ * Lorde Ossário: o chefe mais forte (nível 45, depois do Bafome e do Minotauro).
  * Todos os ataques têm aviso antes:
  *  - Esfera da Alma: carrega e lança esferas verdes que perseguem o jogador
  *  - Ceifa Sombria: de perto, golpe giratório em área grande

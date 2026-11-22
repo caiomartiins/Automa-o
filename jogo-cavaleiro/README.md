@@ -91,7 +91,7 @@ Todas as habilidades vão até o nível 5. Ativas corpo a corpo usam FOR, à dis
 
 ## Calendário de chefes
 
-A cada 5 níveis, alternando mini-chefe e chefe: **5** Carniçal, **10** Bafome, **15** Carniçal, **20** Minotauro, **25** Carniçal, **30** Lorde Ossário, e o rodízio recomeça (cada volta do mesmo chefe vem muito mais forte).
+**Mini-chefe** (Carniçal) a cada **10 níveis** (10, 20, 30...) e **chefe** a cada **15 níveis**: **15** Bafome, **30** Minotauro, **45** Lorde Ossário, e o rodízio recomeça (cada volta do mesmo chefe vem muito mais forte).
 
 **Lorde Ossário** (`src/lich.ts`), o chefe mais forte: Esfera da Alma (esferas verdes que perseguem), Ceifa Sombria (golpe giratório de perto), Explosão Profana (ondas de choque que se espalham), Passo Fantasma + Raio Necrótico (some, reaparece perto e dispara um raio em linha). Com metade da vida: fúria, invoca fantasmas e esqueletos e faz cair uma Chuva de Caveiras. Solta a Coroa Ossária, o Manto das Almas, a carta dele e a arma mítica Foice das Almas (brilho verde).
 

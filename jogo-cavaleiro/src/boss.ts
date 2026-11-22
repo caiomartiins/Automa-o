@@ -27,7 +27,7 @@ const PHASES = [
 ];
 
 /**
- * Inteligência do Bafome, o primeiro chefe (aparece no nível 10).
+ * Inteligência do Bafome, o primeiro chefe (aparece no nível 15).
  * Ataques, sempre com aviso antes para o jogador poder desviar:
  *  - Golpe Crescente: de perto, golpe de foice em volta dele
  *  - Rugido Demoníaco: leque de esferas sombrias
