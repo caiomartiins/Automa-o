@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { Enemy } from '../objects/Enemy';
 import { Pickup } from '../objects/Pickup';
-import { ZUMBI, BAFOME, MINOTAURO, BOSS_EVERY, BOSS_ROTATION, HARD_FROM, ENEMIES, MAX_ENEMY_RADIUS, dmgScale, hpScale, speedScale, threatLevel, type EnemyDef } from '../data/enemies';
+import { ZUMBI, BAFOME, MINOTAURO, BOSS_LEVEL_EVERY, BOSS_ROTATION, HARD_FROM, SHOP_LEVEL_EVERY, levelScale, ENEMIES, MAX_ENEMY_RADIUS, dmgScale, hpScale, speedScale, threatLevel, type EnemyDef } from '../data/enemies';
 import { BafomeAI } from '../boss';
 import { ZombieAI } from '../miniboss';
 import { MinotaurAI } from '../minotaur';
@@ -119,8 +119,16 @@ export class GameScene extends Phaser.Scene implements RpgHost {
   private spawnTimer = 0;
   private nextWaveAt = 60;
   /** Calendário de chefes: a cada 2 min, alternando mini-chefe e chefe */
-  private nextEventAt = BOSS_EVERY;
-  private eventCount = 0;
+  /** Chefes por nível: a cada 4 níveis, alternando mini-chefe e chefe */
+  private bossEventsDone = 0;
+  private pendingBossEvents = 0;
+  /** Loja durante a partida a cada 10 níveis */
+  private shopVisits = 0;
+  private pendingShop = false;
+  /** Zeny desta partida já guardado na conta ao usar a loja no meio da partida */
+  zenyBanked = 0;
+  private appliedEquip: Record<string, string | undefined> = {};
+  private appliedRefine = 0;
   private bossRound: Record<string, number> = {};
   private bossAIs: { update(dt: number): boolean }[] = [];
   /** Chefe vivo no momento (a barra de vida aparece no HUD) */
@@ -182,8 +190,13 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     this.over = false;
     this.spawnTimer = 600;
     this.nextWaveAt = 60;
-    this.nextEventAt = BOSS_EVERY;
-    this.eventCount = 0;
+    this.bossEventsDone = 0;
+    this.pendingBossEvents = 0;
+    this.shopVisits = 0;
+    this.pendingShop = false;
+    this.zenyBanked = 0;
+    this.appliedEquip = {};
+    this.appliedRefine = 0;
     this.bossRound = {};
     this.boss = null;
     this.bossAIs = [];
@@ -213,9 +226,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     const save = loadSave();
     this.map = MAPS.find((m) => m.id === save.map) ?? MAPS[0];
     this.bonusAttrs = { for: 0, agi: 0, vit: 0, int: 0, des: 0, sor: 0 };
-    this.applyEquipment(save.equip);
-    // o refino só vale se houver uma arma equipada
-    if (save.equip.arma) this.mods.dmgAll += save.refine * REFINE_DMG;
+    this.applyEquipment(save.equip, save.refine);
     this.hp = this.stats.maxHp;
 
     const { width, height } = this.scale;
@@ -652,25 +663,22 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       }
       const elite = ENEMIES.find((d) => d.elite)!;
       if (t >= 300) this.spawnEnemy(elite);
-      if (t < this.nextEventAt - 5) {
+      {
         const horde = t >= 300 ? 'Uma horda e um Cavaleiro Negro se aproximam!' : 'Uma horda se aproxima!';
-        if (Math.floor(t) >= HARD_FROM && Math.floor(t) < HARD_FROM + 60) this.events.emit('toast', 'A partir de agora os monstros ficam mais fortes e numerosos!', '#ff9a7a');
+        if (Math.floor(t) >= HARD_FROM && Math.floor(t) < HARD_FROM + 60) this.events.emit('toast', 'A partir de agora os monstros vêm em maior número!', '#ff9a7a');
         this.events.emit('announce', `${horde}\nAmeaça ${threatLevel(t)}: os monstros ficaram mais fortes`);
       }
     }
 
-    // calendário: 2:00 Carniçal, 4:00 Bafome, 6:00 Carniçal, 8:00 Minotauro, 10:00 Carniçal...
-    if (t >= this.nextEventAt) {
-      const bossTurn = this.eventCount % 2 === 1;
+    // chefes por nível (nível 4 Carniçal, 8 Bafome, 12 Carniçal, 16 Minotauro...)
+    if (this.pendingBossEvents > 0 && !this.choosing) {
+      const bossTurn = this.bossEventsDone % 2 === 1;
       const bossAlive = !!this.boss && this.boss.active && !!this.boss.def.boss;
-      if (bossTurn && bossAlive) {
-        // ainda há um chefe vivo: o próximo espera um pouco
-        this.nextEventAt += 30;
-      } else {
-        this.nextEventAt += BOSS_EVERY;
-        if (bossTurn) this.spawnBoss(BOSS_ROTATION[Math.floor(this.eventCount / 2) % BOSS_ROTATION.length]);
+      if (!(bossTurn && bossAlive)) {
+        this.pendingBossEvents--;
+        if (bossTurn) this.spawnBoss(BOSS_ROTATION[Math.floor(this.bossEventsDone / 2) % BOSS_ROTATION.length]);
         else this.spawnMiniBoss();
-        this.eventCount++;
+        this.bossEventsDone++;
       }
     }
   }
@@ -687,8 +695,9 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     const p = this.ringPosition();
     const e = this.spawnEnemy(ZUMBI, p.x, p.y, true);
     if (!e) return;
-    e.hp = e.maxHp = Math.ceil(e.maxHp * (1 + round * 0.5));
-    this.bossAIs.push(new ZombieAI(this, e));
+    e.hp = e.maxHp = Math.ceil(e.maxHp * (1 + round * 0.8));
+    e.damage = Math.round(e.damage * (1 + round * 0.4));
+    this.bossAIs.push(new ZombieAI(this, e, round ? 0.7 : 1));
     if (!this.boss || !this.boss.active) this.boss = e;
     this.cameras.main.shake(250, 0.005);
     this.events.emit('announce', round ? `Um Carniçal mais forte surgiu! (${round + 1}ª vez)` : 'Um Carniçal faminto surgiu!');
@@ -700,13 +709,15 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     const p = this.ringPosition();
     const e = this.spawnEnemy(def, p.x, p.y, true);
     if (!e) return;
-    e.hp = e.maxHp = Math.ceil(e.maxHp * (1 + round * 0.6));
+    // da 2ª vez em diante: muito mais forte, já em fúria, ataques mais fortes e seguidos
+    e.hp = e.maxHp = Math.ceil(e.maxHp * (1 + round * 1.5));
+    const power = { dmg: 1 + round * 0.6, cd: Math.max(0.5, 1 - round * 0.3), enraged: round > 0 };
     this.boss = e;
-    this.bossAIs.push(id === 'bafome' ? new BafomeAI(this, e) : new MinotaurAI(this, e));
+    this.bossAIs.push(id === 'bafome' ? new BafomeAI(this, e, power) : new MinotaurAI(this, e, power));
     this.cameras.main.shake(500, 0.008);
     this.cameras.main.flash(300, id === 'bafome' ? 80 : 120, id === 'bafome' ? 0 : 60, id === 'bafome' ? 90 : 20);
     const name = id === 'bafome' ? 'O BAFOME DESPERTOU!' : 'O MINOTAURO BRUTAL CHEGOU!';
-    this.events.emit('announce', round ? `${name}  (mais forte: ${round + 1}ª vez)` : name);
+    this.events.emit('announce', round ? `${name}\nVOLTOU MUITO MAIS FORTE! Desvie dos ataques!` : name);
   }
 
   /** Poeira no chão (golpes pesados) */
@@ -756,7 +767,9 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     // chefes não ganham velocidade extra (já têm ataques próprios)
     // chefes e mini-chefes crescem na metade do ritmo (já têm muita vida e ataques próprios)
     const ts = def.boss || def.miniboss ? t / 2 : t;
-    e.spawn(def, x, y, hpScale(ts), dmgScale(ts), def.boss ? 1 : speedScale(t));
+    const boss = def.boss || def.miniboss;
+    const lv = boss ? { hp: 1, dmg: 1, speed: 0 } : levelScale(this.level);
+    e.spawn(def, x, y, hpScale(ts) * lv.hp, dmgScale(ts) * lv.dmg, def.boss ? 1 : speedScale(t) + lv.speed);
     e.setDepth(y);
     return e;
   }
@@ -1011,28 +1024,63 @@ export class GameScene extends Phaser.Scene implements RpgHost {
 
   // ---------------------------------------------------------------- equipamento e atributos
 
-  /** Aplica os efeitos dos itens equipados (no início da partida) */
-  private applyEquipment(equip: Record<string, string | undefined>) {
+  /** Soma ou remove (sign = -1) os efeitos de um conjunto de itens */
+  private equipEffects(equip: Record<string, string | undefined>, sign: 1 | -1) {
     const t = { atk: 0, matk: 0, def: 0, hp: 0, speed: 0, crit: 0, flee: 0, aspd: 0, regen: 0, magnet: 0 };
     for (const id of Object.values(equip)) {
       const item = equipById(id);
       if (!item) continue;
       const st = item.stats;
       for (const key of Object.keys(t) as (keyof typeof t)[]) t[key] += st[key] ?? 0;
-      for (const [a, v] of Object.entries(st.attrs ?? {})) this.addAttr(a as Attr, v!);
+      for (const [a, v] of Object.entries(st.attrs ?? {})) this.addAttr(a as Attr, sign * v!);
     }
-    this.equipTotals = t;
-    this.mods.kindDmg.melee += t.atk;
-    this.mods.kindDmg.ranged += t.atk;
-    this.mods.kindDmg.magic += t.matk;
-    this.stats.armor += t.def;
-    this.stats.maxHp += t.hp;
-    this.stats.speed += t.speed;
-    this.mods.crit += t.crit;
-    this.mods.evade += t.flee;
-    this.stats.haste += t.aspd;
-    this.stats.regen += t.regen;
-    this.stats.magnet *= 1 + t.magnet;
+    this.mods.kindDmg.melee += sign * t.atk;
+    this.mods.kindDmg.ranged += sign * t.atk;
+    this.mods.kindDmg.magic += sign * t.matk;
+    this.stats.armor += sign * t.def;
+    this.stats.maxHp += sign * t.hp;
+    this.stats.speed += sign * t.speed;
+    this.mods.crit += sign * t.crit;
+    this.mods.evade += sign * t.flee;
+    this.stats.haste += sign * t.aspd;
+    this.stats.regen += sign * t.regen;
+    if (sign > 0) this.stats.magnet *= 1 + t.magnet;
+    else this.stats.magnet /= 1 + t.magnet;
+    return t;
+  }
+
+  /** Aplica os itens equipados e o refino da arma */
+  private applyEquipment(equip: Record<string, string | undefined>, refine: number) {
+    this.equipTotals = this.equipEffects(equip, 1);
+    this.appliedEquip = { ...equip };
+    // o refino só vale se houver uma arma equipada
+    this.appliedRefine = equip.arma ? refine * REFINE_DMG : 0;
+    this.mods.dmgAll += this.appliedRefine;
+  }
+
+  /** Depois de comprar na loja no meio da partida: troca os efeitos antigos pelos novos */
+  reapplyEquipment() {
+    const save = loadSave();
+    this.equipEffects(this.appliedEquip, -1);
+    this.mods.dmgAll -= this.appliedRefine;
+    this.applyEquipment(save.equip, save.refine);
+    this.hp = Math.min(this.hp, this.stats.maxHp);
+  }
+
+  /** Abre a loja no meio da partida: o zeny da partida vai para a conta */
+  bankZeny() {
+    const save = loadSave();
+    save.zeny += this.zenyRun;
+    this.zenyBanked += this.zenyRun;
+    this.zenyRun = 0;
+    writeSave(save);
+  }
+
+  /** A loja precisa abrir agora? (consome o pedido) */
+  takeShopVisit() {
+    const v = this.pendingShop;
+    this.pendingShop = false;
+    return v;
   }
 
   /** Valor total do atributo (pontos gastos + equipamento e cartas) */
@@ -1179,6 +1227,13 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       gained += pts;
     }
     if (gained > 0) {
+      const shops = Math.floor(this.level / SHOP_LEVEL_EVERY);
+      if (shops > this.shopVisits) {
+        this.shopVisits = shops;
+        this.pendingShop = true;
+      }
+      const events = Math.floor(this.level / BOSS_LEVEL_EVERY);
+      if (events > this.bossEventsDone + this.pendingBossEvents) this.pendingBossEvents = events - this.bossEventsDone;
       this.events.emit('levelup', this.level, gained);
       this.fx.ring(this.player.x, this.player.y, 24, 4, 450, 0x9fe6ff, 0.5);
       this.openLevelScreens();
@@ -1290,6 +1345,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     else this.player.setTint(0x555555);
     const save = loadSave();
     save.zeny += this.zenyRun;
+    const runTotal = this.zenyRun + this.zenyBanked;
     if (this.elapsed > save.best.time) save.best.time = this.elapsed;
     if (this.level > save.best.level) save.best.level = this.level;
     writeSave(save);
@@ -1299,7 +1355,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       className: CLASSES[this.classId].name,
       kills: this.kills,
       line: this.line,
-      zeny: this.zenyRun,
+      zeny: runTotal,
       zenyTotal: save.zeny,
       cards: this.cards.length,
     };

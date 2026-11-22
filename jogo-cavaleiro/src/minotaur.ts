@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import type { GameScene } from './scenes/GameScene';
 import type { Enemy } from './objects/Enemy';
 
+import type { BossPower } from './boss';
+
 const PHASES = [
   { swing: 1900, smash: 4000, charge: 5200, swingDmg: 40, smashDmg: 48, chargeDmg: 46, speed: 1, warn: 360, smashWarn: 650 },
   { swing: 1500, smash: 3200, charge: 4200, swingDmg: 48, smashDmg: 58, chargeDmg: 56, speed: 1.3, warn: 300, smashWarn: 550 },
@@ -24,7 +26,7 @@ export class MinotaurAI {
   private charge: { vx: number; vy: number; until: number; hit: boolean } | null = null;
   private shadow: Phaser.GameObjects.Image;
 
-  constructor(private g: GameScene, private e: Enemy) {
+  constructor(private g: GameScene, private e: Enemy, private pw: BossPower = { dmg: 1, cd: 1, enraged: false }) {
     this.shadow = g.add.image(e.x, e.y, 'fx-sombra').setScale(3, 2.2).setAlpha(0.5);
     const now = g.elapsed;
     this.nextSmash += now;
@@ -45,14 +47,14 @@ export class MinotaurAI {
     const now = g.elapsed;
     this.shadow.setPosition(e.x, e.y + 54).setDepth(e.y - 1);
     e.speed = e.def.speed * this.P.speed;
-    if (this.phase === 0 && e.hp <= e.maxHp * 0.5) this.enrage();
+    if (this.phase === 0 && (this.pw.enraged || e.hp <= e.maxHp * 0.5)) this.enrage();
 
     if (this.charge) {
       e.vx = this.charge.vx;
       e.vy = this.charge.vy;
       e.knockUntil = now + 50;
       if (!this.charge.hit && Phaser.Math.Distance.Between(e.x, e.y, g.player.x, g.player.y) < 72) {
-        this.charge.hit = g.hurtPlayer(this.P.chargeDmg, true);
+        this.charge.hit = g.hurtPlayer(this.P.chargeDmg * this.pw.dmg, true);
       }
       if (now >= this.charge.until) {
         this.charge = null;
@@ -73,7 +75,7 @@ export class MinotaurAI {
     if (e.anims.currentAnim?.key !== 'en-minotauro-move') e.play('en-minotauro-move');
 
     const d = Phaser.Math.Distance.Between(e.x, e.y, g.player.x, g.player.y);
-    if (this.phase === 1 && now >= this.nextBlock && e.hp < e.maxHp * 0.5) this.block();
+    if (this.phase === 1 && now >= this.nextBlock) this.block();
     else if (d < 160 && now >= this.nextSwing) this.swing();
     else if (d > 240 && d < 640 && now >= this.nextCharge) this.startCharge();
     else if (d < 560 && now >= this.nextSmash) this.smash();
@@ -108,7 +110,7 @@ export class MinotaurAI {
 
   private swing() {
     const { g, e } = this;
-    this.nextSwing = g.elapsed + this.P.swing;
+    this.nextSwing = g.elapsed + this.P.swing * this.pw.cd;
     this.busy(600, 'en-minotauro-swing');
     const r = 170;
     g.fx.ring(e.x, e.y, r, 1, this.P.warn, 0xc87a3a, 0.25);
@@ -119,14 +121,14 @@ export class MinotaurAI {
       g.fx.slash(e.x, e.y, a, r, 0xe8c08a);
       g.fx.slash(e.x, e.y, a + Math.PI, r * 0.9, 0xc89a6a);
       g.cameras.main.shake(130, 0.007);
-      if (Phaser.Math.Distance.Between(e.x, e.y, g.player.x, g.player.y) < r + 10) g.hurtPlayer(this.P.swingDmg, true);
+      if (Phaser.Math.Distance.Between(e.x, e.y, g.player.x, g.player.y) < r + 10) g.hurtPlayer(this.P.swingDmg * this.pw.dmg, true);
     });
   }
 
   /** Golpe Vertical: salta até a marca e esmaga, com onda de choque */
   private smash() {
     const { g, e } = this;
-    this.nextSmash = g.elapsed + this.P.smash;
+    this.nextSmash = g.elapsed + this.P.smash * this.pw.cd;
     const tx = g.player.x;
     const ty = g.player.y;
     const r = this.phase ? 150 : 125;
@@ -140,14 +142,14 @@ export class MinotaurAI {
       g.fx.ring(tx, ty, r * 0.4, 2.6, 380, 0xe8a060, 0.6);
       g.dust(tx, ty + 20);
       if (Phaser.Math.Distance.Between(tx, ty, g.player.x, g.player.y) < r + 10) {
-        if (g.hurtPlayer(this.P.smashDmg, true)) g.afflictPlayer('maldicao', 2000);
+        if (g.hurtPlayer(this.P.smashDmg * this.pw.dmg, true)) g.afflictPlayer('maldicao', 2000);
       }
     });
   }
 
   private startCharge() {
     const { g, e } = this;
-    this.nextCharge = g.elapsed + this.P.charge;
+    this.nextCharge = g.elapsed + this.P.charge * this.pw.cd;
     this.busy(600, 'en-minotauro-block');
     const a = Math.atan2(g.player.y - e.y, g.player.x - e.x);
     e.setFlipX(Math.cos(a) < 0);

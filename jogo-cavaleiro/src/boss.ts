@@ -1,6 +1,13 @@
 import Phaser from 'phaser';
 import type { GameScene } from './scenes/GameScene';
 import type { Enemy } from './objects/Enemy';
+
+/** Força extra de um chefe que volta (2ª vez em diante) */
+export interface BossPower {
+  dmg: number;
+  cd: number;
+  enraged: boolean;
+}
 import { ENEMIES } from './data/enemies';
 import { FX_DEPTH } from './fx';
 
@@ -41,7 +48,7 @@ export class BafomeAI {
   private shadow: Phaser.GameObjects.Image;
   private dash: { vx: number; vy: number; until: number; hit: boolean } | null = null;
 
-  constructor(private g: GameScene, private e: Enemy) {
+  constructor(private g: GameScene, private e: Enemy, private pw: BossPower = { dmg: 1, cd: 1, enraged: false }) {
     this.shadow = g.add.image(e.x, e.y, 'fx-sombra').setScale(3, 2.2).setAlpha(0.5);
     const now = g.elapsed;
     this.nextSlash += now;
@@ -72,7 +79,7 @@ export class BafomeAI {
     // velocidade de acordo com a fase (o resto do movimento é feito pelo jogo)
     e.speed = e.def.speed * this.P.speed;
 
-    if (this.phase === 0 && e.hp <= e.maxHp * 0.5) this.enrage();
+    if (this.phase === 0 && (this.pw.enraged || e.hp <= e.maxHp * 0.5)) this.enrage();
     if (this.phase === 1 && now >= this.nextSummon) this.summon();
 
     // investida em andamento
@@ -82,7 +89,7 @@ export class BafomeAI {
       e.knockUntil = now + 50;
       g.fx.ring(e.x, e.y + 20, 26, 1.6, 220, this.phase ? 0xff3a3a : 0x6a1a7a, 0.35);
       if (!this.dash.hit && Phaser.Math.Distance.Between(e.x, e.y, g.player.x, g.player.y) < 70) {
-        this.dash.hit = g.hurtPlayer(this.P.dashDmg, true);
+        this.dash.hit = g.hurtPlayer(this.P.dashDmg * this.pw.dmg, true);
       }
       if (now >= this.dash.until) {
         this.dash = null;
@@ -141,7 +148,7 @@ export class BafomeAI {
 
   private slash() {
     const { g, e } = this;
-    this.nextSlash = g.elapsed + this.P.slash;
+    this.nextSlash = g.elapsed + this.P.slash * this.pw.cd;
     this.busy(700, 'en-bafome-slash');
     const r = this.phase ? 200 : 175;
     const warn = this.phase ? 380 : 450;
@@ -153,13 +160,13 @@ export class BafomeAI {
       g.fx.slash(e.x, e.y, a, r, 0x7a2a9a);
       g.fx.slash(e.x, e.y, a + Math.PI, r * 0.85, 0x5a1a7a);
       g.cameras.main.shake(140, 0.007);
-      if (Phaser.Math.Distance.Between(e.x, e.y, g.player.x, g.player.y) < r + 12) g.hurtPlayer(this.P.slashDmg, true);
+      if (Phaser.Math.Distance.Between(e.x, e.y, g.player.x, g.player.y) < r + 12) g.hurtPlayer(this.P.slashDmg * this.pw.dmg, true);
     });
   }
 
   private roar() {
     const { g, e } = this;
-    this.nextRoar = g.elapsed + this.P.roar;
+    this.nextRoar = g.elapsed + this.P.roar * this.pw.cd;
     this.busy(650, 'en-bafome-roar');
     const n = this.P.orbs;
     const homing = this.phase ? 1600 : 0;
@@ -179,7 +186,7 @@ export class BafomeAI {
 
   private geyser() {
     const { g, e } = this;
-    this.nextGeyser = g.elapsed + this.P.geyser;
+    this.nextGeyser = g.elapsed + this.P.geyser * this.pw.cd;
     this.busy(800, 'en-bafome-slash');
     const p = g.player;
     const spots = [{ x: p.x, y: p.y }];
@@ -199,7 +206,7 @@ export class BafomeAI {
         g.tweens.add({ targets: spike, alpha: 0, delay: 450, duration: 300, onComplete: () => spike.destroy() });
         if (!hit && Phaser.Math.Distance.Between(s.x, s.y, g.player.x, g.player.y) < r + 10) {
           hit = true;
-          if (g.hurtPlayer(this.P.geyserDmg, true)) g.afflictPlayer('maldicao', 3500);
+          if (g.hurtPlayer(this.P.geyserDmg * this.pw.dmg, true)) g.afflictPlayer('maldicao', 3500);
         }
       }
       g.cameras.main.shake(140, 0.006);
@@ -209,7 +216,7 @@ export class BafomeAI {
   /** Investida das Sombras: aviso em linha e avanço muito rápido */
   private startDash() {
     const { g, e } = this;
-    this.nextDash = g.elapsed + this.P.dash;
+    this.nextDash = g.elapsed + this.P.dash * this.pw.cd;
     this.busy(650, 'en-bafome-roar');
     const a = Math.atan2(g.player.y - e.y, g.player.x - e.x);
     e.setFlipX(Math.cos(a) < 0);
@@ -242,7 +249,7 @@ export class BafomeAI {
       o.img.y += o.vy * s;
       o.img.rotation += s * 4;
       const hit = Phaser.Math.Distance.Between(o.img.x, o.img.y, p.x, p.y) < 30;
-      if (hit) this.g.hurtPlayer(this.P.orbDmg);
+      if (hit) this.g.hurtPlayer(this.P.orbDmg * this.pw.dmg);
       if (hit || o.life <= 0) {
         o.img.destroy();
         this.orbs.splice(i, 1);

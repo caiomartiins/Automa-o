@@ -68,6 +68,19 @@ export const MINOTAURO: EnemyDef = {
  * Cada volta deixa o mesmo chefe mais forte.
  */
 export const BOSS_EVERY = 120;
+/** Chefes por nível: a cada 4 níveis (4 Carniçal, 8 Bafome, 12 Carniçal, 16 Minotauro...) */
+export const BOSS_LEVEL_EVERY = 4;
+/** Loja no meio da partida a cada 10 níveis */
+export const SHOP_LEVEL_EVERY = 10;
+
+/**
+ * A partir do nível 8 do jogador, os monstros comuns ficam bem mais fortes a cada nível:
+ * +30% de vida, +12% de dano e +2% de velocidade por nível acima do 7.
+ */
+export function levelScale(playerLevel: number) {
+  const n = Math.max(0, playerLevel - 7);
+  return { hp: 1 + n * 0.3, dmg: 1 + n * 0.12, speed: Math.min(0.4, n * 0.02) };
+}
 export const BOSS_ROTATION = ['bafome', 'minotauro'] as const;
 
 
@@ -76,11 +89,9 @@ export const BOSS_ROTATION = ['bafome', 'minotauro'] as const;
  * A cada minuto: +45% de vida, +20% de dano e +5% de velocidade (velocidade até +50%).
  */
 export const HARD_FROM = 240;
-/** Minutos depois dos 4:00 (a partir daí tudo cresce mais rápido) */
-const late = (seconds: number) => Math.max(0, seconds - HARD_FROM) / 60;
-export const hpScale = (seconds: number) => 1 + (seconds / 60) * 0.45 + late(seconds) * 0.45;
-export const dmgScale = (seconds: number) => 1 + (seconds / 60) * 0.2 + late(seconds) * 0.2;
-export const speedScale = (seconds: number) => 1 + Math.min(0.7, (seconds / 60) * 0.05 + late(seconds) * 0.04);
+export const hpScale = (seconds: number) => 1 + (seconds / 60) * 0.45;
+export const dmgScale = (seconds: number) => 1 + (seconds / 60) * 0.2;
+export const speedScale = (seconds: number) => 1 + Math.min(0.5, (seconds / 60) * 0.05);
 /** "Ameaça" mostrada no HUD: sobe 1 a cada minuto */
 export const threatLevel = (seconds: number) => 1 + Math.floor(seconds / 60);
 

@@ -14,7 +14,7 @@ export class ZombieAI {
   private lungeUntil = 0;
   private shadow: Phaser.GameObjects.Image;
 
-  constructor(private g: GameScene, private e: Enemy) {
+  constructor(private g: GameScene, private e: Enemy, private cd = 1) {
     this.shadow = g.add.image(e.x, e.y, 'fx-sombra').setScale(2.1, 1.6).setAlpha(0.45);
     this.nextLunge += g.elapsed;
   }
@@ -46,7 +46,7 @@ export class ZombieAI {
 
   private claw() {
     const { g, e } = this;
-    this.nextClaw = g.elapsed + 1900;
+    this.nextClaw = g.elapsed + 1900 * this.cd;
     this.busyUntil = g.elapsed + 620;
     e.setFlipX(g.player.x < e.x);
     e.play('en-zumbi-attack');
@@ -61,7 +61,7 @@ export class ZombieAI {
 
   private lunge() {
     const { g, e } = this;
-    this.nextLunge = g.elapsed + 6500;
+    this.nextLunge = g.elapsed + 6500 * this.cd;
     // pequena pausa de aviso e depois dispara
     this.busyUntil = g.elapsed + 450;
     g.fx.ring(e.x, e.y + 30, 30, 2.5, 450, 0x9aff7a, 0.4);

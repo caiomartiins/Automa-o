@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { MAX_REFINE, REFINE_DMG, refineChance, refineCost } from '../data/rpg';
 import { EQUIPMENT, ITEM_SLOT_NAME, describe, equipById, slotsFor, type ItemSlot, type Slot } from '../data/equipment';
 import { loadSave, writeSave } from '../save';
+import type { GameScene } from './GameScene';
 import { dim, isPortrait, isTouch, onResize, uiButton, uiPanel, uiScale, uiWindow, WIN, wtext } from '../ui';
 
 const CATEGORIES: ItemSlot[] = ['arma', 'cabeca', 'corpo', 'escudo', 'capa', 'calcado', 'acessorio'];
@@ -14,9 +15,15 @@ export class ShopScene extends Phaser.Scene {
   private message = '';
   private effect: '' | 'sucesso' | 'falha' = '';
   private cat: ItemSlot = 'arma';
+  /** Aberta no meio da partida (a cada 10 níveis): volta ao jogo em vez do menu */
+  private inRun = false;
 
   constructor() {
     super('Shop');
+  }
+
+  init(data?: { inRun?: boolean }) {
+    if (data && 'inRun' in data) this.inRun = !!data.inRun;
   }
 
   create() {
@@ -25,12 +32,12 @@ export class ShopScene extends Phaser.Scene {
     const touch = isTouch(this);
     const portrait = isPortrait(this);
     const k = uiScale(this);
-    this.add.tileSprite(0, 0, width, height, 'grama').setOrigin(0);
-    dim(this, 0.45);
+    if (!this.inRun) this.add.tileSprite(0, 0, width, height, 'grama').setOrigin(0);
+    dim(this, this.inRun ? 0.6 : 0.45);
 
     const w = Math.min(860 * (portrait ? 1 : k), width - 16);
     const h = height - 16;
-    const win = uiWindow(this, (width - w) / 2, 8, w, h, `Loja de Equipamentos   •   Zeny: ${save.zeny} z`, k);
+    const win = uiWindow(this, (width - w) / 2, 8, w, h, `${this.inRun ? 'Loja (nível ' + (this.scene.get('Game') as GameScene).level + ')' : 'Loja de Equipamentos'}   •   Zeny: ${save.zeny} z`, k);
     const c = win.c;
     const pad = 10;
 
@@ -155,9 +162,21 @@ export class ShopScene extends Phaser.Scene {
       this.tweens.add({ targets: m, alpha: 0, delay: 2600, duration: 600 });
       this.message = '';
     }
-    c.add(uiButton(this, w - pad - 90 * k, by, 170 * k, 34 * k, touch ? 'Voltar' : 'Voltar  [Esc]', () => this.scene.start('Menu'), { size: 14 * k, primary: true }).c);
-    this.input.keyboard?.once('keydown-ESC', () => this.scene.start('Menu'));
+    const back = () => (this.inRun ? this.backToGame() : this.scene.start('Menu'));
+    const label = this.inRun ? (touch ? 'Voltar à partida' : 'Voltar à partida [Esc]') : (touch ? 'Voltar' : 'Voltar  [Esc]');
+    c.add(uiButton(this, w - pad - 100 * k, by, 190 * k, 34 * k, label, back, { size: 14 * k, primary: true }).c);
+    this.input.keyboard?.once('keydown-ESC', back);
     onResize(this, () => this.scene.restart());
+  }
+
+  /** Volta à partida aplicando o equipamento novo */
+  private backToGame() {
+    const g = this.scene.get('Game') as GameScene;
+    g.reapplyEquipment();
+    this.scene.stop();
+    this.scene.resume('Game');
+    g.closeLevelScreens();
+    g.events.emit('status-closed');
   }
 
   private pick(cat: ItemSlot) {

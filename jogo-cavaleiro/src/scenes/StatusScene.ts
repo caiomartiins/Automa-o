@@ -218,6 +218,12 @@ export class StatusScene extends Phaser.Scene {
   close() {
     const g = this.scene.get('Game') as GameScene;
     this.scene.stop();
+    // a cada 10 níveis, a loja abre antes de voltar ao jogo
+    if (g.takeShopVisit()) {
+      g.bankZeny();
+      this.scene.launch('Shop', { inRun: true });
+      return;
+    }
     this.scene.resume('Game');
     g.closeLevelScreens();
     g.events.emit('status-closed');

@@ -138,7 +138,7 @@ export class MenuScene extends Phaser.Scene {
     const go = (target: string) => {
       if (this.started) return;
       this.started = true;
-      this.scene.start(target);
+      this.scene.start(target, target === 'Shop' ? { inRun: false } : undefined);
     };
     const row2 = portrait ? rowY + bh + 18 : rowY;
     const shopCx = portrait ? bw / 2 - 110 * s : bw - 20 - 150 * s - 12 - 85 * s;
