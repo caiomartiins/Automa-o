@@ -1687,14 +1687,42 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     }
   }
 
-  /** Ao upar: escolha de classe (se for a hora) e depois a janela de Equipamento/Status */
+  /**
+   * Ao upar: só abre tela se for a hora da escolha de classe ou da loja.
+   * Os pontos de status e de habilidade ficam esperando no botão do HUD.
+   * No começo da partida abre a janela de Status para os pontos iniciais.
+   */
   openLevelScreens(reason: 'levelup' | 'start' = 'levelup') {
     if (this.choosing) return;
+    const choice = this.classChoice();
+    if (reason === 'levelup' && !choice && !this.pendingShop) return;
     this.choosing = true;
     this.scene.pause();
-    const choice = this.classChoice();
     if (choice) this.scene.launch('LevelUp', choice);
-    else this.scene.launch('Status', { reason });
+    else if (reason === 'start') this.scene.launch('Status', { reason });
+    else this.afterScreens();
+  }
+
+  /** Tem pontos de status ou de habilidade esperando para serem distribuídos */
+  pendingPoints() {
+    // só conta os pontos de status se der para subir algum atributo (o custo cresce a cada 10)
+    const cheapest = Math.min(...ATTR_IDS.filter((x) => this.attrs[x] < 99).map((x) => this.attrCostOf(x)));
+    return { attr: this.attrPoints >= cheapest ? this.attrPoints : 0, skill: this.usesTree() ? this.skillPoints : 0 };
+  }
+
+  /**
+   * Depois de uma tela de nível/classe/status: abre a loja se for a vez (a cada 10 níveis)
+   * ou volta ao jogo.
+   */
+  afterScreens() {
+    if (this.takeShopVisit()) {
+      this.bankZeny();
+      this.scene.launch('Shop', { inRun: true });
+      return;
+    }
+    this.scene.resume();
+    this.closeLevelScreens();
+    this.events.emit('status-closed');
   }
 
   /** Dados da tela de escolha de classe, se o nível já permitir (senão null) */

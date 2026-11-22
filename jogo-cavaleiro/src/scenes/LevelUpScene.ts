@@ -135,8 +135,8 @@ export class LevelUpScene extends Phaser.Scene {
     const game = this.scene.get('Game') as GameScene;
     opt.apply(game);
 
-    // depois da escolha de classe, abre a janela de Equipamento/Status
+    // depois da escolha de classe: loja (se for a vez) ou volta ao jogo; os pontos ficam no botão do HUD
     this.scene.stop();
-    this.scene.launch('Status', { reason: 'levelup' });
+    game.afterScreens();
   }
 }

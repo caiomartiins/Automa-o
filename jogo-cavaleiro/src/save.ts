@@ -21,11 +21,16 @@ export interface SaveData {
   pet: string | null;
   map: string;
   best: { time: number; level: number };
+  /** Versão de teste já recebeu o zeny inicial */
+  testZeny?: boolean;
 }
 
 const KEY = 'ascensao-do-cavaleiro:save';
 
-const fresh = (): SaveData => ({ zeny: 0, up: {}, refine: 0, refines: {}, owned: [], equip: {}, v: 2, pet: null, map: 'campo', best: { time: 0, level: 0 } });
+/** Zeny inicial (a versão de teste é gerada com VITE_START_ZENY=5000) */
+const START_ZENY = Number(import.meta.env.VITE_START_ZENY ?? 0) || 0;
+
+const fresh = (): SaveData => ({ zeny: START_ZENY, up: {}, refine: 0, refines: {}, owned: [], equip: {}, v: 2, pet: null, map: 'campo', best: { time: 0, level: 0 } });
 
 /** Custo das melhorias da loja antiga, para devolver o zeny gasto nelas */
 const OLD_SHOP_COST: Record<string, (l: number) => number> = {
@@ -58,6 +63,11 @@ export function loadSave(): SaveData {
     if (raw) {
       data = { ...data, v: 1, ...JSON.parse(raw) };
       migrate(data);
+      // versão de teste: garante o zeny inicial uma vez, mesmo com save antigo
+      if (START_ZENY && !data.testZeny) {
+        data.zeny = Math.max(data.zeny, START_ZENY);
+        data.testZeny = true;
+      }
     }
   } catch {
     /* sem armazenamento: segue com o padrão */

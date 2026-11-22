@@ -39,11 +39,13 @@ export class UIScene extends Phaser.Scene {
   private wingBtn!: ReturnType<typeof uiButton>;
   private penaText!: Phaser.GameObjects.Text;
   private pauseBtn!: ReturnType<typeof uiButton>;
+  /** Botão que avisa que há pontos de status/habilidade para distribuir */
+  private pointsBtn!: ReturnType<typeof uiButton>;
 
   private announceText!: Phaser.GameObjects.Text;
   private toastText!: Phaser.GameObjects.Text;
 
-  private last = { info: '', time: '', skills: '', items: '', boss: '' };
+  private last = { info: '', time: '', skills: '', items: '', boss: '', points: '' };
 
   constructor() {
     super('UI');
@@ -54,7 +56,7 @@ export class UIScene extends Phaser.Scene {
     const { width, height } = this.scale;
     const k = (this.k = uiScale(this));
     const portrait = (this.portrait = isPortrait(this));
-    this.last = { info: '', time: '', skills: '', items: '', boss: '' };
+    this.last = { info: '', time: '', skills: '', items: '', boss: '', points: '' };
 
     // ---- informações básicas (canto superior esquerdo)
     const iw = Math.min(250 * k, width * (portrait ? 0.6 : 0.3));
@@ -95,9 +97,18 @@ export class UIScene extends Phaser.Scene {
     // ---- botões (canto superior direito)
     const bs = 34 * k;
     this.pauseBtn = uiButton(this, width - 8 - bs / 2, 8 + bs / 2, bs, bs, 'II', () => this.togglePause(), { size: 14 * k });
-    if (this.sys.game.device.fullscreen.available) {
+    const fs = this.sys.game.device.fullscreen.available;
+    if (fs) {
       uiButton(this, width - 16 - bs * 1.5, 8 + bs / 2, bs, bs, '⛶', () => this.toggleFullscreen(), { size: 15 * k });
     }
+    // pontos para distribuir: botão piscando ao lado da pausa
+    const pw = 118 * k;
+    // deitado: ao lado da pausa; em pé (pouco espaço): logo abaixo dos botões
+    const px = portrait ? width - 8 - pw / 2 : width - 8 - bs - 8 - (fs ? bs + 8 : 0) - pw / 2;
+    const py = portrait ? 8 + bs + 8 + bs / 2 : 8 + bs / 2;
+    this.pointsBtn = uiButton(this, px, py, pw, bs, '', () => this.openPoints(), { size: 13 * k, primary: true });
+    this.pointsBtn.c.setVisible(false);
+    this.tweens.add({ targets: this.pointsBtn.c, scale: 1.08, duration: 520, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
 
     // ---- habilidades (canto inferior esquerdo)
     const sw = Math.min(300 * k, width * (portrait ? 0.58 : 0.3));
@@ -142,6 +153,17 @@ export class UIScene extends Phaser.Scene {
     onResize(this, () => this.scene.restart());
     this.input.keyboard?.on('keydown-P', () => this.togglePause());
     this.input.keyboard?.on('keydown-ESC', () => this.togglePause());
+  }
+
+  /** Abre a janela de Status para distribuir os pontos (o jogo pausa) */
+  openPoints() {
+    if (this.scene.isActive('LevelUp') || this.scene.isActive('Status') || this.scene.isActive('SkillTree')) return;
+    if (this.scene.isPaused('Game')) return;
+    this.scene.pause('Game');
+    this.game_.choosing = true;
+    this.scene.launch('Status', { reason: 'levelup' });
+    this.scene.bringToTop('Status');
+    this.pauseBtn.setText('▶');
   }
 
   togglePause() {
@@ -216,6 +238,16 @@ export class UIScene extends Phaser.Scene {
       const h = this.skillsWin.top + 12 + this.skillsText.height;
       this.skillsWin.c.y = this.scale.height - 8 - h;
       this.redrawWindowHeight(this.skillsWin, h);
+    }
+
+    // botão de pontos: aparece enquanto houver pontos de status ou de habilidade
+    const pp = g.pendingPoints();
+    // "+12 pts" = pontos de status; "✦3" = pontos de habilidade
+    const ptsLabel = pp.attr || pp.skill ? [pp.attr ? `+${pp.attr} pts` : '', pp.skill ? `✦${pp.skill}` : ''].filter(Boolean).join('  ') : '';
+    if (ptsLabel !== this.last.points) {
+      this.last.points = ptsLabel;
+      this.pointsBtn.c.setVisible(!!ptsLabel);
+      this.pointsBtn.setText(ptsLabel);
     }
 
     const items = `${g.items.asa}|${g.items.pena}`;
