@@ -1,9 +1,10 @@
 import Phaser from 'phaser';
 import { Enemy } from '../objects/Enemy';
 import { Pickup } from '../objects/Pickup';
-import { ZUMBI, ZUMBI_FIRST, ZUMBI_INTERVAL, BAFOME, BAFOME_LEVEL, BOSSES, BOSS_INTERVAL, ENEMIES, MAX_ENEMY_RADIUS, dmgScale, hpScale, speedScale, threatLevel, type EnemyDef } from '../data/enemies';
+import { ZUMBI, BAFOME, MINOTAURO, BOSS_EVERY, BOSS_ROTATION, ENEMIES, MAX_ENEMY_RADIUS, dmgScale, hpScale, speedScale, threatLevel, type EnemyDef } from '../data/enemies';
 import { BafomeAI } from '../boss';
 import { ZombieAI } from '../miniboss';
+import { MinotaurAI } from '../minotaur';
 import { CLASSES, LINES, lineOf, type ClassDef, type ClassId, type LineId } from '../data/classes';
 import { feetOffset, heroScale, needsShadow } from '../sprites';
 import { BASE_STATS, type Stats } from '../data/stats';
@@ -117,13 +118,11 @@ export class GameScene extends Phaser.Scene implements RpgHost {
   private over = false;
   private spawnTimer = 0;
   private nextWaveAt = 60;
-  private nextBossAt = BOSS_INTERVAL;
-  private bossCount = 0;
-  private bafomeSpawned = false;
-  private bossAI: BafomeAI | null = null;
-  private miniAIs: ZombieAI[] = [];
-  private nextMiniAt = ZUMBI_FIRST;
-  private miniCount = 0;
+  /** Calendário de chefes: a cada 2 min, alternando mini-chefe e chefe */
+  private nextEventAt = BOSS_EVERY;
+  private eventCount = 0;
+  private bossRound: Record<string, number> = {};
+  private bossAIs: { update(dt: number): boolean }[] = [];
   /** Chefe vivo no momento (a barra de vida aparece no HUD) */
   boss: Enemy | null = null;
   /** Linhagem escolhida no nível 5 (null enquanto ainda é Aprendiz) */
@@ -183,14 +182,11 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     this.over = false;
     this.spawnTimer = 600;
     this.nextWaveAt = 60;
-    this.nextBossAt = BOSS_INTERVAL;
-    this.bossCount = 0;
+    this.nextEventAt = BOSS_EVERY;
+    this.eventCount = 0;
+    this.bossRound = {};
     this.boss = null;
-    this.bafomeSpawned = false;
-    this.bossAI = null;
-    this.miniAIs = [];
-    this.nextMiniAt = ZUMBI_FIRST;
-    this.miniCount = 0;
+    this.bossAIs = [];
     this.invulnUntil = 0;
     this.hurtUntil = 0;
     this.frame = 0;
@@ -280,8 +276,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     if (this.frame % 8 === 1) this.updateDecor();
 
     this.collectEnemies();
-    this.updateBafome(dt);
-    this.miniAIs = this.miniAIs.filter((ai) => ai.update());
+    this.bossAIs = this.bossAIs.filter((ai) => ai.update(dt));
     this.updatePlayer(dt);
     this.updatePet(dt);
     this.skills.forEach((s) => s.update(dt));
@@ -413,7 +408,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     if (this.elapsed < this.poisonUntil && this.elapsed >= this.nextPoisonTick) {
       this.nextPoisonTick = this.elapsed + 1000;
       this.hp = Math.max(1, this.hp - 4);
-      this.fx.number(this.player.x, this.player.y - 30, '-4', 0x7aff6a);
+      this.fx.number(this.player.x, this.player.y - 30, '-4', 0x7aff6a, true);
     }
     this.player.setAlpha(this.elapsed < this.invulnUntil ? 0.6 + 0.4 * Math.sin(this.elapsed / 30) : 1);
 
@@ -430,7 +425,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
   /** Aplica maldição (lentidão) ou veneno no jogador; VIT dá chance de resistir */
   afflictPlayer(kind: 'maldicao' | 'veneno', ms: number) {
     if (Math.random() < Math.min(0.5, this.attr('vit') * ATTR_FX.vitResist)) {
-      this.fx.number(this.player.x, this.player.y - 44, '0', 0xdddddd);
+      this.fx.miss(this.player.x, this.player.y - 44);
       return;
     }
     if (kind === 'maldicao') this.curseUntil = this.elapsed + ms;
@@ -444,7 +439,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     // esquiva (AGI, mascote) e cartas que anulam o golpe
     if (Math.random() < this.evadeChance()) {
       this.invulnUntil = this.elapsed + 250;
-      this.fx.number(this.player.x, this.player.y - 34, '0', 0xdddddd);
+      this.fx.miss(this.player.x, this.player.y - 34);
       return false;
     }
     if (Math.random() < this.mods.ignoreHit) {
@@ -457,7 +452,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     this.invulnUntil = this.elapsed + PLAYER_IFRAMES;
     this.hurtUntil = this.elapsed + 100;
     this.cameras.main.shake(90, 0.004);
-    this.fx.number(this.player.x, this.player.y - 30, `-${dmg}`, 0xff5c5c);
+    this.fx.number(this.player.x, this.player.y - 30, `-${dmg}`, 0xff3a3a);
     if (this.hp <= 0) {
       if (this.items.pena > 0) this.revive();
       else this.gameOver();
@@ -655,42 +650,67 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       }
       const elite = ENEMIES.find((d) => d.elite)!;
       if (t >= 300) this.spawnEnemy(elite);
-      if (t < this.nextBossAt - 5) {
+      if (t < this.nextEventAt - 5) {
         const horde = t >= 300 ? 'Uma horda e um Cavaleiro Negro se aproximam!' : 'Uma horda se aproxima!';
         this.events.emit('announce', `${horde}\nAmeaça ${threatLevel(t)}: os monstros ficaram mais fortes`);
       }
     }
 
-    // mini-chefe Carniçal: aos 2 minutos e depois a cada 3min30s (mais forte a cada vez)
-    if (t >= this.nextMiniAt) {
-      this.nextMiniAt += ZUMBI_INTERVAL;
-      const p = this.ringPosition();
-      const e = this.spawnEnemy(ZUMBI, p.x, p.y, true);
-      if (e) {
-        e.hp = e.maxHp = Math.ceil(e.maxHp * (1 + this.miniCount * 0.5));
-        this.miniCount++;
-        this.miniAIs.push(new ZombieAI(this, e));
-        if (!this.boss) this.boss = e;
-        this.cameras.main.shake(250, 0.005);
-        this.events.emit('announce', 'Um Carniçal faminto surgiu!');
+    // calendário: 2:00 Carniçal, 4:00 Bafome, 6:00 Carniçal, 8:00 Minotauro, 10:00 Carniçal...
+    if (t >= this.nextEventAt) {
+      const bossTurn = this.eventCount % 2 === 1;
+      const bossAlive = !!this.boss && this.boss.active && !!this.boss.def.boss;
+      if (bossTurn && bossAlive) {
+        // ainda há um chefe vivo: o próximo espera um pouco
+        this.nextEventAt += 30;
+      } else {
+        this.nextEventAt += BOSS_EVERY;
+        if (bossTurn) this.spawnBoss(BOSS_ROTATION[Math.floor(this.eventCount / 2) % BOSS_ROTATION.length]);
+        else this.spawnMiniBoss();
+        this.eventCount++;
       }
     }
+  }
 
-    // a cada 5 minutos, um chefe (alternando entre os chefes, cada volta mais forte)
-    if (t >= this.nextBossAt && !this.boss) {
-      this.nextBossAt += BOSS_INTERVAL;
-      const def = BOSSES[this.bossCount % BOSSES.length];
-      const round = Math.floor(this.bossCount / BOSSES.length);
-      this.bossCount++;
-      const p = this.ringPosition();
-      const e = this.spawnEnemy(def, p.x, p.y, true);
-      if (e) {
-        e.hp = e.maxHp = Math.ceil(e.maxHp * (1 + round * 0.8));
-        this.boss = e;
-        this.cameras.main.shake(400, 0.006);
-        this.events.emit('announce', `CHEFE: ${def.name}!`);
-      }
-    }
+  /** Quantas vezes esse chefe já apareceu (cada volta fica mais forte) */
+  private nextRound(id: string) {
+    const r = this.bossRound[id] ?? 0;
+    this.bossRound[id] = r + 1;
+    return r;
+  }
+
+  private spawnMiniBoss() {
+    const round = this.nextRound('zumbi');
+    const p = this.ringPosition();
+    const e = this.spawnEnemy(ZUMBI, p.x, p.y, true);
+    if (!e) return;
+    e.hp = e.maxHp = Math.ceil(e.maxHp * (1 + round * 0.5));
+    this.bossAIs.push(new ZombieAI(this, e));
+    if (!this.boss || !this.boss.active) this.boss = e;
+    this.cameras.main.shake(250, 0.005);
+    this.events.emit('announce', round ? `Um Carniçal mais forte surgiu! (${round + 1}ª vez)` : 'Um Carniçal faminto surgiu!');
+  }
+
+  private spawnBoss(id: 'bafome' | 'minotauro') {
+    const round = this.nextRound(id);
+    const def = id === 'bafome' ? BAFOME : MINOTAURO;
+    const p = this.ringPosition();
+    const e = this.spawnEnemy(def, p.x, p.y, true);
+    if (!e) return;
+    e.hp = e.maxHp = Math.ceil(e.maxHp * (1 + round * 0.6));
+    this.boss = e;
+    this.bossAIs.push(id === 'bafome' ? new BafomeAI(this, e) : new MinotaurAI(this, e));
+    this.cameras.main.shake(500, 0.008);
+    this.cameras.main.flash(300, id === 'bafome' ? 80 : 120, id === 'bafome' ? 0 : 60, id === 'bafome' ? 90 : 20);
+    const name = id === 'bafome' ? 'O BAFOME DESPERTOU!' : 'O MINOTAURO BRUTAL CHEGOU!';
+    this.events.emit('announce', round ? `${name}  (mais forte: ${round + 1}ª vez)` : name);
+  }
+
+  /** Poeira no chão (golpes pesados) */
+  dust(x: number, y: number) {
+    this.fx.ring(x, y, 18, 4, 450, 0xc8a070, 0.45);
+    this.fx.ring(x, y, 10, 6, 600, 0xe8d0a0, 0.25);
+    this.burst(x, y, 8);
   }
 
   private pickEnemy(t: number): EnemyDef {
@@ -731,8 +751,8 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     if (!e) return null;
     const t = this.elapsed / 1000;
     // chefes não ganham velocidade extra (já têm ataques próprios)
-    // chefes crescem na metade do ritmo (já têm muita vida e ataques próprios)
-    const ts = def.boss ? t / 2 : t;
+    // chefes e mini-chefes crescem na metade do ritmo (já têm muita vida e ataques próprios)
+    const ts = def.boss || def.miniboss ? t / 2 : t;
     e.spawn(def, x, y, hpScale(ts), dmgScale(ts), def.boss ? 1 : speedScale(t));
     e.setDepth(y);
     return e;
@@ -742,21 +762,6 @@ export class GameScene extends Phaser.Scene implements RpgHost {
   spawnMinion(def: EnemyDef, x: number, y: number) {
     const e = this.spawnEnemy(def, x, y, true);
     if (e) this.fx.ring(x, y, 20, 2.5, 300, 0x6a1a7a, 0.5);
-  }
-
-  /** Bafome entra em cena quando o jogador chega ao nível 10 */
-  private updateBafome(dt: number) {
-    if (this.bossAI && !this.bossAI.update(dt)) this.bossAI = null;
-    if (this.bafomeSpawned || this.level < BAFOME_LEVEL || this.choosing) return;
-    this.bafomeSpawned = true;
-    const p = this.ringPosition();
-    const e = this.spawnEnemy(BAFOME, p.x, p.y, true);
-    if (!e) return;
-    this.boss = e;
-    this.bossAI = new BafomeAI(this, e);
-    this.cameras.main.shake(500, 0.008);
-    this.cameras.main.flash(300, 80, 0, 90);
-    this.events.emit('announce', 'O BAFOME DESPERTOU!');
   }
 
   /** Os `n` inimigos mais próximos de (x, y), até `maxDist` */
@@ -808,6 +813,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       mult *= 1 + (this.mods.raceDmg[e.def.race] ?? 0);
       const crit = Math.random() < this.critChance();
       if (crit) mult *= 1.8;
+      if (e.blocking) mult *= 0.2;
       const dmg = Math.max(1, Math.round(amount * mult * Phaser.Math.FloatBetween(0.9, 1.1)));
       e.hp -= dmg;
       e.setTintFill(0xffffff);
@@ -866,7 +872,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     }
     if (total > 0) {
       e.hp -= total;
-      this.fx.number(e.x + 10, e.y - 8, `${total}`, color);
+      this.fx.number(e.x + 10, e.y - 8, `${total}`, color, true);
       if (e.hp <= 0) {
         this.killEnemy(e);
         return;

@@ -3,7 +3,7 @@ import Phaser from 'phaser';
 export const FX_DEPTH = 1_000_000;
 
 type Obj = Phaser.GameObjects.Image | Phaser.GameObjects.BitmapText | Phaser.GameObjects.Graphics;
-type Kind = 'fade' | 'lance' | 'ring' | 'number' | 'fall';
+type Kind = 'fade' | 'lance' | 'ring' | 'number' | 'crit' | 'float' | 'pop' | 'fall';
 
 interface Item {
   obj: Obj;
@@ -105,14 +105,38 @@ export class Fx {
     this.push(img, 'fall', life, pool, { y0: y, s0: scale * 0.5 });
   }
 
-  /** Número flutuante de dano ou cura */
-  number(x: number, y: number, value: string, color: number) {
+  /**
+   * Número flutuante de dano ou cura, na fonte de números do jogo (branca com contorno,
+   * tingida pela cor). Termina com "!" = crítico: amarelo, maior e com estrela de impacto.
+   */
+  number(x: number, y: number, value: string, color: number, small = false) {
     if (this.numbers >= this.maxNumbers) return;
+    const crit = value.endsWith('!');
+    const text = value.replace(/[^0-9+-]/g, '');
     const pool = this.pool('number');
-    const t = (pool.pop() as Phaser.GameObjects.BitmapText | undefined) ?? this.scene.add.bitmapText(0, 0, 'dmg', '').setOrigin(0.5).setLetterSpacing(-4);
-    t.setText(value).setPosition(x, y).setTint(color).setAlpha(1).setActive(true).setVisible(true).setDepth(FX_DEPTH + 1);
+    const t = (pool.pop() as Phaser.GameObjects.BitmapText | undefined)
+      ?? this.scene.add.bitmapText(0, 0, 'dmg2', '').setOrigin(0.5).setLetterSpacing(-12);
+    const s0 = crit ? 0.5 : small ? 0.22 : 0.32;
+    t.setText(text).setPosition(x, y).setScale(s0).setTint(crit ? 0xffe23a : color).setAlpha(1)
+      .setActive(true).setVisible(true).setDepth(FX_DEPTH + (crit ? 3 : 1));
     this.numbers++;
-    this.push(t, 'number', 550, pool, { y0: y });
+    this.push(t, crit ? 'crit' : 'number', crit ? 850 : 620, pool, { y0: y, s0 });
+    if (crit) {
+      // estrela de impacto atrás e o selo "Crit" em cima
+      const { img, pool: ip } = this.image('fx-impacto');
+      img.setPosition(x, y + 2).setScale(0.2).setDepth(FX_DEPTH + 2).setRotation(Math.random() * 0.6 - 0.3);
+      this.push(img, 'pop', 320, ip, { s0: 0.2, alpha: 0.95 });
+      const c = this.image('fx-crit');
+      c.img.setPosition(x, y - 24).setScale(0.26).setDepth(FX_DEPTH + 3);
+      this.push(c.img, 'float', 850, c.pool, { y0: y - 24 });
+    }
+  }
+
+  /** "Miss": o golpe errou (esquiva) */
+  miss(x: number, y: number) {
+    const { img, pool } = this.image('fx-miss');
+    img.setPosition(x, y).setScale(0.3).setDepth(FX_DEPTH + 2);
+    this.push(img, 'float', 700, pool, { y0: y });
   }
 
   update(dt: number) {
@@ -148,9 +172,25 @@ export class Fx {
           o.y = it.y0 - 320 * (1 - k * k);
           o.setAlpha(Math.min(1, k * 4));
           break;
-        case 'number':
-          o.y = it.y0 - 26 * k;
-          o.setAlpha(1 - k);
+        case 'number': {
+          // "salta" ao aparecer, sobe e some na segunda metade
+          o.y = it.y0 - 30 * k;
+          o.setScale(it.s0 * (1 + 0.45 * Math.max(0, 1 - it.age / 90)));
+          o.setAlpha(k < 0.5 ? 1 : 1 - (k - 0.5) * 2);
+          break;
+        }
+        case 'crit':
+          o.y = it.y0 - 38 * k;
+          o.setScale(it.s0 * (1 + 0.9 * Math.max(0, 1 - it.age / 130)));
+          o.setAlpha(k < 0.6 ? 1 : 1 - (k - 0.6) * 2.5);
+          break;
+        case 'float':
+          o.y = it.y0 - 30 * k;
+          o.setAlpha(k < 0.5 ? 1 : 1 - (k - 0.5) * 2);
+          break;
+        case 'pop':
+          o.setScale(it.s0 * (1 + 0.35 * k));
+          o.setAlpha(it.alpha * (1 - k));
           break;
       }
     }

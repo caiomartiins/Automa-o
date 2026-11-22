@@ -43,12 +43,11 @@ export const ENEMIES: EnemyDef[] = [
   },
 ];
 
-/** Bafome: primeiro chefe de verdade, aparece quando o jogador chega ao nível 10 */
+/** Bafome: primeiro chefe (4:00 e depois a cada 8 minutos, alternando com o Minotauro) */
 export const BAFOME: EnemyDef = {
   id: 'bafome', name: 'Bafome', texture: 'en-bafome', hp: 3200, speed: 72, damage: 34, xp: 220, radius: 34,
   from: 0, weight: 0, knockback: 0, scale: 2.9, boss: true, element: 'sombrio', race: 'demonio', size: 'grande'
 };
-export const BAFOME_LEVEL = 10;
 
 /** Carniçal: mini-chefe zumbi. Aparece aos 2 minutos e depois a cada 3min30s */
 export const ZUMBI: EnemyDef = {
@@ -56,22 +55,21 @@ export const ZUMBI: EnemyDef = {
   from: 0, weight: 0, knockback: 0.1, scale: 2.1, miniboss: true,
   element: 'mortovivo', race: 'mortovivo', size: 'grande',
 };
-export const ZUMBI_FIRST = 120;
-export const ZUMBI_INTERVAL = 210;
+/** Minotauro: segundo chefe */
+export const MINOTAURO: EnemyDef = {
+  id: 'minotauro', name: 'Minotauro Brutal', texture: 'en-minotauro', hp: 3800, speed: 66, damage: 30, xp: 240, radius: 32,
+  from: 0, weight: 0, knockback: 0, scale: 2.7, boss: true,
+  element: 'terra', race: 'bruto', size: 'grande',
+};
 
-/** Chefes: um a cada 5 minutos, alternando (com mais vida a cada volta) */
-export const BOSSES: EnemyDef[] = [
-  {
-    id: 'rei-gosma', name: 'Rei Gosma', texture: 'en-gosma', hp: 2000, speed: 46, damage: 28, xp: 80, radius: 36,
-    from: 0, weight: 0, knockback: 0, scale: 3, tint: 0xffd75a, boss: true, element: 'agua', race: 'amorfo', size: 'grande'
-  },
-  {
-    id: 'lorde-esqueleto', name: 'Lorde Esqueleto', texture: 'en-esqueleto', hp: 3000, speed: 56, damage: 34, xp: 120, radius: 30,
-    from: 0, weight: 0, knockback: 0, scale: 2.5, tint: 0xd2b8ff, boss: true, element: 'mortovivo', race: 'mortovivo', size: 'grande'
-  },
-];
+/**
+ * Calendário dos chefes: a cada 2 minutos, alternando mini-chefe e chefe.
+ * 2:00 Carniçal, 4:00 Bafome, 6:00 Carniçal, 8:00 Minotauro, 10:00 Carniçal, 12:00 Bafome...
+ * Cada volta deixa o mesmo chefe mais forte.
+ */
+export const BOSS_EVERY = 120;
+export const BOSS_ROTATION = ['bafome', 'minotauro'] as const;
 
-export const BOSS_INTERVAL = 300;
 
 /**
  * Progressão de força dos monstros conforme o tempo passa.
@@ -84,4 +82,4 @@ export const speedScale = (seconds: number) => 1 + Math.min(0.5, (seconds / 60) 
 export const threatLevel = (seconds: number) => 1 + Math.floor(seconds / 60);
 
 /** Maior raio de colisão entre todos os inimigos (usado nas buscas espaciais) */
-export const MAX_ENEMY_RADIUS = Math.max(...[...ENEMIES, ...BOSSES, BAFOME, ZUMBI].map((d) => d.radius));
+export const MAX_ENEMY_RADIUS = Math.max(...[...ENEMIES, BAFOME, ZUMBI, MINOTAURO].map((d) => d.radius));

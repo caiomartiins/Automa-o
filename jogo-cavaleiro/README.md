@@ -64,20 +64,28 @@ Gosma, Morcego, Cogumelo Andante, Esqueleto, Fantasma, Orc e Cavaleiro Negro (el
 
 **Progressão de força:** a cada minuto ("Ameaça" no HUD), os monstros ganham +45% de vida, +20% de dano e +5% de velocidade (a velocidade sobe até +50%). Os chefes crescem na metade desse ritmo. Itens de cura são raros.
 
-**Bafome** (sprite próprio, IA em `src/boss.ts`) aparece quando o jogador chega ao **nível 10**. Ataques, sempre com aviso antes:
+**Calendário de chefes:** a cada 2 minutos, alternando mini-chefe e chefe: 2:00 Carniçal, 4:00 Bafome, 6:00 Carniçal, 8:00 Minotauro, 10:00 Carniçal, 12:00 Bafome... Cada volta deixa o mesmo chefe mais forte. Se um chefe ainda estiver vivo, o próximo espera 30 s.
+
+**Bafome** (sprite próprio, IA em `src/boss.ts`). Ataques, sempre com aviso antes:
 - **Golpe Crescente:** de perto, um círculo roxo avisa e logo depois vem o golpe de foice em volta dele.
 - **Rugido Demoníaco:** 3 esferas sombrias voam na direção do jogador.
 - **Gêiser das Trevas:** marcas no chão (uma embaixo do jogador) e, logo depois, sobem espinhos que amaldiçoam (deixam mais lento).
 - **Investida das Sombras:** uma faixa no chão avisa, e ele atravessa a tela em alta velocidade.
 - **Fúria (com metade da vida):** fica vermelho e mais rápido, ataca com mais frequência, as esferas passam a perseguir o jogador e ele invoca servos (5 esqueletos e um Cavaleiro Negro) a cada 14 segundos.
 
-**Carniçal** (mini-chefe zumbi, sprite próprio, IA em `src/miniboss.ts`) aparece aos 2 minutos e depois a cada 3min30s, mais forte a cada vez:
+**Carniçal** (mini-chefe zumbi, sprite próprio, IA em `src/miniboss.ts`):
 - **Garras Pútridas:** de perto, ele para, ataca com as garras e envenena.
 - **Investida Faminta:** de média distância, dispara na direção do jogador.
 
 Ao ser derrotado, solta gemas, zeny e tem 35% de chance de soltar a Carta Carniçal.
 
-Além dele, a cada 5 minutos aparece um chefe de tempo (Rei Gosma, depois Lorde Esqueleto...).
+**Minotauro Brutal** (sprite próprio, IA em `src/minotaur.ts`):
+- **Golpe Horizontal:** de perto, gira a maça em volta dele.
+- **Golpe Vertical:** marca o chão, salta até lá e esmaga (onda de choque e lentidão).
+- **Investida de Touro:** uma faixa no chão avisa e ele corre em linha reta.
+- **Fúria (com metade da vida):** fica mais rápido e passa a **bloquear com o escudo**, recebendo 80% menos dano por 2,5 s.
+
+**Números de dano** (fonte própria em `src/assets/dmgfont.webp`): brancos nos golpes normais, laranja na fraqueza, cinza na resistência, vermelhos no dano recebido e verdes na cura. O crítico aparece amarelo, maior, com estrela de impacto e o selo "Crit". A esquiva mostra "Miss".
 
 ## Estrutura
 

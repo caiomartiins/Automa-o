@@ -24,6 +24,8 @@ export class Enemy extends Phaser.GameObjects.Sprite {
   knockUntil = 0;
   flashUntil = 0;
   shieldHitAt = 0;
+  /** Chefe bloqueando com escudo (recebe bem menos dano) */
+  blocking = false;
   /** Até quando cada estado dura (tempo da partida, em ms) e o dano por tique */
   statusUntil: Record<StatusId, number> = { queimando: 0, envenenado: 0, sangrando: 0, atordoado: 0, congelado: 0 };
   statusDot: Record<StatusId, number> = { queimando: 0, envenenado: 0, sangrando: 0, atordoado: 0, congelado: 0 };
@@ -50,6 +52,7 @@ export class Enemy extends Phaser.GameObjects.Sprite {
     for (const k of STATUS_PRIORITY) this.statusUntil[k] = this.statusDot[k] = 0;
     this.nextDot = 0;
     this.hasStatus = false;
+    this.blocking = false;
     this.restoreTint(-1);
   }
 

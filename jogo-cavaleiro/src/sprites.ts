@@ -13,6 +13,16 @@ import atiradorUrl from './assets/atirador.webp?inline';
 import cacadorSombrasUrl from './assets/cacador-sombras.webp?inline';
 import bafomeUrl from './assets/bafome.webp?inline';
 import zumbiUrl from './assets/zumbi.webp?inline';
+import minotauroUrl from './assets/minotauro.webp?inline';
+import dmgFontUrl from './assets/dmgfont.webp?inline';
+import missUrl from './assets/fx-miss.webp?inline';
+import critUrl from './assets/fx-crit.webp?inline';
+import impactoUrl from './assets/fx-impacto.webp?inline';
+
+/** Imagens soltas (efeitos e a fonte dos números de dano) */
+const IMAGES: [string, string][] = [['dmgfont', dmgFontUrl], ['fx-miss', missUrl], ['fx-crit', critUrl], ['fx-impacto', impactoUrl]];
+/** Fonte dos números: células de 52x69 com 0-9, + e - */
+const DMG_FONT = { cellW: 52, cellH: 69, chars: '0123456789+-' };
 
 /**
  * Personagens com arte em PNG (spritesheet de quadros 128x128, pés na linha 122,
@@ -53,6 +63,21 @@ const SPRITE_SCALE = 0.72;
 const FEET_Y = 122;
 
 const SHEETS: SheetDef[] = [
+  {
+    key: 'en-minotauro', url: minotauroUrl, cellW: 160, cellH: 128, scale: SPRITE_SCALE,
+    frames: [
+      'idle0', 'idle1', 'idle2', 'walk0', 'walk1', 'walk2', 'walk3', 'walk4', 'run0', 'run1', 'run2', 'run3',
+      'swing0', 'swing1', 'smash0', 'smash1', 'smash2', 'block', 'hurt', 'die0', 'die1',
+    ],
+    anims: [
+      { name: 'move', frames: ['walk0', 'walk1', 'walk2', 'walk3', 'walk4'], rate: 7, repeat: -1 },
+      { name: 'run', frames: ['run0', 'run1', 'run2', 'run3'], rate: 12, repeat: -1 },
+      { name: 'swing', frames: ['swing0', 'swing1'], rate: 5, repeat: 0 },
+      { name: 'smash', frames: ['smash0', 'smash1', 'smash2'], rate: 6, repeat: 0 },
+      { name: 'block', frames: ['block'], rate: 1, repeat: 0 },
+      { name: 'die', frames: ['die0', 'die1'], rate: 2.5, repeat: 0 },
+    ],
+  },
   {
     key: 'en-zumbi', url: zumbiUrl, cellW: 160, cellH: 128, scale: SPRITE_SCALE,
     frames: [
@@ -119,10 +144,17 @@ export function feetOffset(texture: string) {
 
 export function preloadSprites(scene: Phaser.Scene) {
   for (const s of SHEETS) scene.load.image(s.key, s.url);
+  for (const [key, url] of IMAGES) scene.load.image(key, url);
 }
 
 /** Cria os quadros com nome e as animações (chamar depois do carregamento) */
 export function setupSprites(scene: Phaser.Scene) {
+  if (!scene.cache.bitmapFont.exists('dmg2')) {
+    scene.cache.bitmapFont.add('dmg2', Phaser.GameObjects.RetroFont.Parse(scene, {
+      image: 'dmgfont', width: DMG_FONT.cellW, height: DMG_FONT.cellH, chars: DMG_FONT.chars,
+      charsPerRow: DMG_FONT.chars.length, 'offset.x': 0, 'offset.y': 0, 'spacing.x': 0, 'spacing.y': 0, lineSpacing: 0,
+    }));
+  }
   for (const s of SHEETS) {
     const tex = scene.textures.get(s.key);
     s.frames.forEach((name, i) => {

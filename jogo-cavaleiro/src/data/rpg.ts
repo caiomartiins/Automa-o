@@ -154,13 +154,15 @@ export const CARDS: CardDef[] = [
     monster: 'zumbi', name: 'Carta Carniçal', desc: '+40 de vida máxima e +2 VIT',
     apply: (g) => { g.stats.maxHp += 40; g.hp += 40; g.addAttr('vit', 2); },
   },
+  {
+    monster: 'minotauro', name: 'Carta Minotauro', desc: '+20% de dano corpo a corpo e +3 FOR',
+    apply: (g) => { g.mods.kindDmg.melee += 0.2; g.addAttr('for', 3); },
+  },
   { monster: 'orc', name: 'Carta Orc', desc: '+15% de dano corpo a corpo', apply: (g) => (g.mods.kindDmg.melee += 0.15) },
   {
     monster: 'cavaleiro-negro', name: 'Carta Cavaleiro Negro', desc: '+2 de armadura e +10% de dano contra Humanoides',
     apply: (g) => { g.stats.armor += 2; add(g.mods.raceDmg, 'humanoide', 0.1); },
   },
-  { monster: 'rei-gosma', name: 'Carta Rei Gosma', desc: '5% de chance de congelar com qualquer ataque', apply: (g) => (g.mods.freezeChance += 0.05) },
-  { monster: 'lorde-esqueleto', name: 'Carta Lorde Esqueleto', desc: '+25% de dano Sagrado e Sombrio', apply: (g) => { add(g.mods.elemDmg, 'sagrado', 0.25); add(g.mods.elemDmg, 'sombrio', 0.25); } },
   {
     monster: 'bafome', name: 'Carta Bafome', desc: '+5 FOR e o Golpe de Espada acerta em 360°',
     apply: (g) => { g.addAttr('for', 5); g.mods.swordSpin = true; },
