@@ -62,7 +62,7 @@ Todos os heróis usam sprites recortados das imagens enviadas. A fonte em PNG fi
 ## Inimigos e chefes
 Gosma, Morcego, Cogumelo Andante, Esqueleto, Fantasma, Orc e Cavaleiro Negro (elite) aparecem conforme o tempo passa. A cada minuto vem uma horda.
 
-**Progressão de força:** a cada minuto ("Ameaça" no HUD), os monstros ganham +45% de vida, +20% de dano e +5% de velocidade (a velocidade sobe até +50%). Os chefes crescem na metade desse ritmo. Itens de cura são raros.
+**Progressão de força:** a cada minuto ("Ameaça" no HUD), os monstros ganham +45% de vida, +20% de dano e +5% de velocidade. **Depois dos 4:00 o ritmo dobra** (+90% de vida e +40% de dano por minuto, velocidade até +70%) e eles vêm em maior número: mais monstros por rodada e hordas maiores. Chefes e mini-chefes crescem na metade desse ritmo. Itens de cura são raros.
 
 **Calendário de chefes:** a cada 2 minutos, alternando mini-chefe e chefe: 2:00 Carniçal, 4:00 Bafome, 6:00 Carniçal, 8:00 Minotauro, 10:00 Carniçal, 12:00 Bafome... Cada volta deixa o mesmo chefe mais forte. Se um chefe ainda estiver vivo, o próximo espera 30 s.
 

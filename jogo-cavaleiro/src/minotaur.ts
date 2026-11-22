@@ -3,8 +3,8 @@ import type { GameScene } from './scenes/GameScene';
 import type { Enemy } from './objects/Enemy';
 
 const PHASES = [
-  { swing: 2300, smash: 4800, charge: 6500, swingDmg: 30, smashDmg: 36, chargeDmg: 34, speed: 1 },
-  { swing: 1800, smash: 3800, charge: 5000, swingDmg: 36, smashDmg: 44, chargeDmg: 42, speed: 1.2 },
+  { swing: 1900, smash: 4000, charge: 5200, swingDmg: 40, smashDmg: 48, chargeDmg: 46, speed: 1, warn: 360, smashWarn: 650 },
+  { swing: 1500, smash: 3200, charge: 4200, swingDmg: 48, smashDmg: 58, chargeDmg: 56, speed: 1.3, warn: 300, smashWarn: 550 },
 ];
 
 /**
@@ -74,7 +74,7 @@ export class MinotaurAI {
 
     const d = Phaser.Math.Distance.Between(e.x, e.y, g.player.x, g.player.y);
     if (this.phase === 1 && now >= this.nextBlock && e.hp < e.maxHp * 0.5) this.block();
-    else if (d < 150 && now >= this.nextSwing) this.swing();
+    else if (d < 160 && now >= this.nextSwing) this.swing();
     else if (d > 240 && d < 640 && now >= this.nextCharge) this.startCharge();
     else if (d < 560 && now >= this.nextSmash) this.smash();
     return true;
@@ -109,10 +109,10 @@ export class MinotaurAI {
   private swing() {
     const { g, e } = this;
     this.nextSwing = g.elapsed + this.P.swing;
-    this.busy(700, 'en-minotauro-swing');
+    this.busy(600, 'en-minotauro-swing');
     const r = 170;
-    g.fx.ring(e.x, e.y, r, 1, 420, 0xc87a3a, 0.25);
-    g.time.delayedCall(420, () => {
+    g.fx.ring(e.x, e.y, r, 1, this.P.warn, 0xc87a3a, 0.25);
+    g.time.delayedCall(this.P.warn, () => {
       if (!e.active) return;
       const a = Math.atan2(g.player.y - e.y, g.player.x - e.x);
       e.setFlipX(Math.cos(a) < 0);
@@ -130,8 +130,8 @@ export class MinotaurAI {
     const tx = g.player.x;
     const ty = g.player.y;
     const r = this.phase ? 150 : 125;
-    const warn = 800;
-    this.busy(warn + 300, 'en-minotauro-smash');
+    const warn = this.P.smashWarn;
+    this.busy(warn + 250, 'en-minotauro-smash');
     g.fx.ring(tx, ty, r, 1, warn, 0xc8642a, 0.35);
     g.tweens.add({ targets: e, x: tx, y: ty - 20, duration: warn, ease: 'Sine.InOut' });
     g.time.delayedCall(warn, () => {
@@ -148,15 +148,15 @@ export class MinotaurAI {
   private startCharge() {
     const { g, e } = this;
     this.nextCharge = g.elapsed + this.P.charge;
-    this.busy(700, 'en-minotauro-block');
+    this.busy(600, 'en-minotauro-block');
     const a = Math.atan2(g.player.y - e.y, g.player.x - e.x);
     e.setFlipX(Math.cos(a) < 0);
     const len = 560;
     g.fx.lance(e.x, e.y + 20, a, len, 100, 0xc8642a);
-    g.time.delayedCall(700, () => {
+    g.time.delayedCall(600, () => {
       if (!e.active) return;
       e.play('en-minotauro-run');
-      const speed = 950;
+      const speed = 1150;
       this.charge = { vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, until: g.elapsed + (len / speed) * 1000, hit: false };
     });
   }

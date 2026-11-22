@@ -57,7 +57,7 @@ export const ZUMBI: EnemyDef = {
 };
 /** Minotauro: segundo chefe */
 export const MINOTAURO: EnemyDef = {
-  id: 'minotauro', name: 'Minotauro Brutal', texture: 'en-minotauro', hp: 3800, speed: 66, damage: 30, xp: 240, radius: 32,
+  id: 'minotauro', name: 'Minotauro Brutal', texture: 'en-minotauro', hp: 4800, speed: 86, damage: 40, xp: 240, radius: 32,
   from: 0, weight: 0, knockback: 0, scale: 2.7, boss: true,
   element: 'terra', race: 'bruto', size: 'grande',
 };
@@ -75,9 +75,12 @@ export const BOSS_ROTATION = ['bafome', 'minotauro'] as const;
  * Progressão de força dos monstros conforme o tempo passa.
  * A cada minuto: +45% de vida, +20% de dano e +5% de velocidade (velocidade até +50%).
  */
-export const hpScale = (seconds: number) => 1 + (seconds / 60) * 0.45;
-export const dmgScale = (seconds: number) => 1 + (seconds / 60) * 0.2;
-export const speedScale = (seconds: number) => 1 + Math.min(0.5, (seconds / 60) * 0.05);
+export const HARD_FROM = 240;
+/** Minutos depois dos 4:00 (a partir daí tudo cresce mais rápido) */
+const late = (seconds: number) => Math.max(0, seconds - HARD_FROM) / 60;
+export const hpScale = (seconds: number) => 1 + (seconds / 60) * 0.45 + late(seconds) * 0.45;
+export const dmgScale = (seconds: number) => 1 + (seconds / 60) * 0.2 + late(seconds) * 0.2;
+export const speedScale = (seconds: number) => 1 + Math.min(0.7, (seconds / 60) * 0.05 + late(seconds) * 0.04);
 /** "Ameaça" mostrada no HUD: sobe 1 a cada minuto */
 export const threatLevel = (seconds: number) => 1 + Math.floor(seconds / 60);
 

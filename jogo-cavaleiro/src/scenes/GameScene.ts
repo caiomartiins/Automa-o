@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { Enemy } from '../objects/Enemy';
 import { Pickup } from '../objects/Pickup';
-import { ZUMBI, BAFOME, MINOTAURO, BOSS_EVERY, BOSS_ROTATION, ENEMIES, MAX_ENEMY_RADIUS, dmgScale, hpScale, speedScale, threatLevel, type EnemyDef } from '../data/enemies';
+import { ZUMBI, BAFOME, MINOTAURO, BOSS_EVERY, BOSS_ROTATION, HARD_FROM, ENEMIES, MAX_ENEMY_RADIUS, dmgScale, hpScale, speedScale, threatLevel, type EnemyDef } from '../data/enemies';
 import { BafomeAI } from '../boss';
 import { ZombieAI } from '../miniboss';
 import { MinotaurAI } from '../minotaur';
@@ -633,8 +633,10 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     const t = this.elapsed / 1000;
     this.spawnTimer -= dt;
     if (this.spawnTimer <= 0) {
-      this.spawnTimer = Math.max(160, 1000 - t * 2.8);
-      const batch = 1 + Math.floor(t / 45);
+      // depois dos 4:00 os monstros vêm em maior número
+      const lateMin = Math.max(0, t - HARD_FROM) / 60;
+      this.spawnTimer = Math.max(lateMin > 0 ? 110 : 160, 1000 - t * 2.8);
+      const batch = 1 + Math.floor(t / 45) + Math.floor(lateMin * 1.5);
       for (let i = 0; i < batch; i++) this.spawnEnemy(this.pickEnemy(t));
     }
 
@@ -643,7 +645,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       this.nextWaveAt += 60;
       const common = ENEMIES.filter((d) => !d.elite && t >= d.from);
       const def = common[common.length - 1];
-      const count = 24 + Math.floor(t / 30) * 2;
+      const count = 24 + Math.floor(t / 30) * 2 + Math.floor(Math.max(0, t - HARD_FROM) / 60) * 8;
       for (let i = 0; i < count; i++) {
         const p = this.ringPosition((i / count) * Math.PI * 2);
         this.spawnEnemy(def, p.x, p.y);
@@ -652,6 +654,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       if (t >= 300) this.spawnEnemy(elite);
       if (t < this.nextEventAt - 5) {
         const horde = t >= 300 ? 'Uma horda e um Cavaleiro Negro se aproximam!' : 'Uma horda se aproxima!';
+        if (Math.floor(t) >= HARD_FROM && Math.floor(t) < HARD_FROM + 60) this.events.emit('toast', 'A partir de agora os monstros ficam mais fortes e numerosos!', '#ff9a7a');
         this.events.emit('announce', `${horde}\nAmeaça ${threatLevel(t)}: os monstros ficaram mais fortes`);
       }
     }
