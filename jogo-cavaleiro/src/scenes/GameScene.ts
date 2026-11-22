@@ -129,6 +129,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
   curseUntil = 0;
   poisonUntil = 0;
   private nextPoisonTick = 0;
+  private nextPoisonFx = 0;
   private petSprite: Phaser.GameObjects.Sprite | null = null;
   private petAttackAt = 0;
   private darkness!: Phaser.GameObjects.Rectangle;
@@ -503,6 +504,8 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     if (Math.random() < dodge) {
       this.invulnUntil = this.elapsed + 250;
       this.fx.miss(this.player.x, this.player.y - 34);
+      // Caçador de Sombras: some numa nuvem de sombra ao esquivar
+      if (this.shadowFx) this.fx.anim('fx-cacador', ['fumaca0', 'fumaca1', 'fumaca2', 'fumaca3'], this.player.x, this.player.y - 18, 420, 0.55, { depth: this.player.y + 2, hold: 0.5 });
       return false;
     }
     if (Math.random() < this.mods.ignoreHit) {
@@ -985,6 +988,12 @@ export class GameScene extends Phaser.Scene implements RpgHost {
   /** Aplica um estado alterado num inimigo (chefes sofrem bem menos com os que paralisam) */
   applyStatus(e: Enemy, id: StatusId, hitDamage: number) {
     const st = STATUS[id];
+    // nuvem de veneno ao envenenar (só quando o inimigo ainda não estava envenenado)
+    // (efeito opcional: no máximo 1 a cada 150 ms e só com folga no limite de animações)
+    if (id === 'envenenado' && e.statusUntil.envenenado <= this.elapsed && this.elapsed >= this.nextPoisonFx && this.fx.animCount < 24) {
+      this.nextPoisonFx = this.elapsed + 150;
+      this.fx.anim('fx-cacador', ['veneno0', 'veneno1', 'veneno2'], e.x, e.y - e.def.radius - 6, 900, 0.32 * Math.max(1, e.def.radius / 14), { loop: 2, hold: 0.6 });
+    }
     const dur = st.stops && (e.def.boss || e.def.elite) ? st.duration * 0.25 : st.duration;
     e.statusUntil[id] = Math.max(e.statusUntil[id], this.elapsed + dur);
     if (st.dot) e.statusDot[id] = Math.max(e.statusDot[id], Math.max(1, Math.round(hitDamage * st.dot)));
@@ -1309,6 +1318,16 @@ export class GameScene extends Phaser.Scene implements RpgHost {
   }
 
   // ---------------------------------------------------------------- árvore de habilidades
+
+  /** Caçador de Sombras: flechas e efeitos sombrios */
+  get shadowFx() {
+    return this.classId === 'cacador';
+  }
+
+  /** Textura das flechas do jogador */
+  get arrowTex() {
+    return this.shadowFx ? 'proj-sombra' : 'proj-flecha';
+  }
 
   /** Teto de pontos de habilidade da classe atual */
   classPointCap() {

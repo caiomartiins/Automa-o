@@ -18,9 +18,28 @@ import dmgFontUrl from './assets/dmgfont.webp?inline';
 import missUrl from './assets/fx-miss.webp?inline';
 import critUrl from './assets/fx-crit.webp?inline';
 import impactoUrl from './assets/fx-impacto.webp?inline';
+import fxSombraUrl from './assets/fx-cacador.webp?inline';
+import projSombraUrl from './assets/proj-sombra.webp?inline';
 
 /** Imagens soltas (efeitos e a fonte dos números de dano) */
-const IMAGES: [string, string][] = [['dmgfont', dmgFontUrl], ['fx-miss', missUrl], ['fx-crit', critUrl], ['fx-impacto', impactoUrl]];
+const IMAGES: [string, string][] = [
+  ['dmgfont', dmgFontUrl], ['fx-miss', missUrl], ['fx-crit', critUrl], ['fx-impacto', impactoUrl],
+  ['fx-cacador', fxSombraUrl], ['proj-sombra', projSombraUrl],
+];
+
+/** Folhas de efeitos: quadros quadrados lado a lado, na ordem dos nomes */
+const FX_SHEETS: { key: string; cell: number; names: string[] }[] = [
+  {
+    // efeitos do Caçador de Sombras
+    key: 'fx-cacador', cell: 144,
+    names: [
+      'flecha0', 'flecha1', 'queda0', 'impacto0', 'impacto1', 'impacto2', 'impacto3', 'circulo0', 'circulo1',
+      'explosao0', 'explosao1', 'explosao2', 'explosao3', 'explosao4', 'explosao5',
+      'falcao0', 'falcao1', 'falcao2', 'falcao3', 'armadilha0', 'armadilha1',
+      'garra0', 'garra1', 'garra2', 'veneno0', 'veneno1', 'veneno2', 'fumaca0', 'fumaca1', 'fumaca2', 'fumaca3',
+    ],
+  },
+];
 /** Fonte dos números: células de 52x69 com 0-9, + e - */
 const DMG_FONT = { cellW: 52, cellH: 69, chars: '0123456789+-' };
 
@@ -159,6 +178,12 @@ export function setupSprites(scene: Phaser.Scene) {
       image: 'dmgfont', width: DMG_FONT.cellW, height: DMG_FONT.cellH, chars: DMG_FONT.chars,
       charsPerRow: DMG_FONT.chars.length, 'offset.x': 0, 'offset.y': 0, 'spacing.x': 0, 'spacing.y': 0, lineSpacing: 0,
     }));
+  }
+  for (const f of FX_SHEETS) {
+    const tex = scene.textures.get(f.key);
+    f.names.forEach((name, i) => {
+      if (!tex.has(name)) tex.add(name, 0, i * f.cell, 0, f.cell, f.cell);
+    });
   }
   for (const s of SHEETS) {
     const tex = scene.textures.get(s.key);

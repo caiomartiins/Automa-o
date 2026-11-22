@@ -25,7 +25,7 @@ export class ArrowSkill extends Skill {
       const t = targets[i % targets.length];
       const spread = i >= targets.length ? (i % 2 ? 0.18 : -0.18) : 0;
       const angle = Math.atan2(t.y - p.y, t.x - p.x) + spread;
-      this.g.projectiles.fire('proj-flecha', p.x, p.y - 4, angle, {
+      this.g.projectiles.fire(this.g.arrowTex, p.x, p.y - 4, angle, {
         src: this.id, speed: 620, damage: this.damage, pierce: this.pierce, radius: 7, life: 1100, knockback: 90,
       });
     }

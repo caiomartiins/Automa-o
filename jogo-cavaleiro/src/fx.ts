@@ -3,7 +3,7 @@ import Phaser from 'phaser';
 export const FX_DEPTH = 1_000_000;
 
 type Obj = Phaser.GameObjects.Image | Phaser.GameObjects.BitmapText | Phaser.GameObjects.Graphics;
-type Kind = 'fade' | 'lance' | 'ring' | 'number' | 'crit' | 'float' | 'miss' | 'pop' | 'fall' | 'balloon';
+type Kind = 'fade' | 'lance' | 'ring' | 'number' | 'crit' | 'float' | 'miss' | 'pop' | 'fall' | 'balloon' | 'anim';
 
 interface Item {
   obj: Obj;
@@ -15,6 +15,27 @@ interface Item {
   s1: number;
   y0: number;
   pool: Obj[];
+  /** Animação por quadros (efeitos desenhados): nomes dos quadros e movimento opcional */
+  frames?: string[];
+  x0?: number;
+  x1?: number;
+  y1?: number;
+  /** Quanto da vida fica com alfa cheio antes de sumir (0 a 1) */
+  hold?: number;
+}
+
+export interface AnimOpts {
+  /** Profundidade (padrão: acima dos personagens) */
+  depth?: number;
+  rotation?: number;
+  /** Move de (x, y) até (x1, y1) durante a vida */
+  x1?: number;
+  y1?: number;
+  alpha?: number;
+  /** Repete os quadros em vez de tocar uma vez só */
+  loop?: number;
+  hold?: number;
+  flipX?: boolean;
 }
 
 /**
@@ -27,6 +48,13 @@ export class Fx {
   private pools = new Map<string, Obj[]>();
   private numbers = 0;
   private misses = 0;
+  private anims = 0;
+  /** Limite de animações de efeito na tela ao mesmo tempo (celular) */
+  maxAnims = 36;
+  /** Quantas animações estão na tela (para efeitos opcionais cederem a vez) */
+  get animCount() {
+    return this.anims;
+  }
 
   constructor(private scene: Phaser.Scene, public maxNumbers: number) {}
 
@@ -139,6 +167,21 @@ export class Fx {
     }
   }
 
+  /**
+   * Efeito desenhado em quadros (folha de efeitos). Toca os quadros ao longo de `life` ms
+   * (ou `loop` vezes), com movimento opcional e sumindo no fim.
+   */
+  anim(key: string, frames: string[], x: number, y: number, life: number, scale: number, o: AnimOpts = {}) {
+    if (this.anims >= this.maxAnims) return null;
+    this.anims++;
+    const { img, pool } = this.image(key);
+    img.setFrame(frames[0]).setOrigin(0.5).setPosition(x, y).setScale(scale).setRotation(o.rotation ?? 0)
+      .setDepth(o.depth ?? FX_DEPTH - 3).setAlpha(o.alpha ?? 1).setFlipX(!!o.flipX);
+    const seq = o.loop ? Array.from({ length: frames.length * o.loop }, (_, i) => frames[i % frames.length]) : frames;
+    this.push(img, 'anim', life, pool, { frames: seq, x0: x, y0: y, x1: o.x1, y1: o.y1, alpha: o.alpha ?? 1, s0: scale, hold: o.hold ?? 0.7 });
+    return img;
+  }
+
   /** "Miss": o golpe errou (esquiva) */
   miss(x: number, y: number) {
     // limite de "Miss" na tela ao mesmo tempo (muitos erros seguidos pesam no celular)
@@ -160,6 +203,10 @@ export class Fx {
         it.pool.push(it.obj);
         if (it.kind === 'number' || it.kind === 'crit') this.numbers--;
         if (it.kind === 'miss') this.misses--;
+        if (it.kind === 'anim') {
+          this.anims--;
+          (it.obj as Phaser.GameObjects.Image).setFlipX(false).setOrigin(0.5);
+        }
         items[i] = items[items.length - 1];
         items.pop();
         continue;
@@ -200,6 +247,17 @@ export class Fx {
           o.y = it.y0 - 30 * k;
           o.setAlpha(k < 0.5 ? 1 : 1 - (k - 0.5) * 2);
           break;
+        case 'anim': {
+          const fr = it.frames!;
+          (o as Phaser.GameObjects.Image).setFrame(fr[Math.min(fr.length - 1, Math.floor(k * fr.length))]);
+          if (it.x1 !== undefined) {
+            o.x = it.x0! + (it.x1 - it.x0!) * k;
+            o.y = it.y0 + (it.y1! - it.y0) * k;
+          }
+          const h = it.hold!;
+          o.setAlpha(k < h ? it.alpha : it.alpha * (1 - (k - h) / (1 - h)));
+          break;
+        }
         case 'balloon':
           // estoura grande, assenta e sobe junto com o número; some no fim
           o.y = it.y0 - 38 * k;

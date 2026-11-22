@@ -20,11 +20,14 @@ export class ArrowRainSkill extends Skill {
       if (now < z.next) continue;
       z.next = now + 160;
       z.ticks--;
-      // flechinhas caindo em pontos aleatórios da área
-      for (let k = 0; k < 3; k++) {
+      // flechas sombrias caindo em pontos aleatórios da área, com impacto no chão
+      for (let k = 0; k < (z.ticks % 2 ? 1 : 0) + (this.g.fx.animCount < 20 ? 1 : 0); k++) {
         const a = Math.random() * Math.PI * 2;
         const r = Math.sqrt(Math.random()) * this.radius;
-        this.g.fx.lance(z.x + Math.cos(a) * r, z.y + Math.sin(a) * r - 40, Math.PI / 2, 40, 10, 0x6a4a9a);
+        const x = z.x + Math.cos(a) * r;
+        const y = z.y + Math.sin(a) * r * 0.8;
+        this.g.fx.anim('fx-cacador', ['queda0'], x, y - 110, 150, 0.3, { x1: x, y1: y - 22, hold: 0.95 });
+        this.g.time.delayedCall(140, () => this.g.fx.anim('fx-cacador', ['impacto0', 'impacto1', 'impacto2', 'impacto3'], x, y - 10, 320, 0.3, { hold: 0.6, depth: y + 1 }));
       }
       for (const e of this.g.queryEnemies(z.x, z.y, this.radius, this.near)) {
         if (e.active && (e.x - z.x) ** 2 + (e.y - z.y) ** 2 <= (this.radius + e.def.radius) ** 2) {
@@ -46,7 +49,8 @@ export class ArrowRainSkill extends Skill {
     Phaser.Utils.Array.Shuffle(targets);
     for (let i = 0; i < this.zonesPerCast; i++) {
       const t = targets[i % targets.length];
-      this.g.fx.ring(t.x, t.y, this.radius, 1, this.ticks * 160 + 100, 0x3a2a5a, 0.3);
+      // círculo de runas no chão durante a saraivada
+      this.g.fx.anim('fx-cacador', ['circulo0', 'circulo1'], t.x, t.y, this.ticks * 160 + 200, (this.radius * 2.2) / 144, { loop: this.ticks, hold: 0.85, alpha: 0.55, depth: -1e6 + 3 });
       this.zones.push({ x: t.x, y: t.y, ticks: this.ticks, next: now + 120 });
     }
   }

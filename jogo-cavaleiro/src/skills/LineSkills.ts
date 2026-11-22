@@ -159,7 +159,8 @@ export class DoubleStrafeSkill extends Skill {
       const a = Math.atan2(t.y - p.y, t.x - p.x);
       for (let k = 0; k < 2; k++) {
         this.g.time.delayedCall(k * 110, () => {
-          this.g.projectiles.fire('proj-flecha', p.x, p.y - 4, a, { src: this.id, speed: 700, damage: this.damage, pierce: 1, radius: 8, life: 1000, knockback: 120, scale: 1.4, tint: 0xfff0c0 });
+          const shadow = this.g.shadowFx;
+          this.g.projectiles.fire(this.g.arrowTex, p.x, p.y - 4, a, { src: this.id, speed: 700, damage: this.damage, pierce: 1, radius: 8, life: 1000, knockback: 120, scale: shadow ? 1.2 : 1.4, tint: shadow ? undefined : 0xfff0c0 });
         });
       }
     }
@@ -216,8 +217,13 @@ export class TrapSkill extends Skill {
       const t = this.traps[i];
       const hit = this.g.queryEnemies(t.img.x, t.img.y, 26, this.near).some((e) => e.active && (e.x - t.img.x) ** 2 + (e.y - t.img.y) ** 2 < (26 + e.def.radius) ** 2);
       if (hit) {
-        this.g.explode(t.img.x, t.img.y, this.radius, this.damage, 260, 0xff8a3a, this.id);
+        const r = this.radius;
+        this.g.fx.anim('fx-cacador', ['explosao0', 'explosao1', 'explosao2', 'explosao3', 'explosao4', 'explosao5'], t.img.x, t.img.y - r * 0.25, 560, (r * 2.1) / 144, { hold: 0.75 });
+        this.g.explode(t.img.x, t.img.y, r, this.damage, 260, 0xff8a3a, this.id);
         this.g.cameras.main.shake(70, 0.003);
+      } else {
+        // pavio piscando
+        t.img.setFrame(Math.floor(now / 250) % 2 ? 'armadilha1' : 'armadilha0');
       }
       if (hit || now >= t.until) {
         t.img.destroy();
@@ -232,7 +238,7 @@ export class TrapSkill extends Skill {
     // deixa a armadilha um pouco atrás do jogador (os inimigos vêm seguindo)
     const x = p.x - this.g.facing.x * 30;
     const y = p.y - this.g.facing.y * 30 + 10;
-    const img = this.g.add.image(x, y, 'fx-armadilha').setScale(0.5).setDepth(-1e6 + 2);
+    const img = this.g.add.image(x, y, 'fx-cacador', 'armadilha0').setScale(0.32).setDepth(-1e6 + 2);
     this.traps.push({ img, until: now + 14000 });
   }
 
@@ -262,11 +268,15 @@ export class FalconSkill extends Skill {
     Phaser.Utils.Array.Shuffle(targets);
     for (let i = 0; i < this.dives; i++) {
       const t = targets[i % targets.length];
+      const { x, y } = t;
+      // o falcão mergulha de cima/esquerda até o alvo e as garras aparecem no impacto
+      const from = Math.random() < 0.5 ? -1 : 1;
       this.g.time.delayedCall(i * 120, () => {
-        if (!t.active) return;
-        const { x, y } = t;
-        this.g.fx.lance(x - 70, y - 90, Math.atan2(90, 70), 110, 14, 0xc89a6a);
-        this.g.explode(x, y, 40 * this.g.stats.area, this.damage, 80, 0xe8d0a0, this.id);
+        this.g.fx.anim('fx-cacador', ['falcao0', 'falcao1', 'falcao2', 'falcao3'], x - 150 * from, y - 170, 260, 0.42, { x1: x - 8 * from, y1: y - 22, hold: 0.9, flipX: from < 0, depth: 2e6 });
+      });
+      this.g.time.delayedCall(i * 120 + 250, () => {
+        this.g.fx.anim('fx-cacador', ['garra0', 'garra1', 'garra2'], x, y - 12, 300, 0.36, { hold: 0.5, flipX: from < 0 });
+        if (t.active) this.g.explode(t.x, t.y, 40 * this.g.stats.area, this.damage, 80, 0xe8d0a0, this.id);
       });
     }
   }
