@@ -22,6 +22,35 @@ function hash(s: string) {
 /** Cache de imagens com borda suave (carimbos de grama, rio etc.) */
 const stampCache = new Map<string, HTMLCanvasElement>();
 
+/** Vetores reaproveitados pelo A* (evita criar memória nova a cada busca) */
+let searchBuf: { n: number; g: Float32Array; came: Int32Array; closed: Uint8Array; heapI: Int32Array; heapF: Float32Array } | null = null;
+function search(n: number) {
+  if (!searchBuf || searchBuf.n < n) {
+    searchBuf = { n, g: new Float32Array(n), came: new Int32Array(n), closed: new Uint8Array(n), heapI: new Int32Array(n * 8), heapF: new Float32Array(n * 8) };
+  }
+  return searchBuf;
+}
+
+/** Mapas já desenhados ficam guardados: voltar a um mapa é instantâneo */
+const worlds = new Map<string, World>();
+
+/** Mapa pronto para usar (termina o desenho na hora se ainda faltar) */
+export function worldFor(scene: Phaser.Scene, def: MapDef) {
+  let w = worlds.get(def.id);
+  if (!w) { w = new World(scene, def); worlds.set(def.id, w); }
+  return w.finish();
+}
+
+/** Adianta o desenho de outros mapas aos poucos. Devolve true se ainda há trabalho. */
+export function prebake(scene: Phaser.Scene, defs: MapDef[], budgetMs: number) {
+  for (const def of defs) {
+    let w = worlds.get(def.id);
+    if (!w) { w = new World(scene, def); worlds.set(def.id, w); }
+    if (!w.done) { w.advance(budgetMs); return true; }
+  }
+  return false;
+}
+
 export class World {
   grid: Grid;
   w: number;
@@ -30,6 +59,11 @@ export class World {
   pxH: number;
   canvas!: HTMLCanvasElement;
   objects: WorldObject[] = [];
+  /** 1 = dá para andar (consulta rápida, sem strings) */
+  private walk: Uint8Array;
+  /** O desenho do mapa é feito em etapas (pode ser adiantado aos poucos, sem travar o jogo) */
+  private steps: Generator<void, void, void>;
+  done = false;
 
   constructor(private scene: Phaser.Scene, public def: MapDef) {
     this.grid = new Grid(def.w, def.h);
@@ -38,25 +72,47 @@ export class World {
     this.h = def.h;
     this.pxW = def.w * TILE;
     this.pxH = def.h * TILE;
-    this.bake();
+    this.walk = new Uint8Array(def.w * def.h);
+    for (let y = 0; y < def.h; y++) for (let x = 0; x < def.w; x++) this.walk[y * def.w + x] = BLOCKED.has(this.grid.c[y][x]) ? 0 : 1;
+    this.steps = this.bakeSteps();
+  }
+
+  /** Avança o desenho por até `budgetMs`. Devolve true quando terminou. */
+  advance(budgetMs: number) {
+    if (this.done) return true;
+    const end = performance.now() + budgetMs;
+    while (performance.now() < end) {
+      if (this.steps.next().done) { this.done = true; break; }
+    }
+    return this.done;
+  }
+
+  finish() {
+    while (!this.done) this.advance(1000);
+    return this;
   }
 
   // ---------------------------------------------------------------- colisão
 
   walkableTile(tx: number, ty: number) {
-    return !BLOCKED.has(this.grid.get(tx, ty));
+    return tx >= 0 && ty >= 0 && tx < this.w && ty < this.h && this.walk[ty * this.w + tx] === 1;
+  }
+
+  private ok(x: number, y: number) {
+    const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
+    return tx >= 0 && ty >= 0 && tx < this.w && ty < this.h && this.walk[ty * this.w + tx] === 1;
   }
 
   /** O ponto (pés) cabe nesse lugar? */
   canStand(x: number, y: number, r = 10) {
-    const pts: [number, number][] = [[x, y], [x - r, y], [x + r, y], [x, y - r * 0.6], [x, y + r * 0.6]];
-    return pts.every(([px, py]) => this.walkableTile(Math.floor(px / TILE), Math.floor(py / TILE)));
+    const v = r * 0.6;
+    return this.ok(x, y) && this.ok(x - r, y) && this.ok(x + r, y) && this.ok(x, y - v) && this.ok(x, y + v);
   }
 
   /** Linha livre entre dois pontos */
   los(x0: number, y0: number, x1: number, y1: number, r = 10) {
     const d = Math.hypot(x1 - x0, y1 - y0);
-    const n = Math.ceil(d / 10);
+    const n = Math.ceil(d / 12);
     for (let i = 1; i <= n; i++) {
       const t = i / n;
       if (!this.canStand(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, r)) return false;
@@ -91,66 +147,87 @@ export class World {
     return this.tileCenter(...this.nearestWalkable(x0, y0));
   }
 
-  /** A* em 8 direções, depois "puxa o barbante" para tirar o zigue-zague */
+  /** A* em 8 direções com fila de prioridade (heap) e vetores fixos; depois suaviza o caminho */
   findPath(sx: number, sy: number, gx: number, gy: number, maxNodes = 4000): { x: number; y: number }[] | null {
-    const W = this.w;
-    const st = [Math.floor(sx / TILE), Math.floor(sy / TILE)];
-    let gt = [Math.floor(gx / TILE), Math.floor(gy / TILE)];
-    if (!this.walkableTile(gt[0], gt[1])) {
-      gt = this.nearestWalkable(gt[0], gt[1]);
-      [gx, gy] = this.tileCenter(gt[0], gt[1]);
+    const W = this.w, N = this.w * this.h;
+    const stx = Math.floor(sx / TILE), sty = Math.floor(sy / TILE);
+    let gtx = Math.floor(gx / TILE), gty = Math.floor(gy / TILE);
+    if (!this.walkableTile(gtx, gty)) {
+      [gtx, gty] = this.nearestWalkable(gtx, gty);
+      [gx, gy] = this.tileCenter(gtx, gty);
     }
-    const start = st[1] * W + st[0], goal = gt[1] * W + gt[0];
+    const start = sty * W + stx, goal = gty * W + gtx;
     if (start === goal) return [{ x: gx, y: gy }];
-    const g = new Map<number, number>([[start, 0]]);
-    const came = new Map<number, number>();
-    const open: [number, number][] = [[0, start]];
+    const s = search(N);
+    const { g, came, closed, heapI, heapF } = s;
+    g.fill(Infinity); came.fill(-1); closed.fill(0);
+    let size = 0;
+    const push = (i: number, f: number) => {
+      let k = size++;
+      while (k > 0) {
+        const p = (k - 1) >> 1;
+        if (heapF[p] <= f) break;
+        heapI[k] = heapI[p]; heapF[k] = heapF[p]; k = p;
+      }
+      heapI[k] = i; heapF[k] = f;
+    };
+    const pop = () => {
+      const top = heapI[0];
+      const li = heapI[--size], lf = heapF[size];
+      let k = 0;
+      for (;;) {
+        let c = 2 * k + 1;
+        if (c >= size) break;
+        if (c + 1 < size && heapF[c + 1] < heapF[c]) c++;
+        if (heapF[c] >= lf) break;
+        heapI[k] = heapI[c]; heapF[k] = heapF[c]; k = c;
+      }
+      heapI[k] = li; heapF[k] = lf;
+      return top;
+    };
     const hfn = (i: number) => {
-      const dx = Math.abs((i % W) - gt[0]), dy = Math.abs(Math.floor(i / W) - gt[1]);
+      const dx = Math.abs((i % W) - gtx), dy = Math.abs(((i / W) | 0) - gty);
       return Math.max(dx, dy) + 0.414 * Math.min(dx, dy);
     };
-    const closed = new Set<number>();
+    g[start] = 0;
+    push(start, hfn(start));
     let found = false, count = 0;
-    while (open.length && count++ < maxNodes) {
-      // fila de prioridade simples (mapas pequenos)
-      let bi = 0;
-      for (let i = 1; i < open.length; i++) if (open[i][0] < open[bi][0]) bi = i;
-      const [, cur] = open[bi];
-      open[bi] = open[open.length - 1];
-      open.pop();
+    while (size > 0 && count++ < maxNodes) {
+      const cur = pop();
       if (cur === goal) { found = true; break; }
-      if (closed.has(cur)) continue;
-      closed.add(cur);
-      const cx = cur % W, cy = Math.floor(cur / W);
+      if (closed[cur]) continue;
+      closed[cur] = 1;
+      const cx = cur % W, cy = (cur / W) | 0;
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
         if (!dx && !dy) continue;
         const nx = cx + dx, ny = cy + dy;
         if (!this.walkableTile(nx, ny)) continue;
         if (dx && dy && (!this.walkableTile(cx + dx, cy) || !this.walkableTile(cx, cy + dy))) continue;
         const ni = ny * W + nx;
-        const ng = g.get(cur)! + (dx && dy ? 1.414 : 1);
-        if (ng < (g.get(ni) ?? Infinity)) {
-          g.set(ni, ng);
-          came.set(ni, cur);
-          open.push([ng + hfn(ni), ni]);
+        if (closed[ni]) continue;
+        const ng = g[cur] + (dx && dy ? 1.414 : 1);
+        if (ng < g[ni]) {
+          g[ni] = ng;
+          came[ni] = cur;
+          if (size < heapI.length) push(ni, ng + hfn(ni));
         }
       }
     }
     if (!found) return null;
     const tiles: number[] = [];
-    for (let c: number | undefined = goal; c !== undefined && c !== start; c = came.get(c)) tiles.push(c);
+    for (let c = goal; c !== -1 && c !== start; c = came[c]) tiles.push(c);
     tiles.reverse();
     const pts = tiles.map((i) => {
-      const [x, y] = this.tileCenter(i % W, Math.floor(i / W));
+      const [x, y] = this.tileCenter(i % W, (i / W) | 0);
       return { x, y };
     });
     pts[pts.length - 1] = { x: gx, y: gy };
-    // suavização
+    // suavização linear: avança enquanto houver linha livre a partir do último ponto mantido
     const out: { x: number; y: number }[] = [];
     let ax = sx, ay = sy, i = 0;
     while (i < pts.length) {
-      let j = pts.length - 1;
-      while (j > i && !this.los(ax, ay, pts[j].x, pts[j].y, 9)) j--;
+      let j = i;
+      while (j + 1 < pts.length && this.los(ax, ay, pts[j + 1].x, pts[j + 1].y, 9)) j++;
       out.push(pts[j]);
       ax = pts[j].x; ay = pts[j].y;
       i = j + 1;
@@ -161,7 +238,9 @@ export class World {
   // ---------------------------------------------------------------- desenho
 
   private img(name: string) {
-    return this.scene.textures.get(`tile-${name}`).getSourceImage() as HTMLImageElement;
+    const key = `tile-${name}`;
+    if (!this.scene.textures.exists(key)) throw new Error(`textura ainda não carregada: ${key}`);
+    return this.scene.textures.get(key).getSourceImage() as HTMLImageElement;
   }
 
   /** Versão com borda suave (radial ou só em cima/embaixo) */
@@ -195,8 +274,9 @@ export class World {
   }
 
   /** Terra sem padrão repetido: cor base + carimbos suaves da textura + pontinhos */
-  private fillDirt(c: CanvasRenderingContext2D, W: number, H: number, rng: () => number) {
+  private *fillDirt(c: CanvasRenderingContext2D, W: number, H: number, rng: () => number): Generator<void, void, void> {
     const R = (a: number, b: number) => a + rng() * (b - a);
+    let ops = 0;
     c.fillStyle = '#bd8c55';
     c.fillRect(0, 0, W, H);
     const st = this.stamp('terra');
@@ -208,12 +288,14 @@ export class World {
       c.globalAlpha = R(0.5, 0.9);
       c.drawImage(st, -w / 2, -h / 2, w, h);
       c.restore();
+      if (++ops % 150 === 0) yield;
     }
     c.globalAlpha = 1;
     for (let i = 0; i < (W * H) / 260; i++) {
       c.fillStyle = rng() < 0.6 ? 'rgba(110, 70, 35, 0.35)' : 'rgba(240, 205, 150, 0.35)';
       const s = R(1.5, 3.5);
       c.fillRect(R(0, W), R(0, H), s, s);
+      if (++ops % 1500 === 0) yield;
     }
     for (let i = 0; i < (W * H) / 16000; i++) {
       const x = R(0, W), y = R(0, H), r = R(2, 3.6);
@@ -222,8 +304,9 @@ export class World {
     }
   }
 
-  private bake() {
+  private *bakeSteps(): Generator<void, void, void> {
     const { grid, pxW: W, pxH: H, def } = this;
+    let ops = 0;
     const rng = mulberry32(hash(def.id));
     const R = (a: number, b: number) => a + rng() * (b - a);
     const pick = <T,>(arr: T[]) => arr[Math.floor(rng() * arr.length)];
@@ -246,9 +329,10 @@ export class World {
       for (let i = 0; i < n; i++) {
         const s = pick(stamps), size = R(66, 86);
         drawFlip(s, R(-40, W), R(-40, H), size, size, rng() < 0.5);
+        if (++ops % 150 === 0) yield;
       }
     } else {
-      this.fillDirt(ctx, W, H, rng);
+      yield* this.fillDirt(ctx, W, H, rng);
       // manchas para quebrar a repetição
       for (let i = 0; i < (W * H) / 9000; i++) {
         ctx.fillStyle = rng() < 0.5 ? 'rgba(60,35,15,0.10)' : 'rgba(255,230,180,0.07)';
@@ -278,24 +362,34 @@ export class World {
           }
         }
       };
+      yield;
       // borda escura de grama pisada
       ctx.save();
       ctx.fillStyle = ctx.strokeStyle = 'rgba(66, 74, 28, 0.45)';
       drawShape(ctx, 37, 6);
       ctx.restore();
-      // terra
+      yield;
+      // terra: só na área que tem caminho (bem menos pixels que o mapa inteiro)
+      let bx0 = Infinity, by0 = Infinity, bx1 = 0, by1 = 0;
+      for (const [x, y] of pathTiles) { bx0 = Math.min(bx0, x); by0 = Math.min(by0, y); bx1 = Math.max(bx1, x); by1 = Math.max(by1, y); }
+      const ox = Math.max(0, bx0 * TILE - TILE), oy = Math.max(0, by0 * TILE - TILE);
+      const bw = Math.min(W, (bx1 + 2) * TILE) - ox, bh = Math.min(H, (by1 + 2) * TILE) - oy;
       const mask = document.createElement('canvas');
-      mask.width = W; mask.height = H;
+      mask.width = bw; mask.height = bh;
       const m = mask.getContext('2d')!;
+      m.translate(-ox, -oy);
       m.fillStyle = m.strokeStyle = '#fff';
       drawShape(m, 31, 4);
+      yield;
       const dirt = document.createElement('canvas');
-      dirt.width = W; dirt.height = H;
+      dirt.width = bw; dirt.height = bh;
       const dc = dirt.getContext('2d')!;
-      this.fillDirt(dc, W, H, rng);
+      yield* this.fillDirt(dc, bw, bh, rng);
       dc.globalCompositeOperation = 'destination-in';
       dc.drawImage(mask, 0, 0);
-      ctx.drawImage(dirt, 0, 0);
+      ctx.drawImage(dirt, ox, oy);
+      mask.width = mask.height = dirt.width = dirt.height = 1;
+      yield;
     }
 
     // ---- decoração solta ----
@@ -313,6 +407,7 @@ export class World {
         drawFlip(s, cx - 38, cy - 36, 76, 70, rng() < 0.5);
         continue;
       }
+      if (x === 1 && y % 4 === 0) yield;
       if (ch !== '.' || nearBlocked(x, y) || rng() > def.decor) continue;
       if (def.ground === 'grama') {
         if (rng() < 0.72) {
@@ -331,6 +426,7 @@ export class World {
       }
     }
 
+    yield;
     // ---- rio, ponte, lagos e pedras grandes ----
     const rio = this.stamp('rio', 'vertical');
     const ponte = this.stamp('ponte', 'vertical');
@@ -344,6 +440,7 @@ export class World {
       else if (ch === 'M' && grid.get(x - 1, y) !== 'M') ctx.drawImage(this.stamp('pedra-musgo'), px - 4, py - 6, TILE * 2 + 8, TILE + 10);
     }
 
+    yield;
     // ---- paredão da borda (pilares lado a lado, de cima para baixo) ----
     const pillars = ['pilar0', 'pilar1', 'pilar2'].map((n) => this.img(n));
     for (let y = 0; y < grid.h; y++) for (let x = 0; x < grid.w; x++) {
@@ -352,6 +449,7 @@ export class World {
       drawFlip(s, x * TILE - 6, y * TILE - 14, TILE + 12, TILE + 18, rng() < 0.5);
     }
 
+    yield;
     if (def.tint) {
       ctx.fillStyle = def.tint[0];
       ctx.globalAlpha = def.tint[1];

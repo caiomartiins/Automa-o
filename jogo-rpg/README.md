@@ -1,4 +1,4 @@
-# Terras de Aurora (versão 0.2)
+# Terras de Aurora (versão 0.3)
 
 RPG 2D de navegador no estilo dos MMORPGs clássicos, spin-off da **Ascensão do Cavaleiro** (`../jogo-cavaleiro/`). Usa os mesmos heróis, monstros e o Bafome, agora em mapas ligados por portais, com níveis de base e de classe, atributos, habilidades, inventário e loja.
 
@@ -27,6 +27,28 @@ O `npm run build` também gera `dist/artefato.html`, a mesma página sem as tags
 | Caça automática | Z ou botão AUTO | botão AUTO |
 | Gerenciador de habilidades | G ou botão Ajustes | botão Ajustes |
 | Fechar janela | Esc | × |
+
+## Desempenho (0.3)
+
+Medido com o mesmo roteiro antes e depois (caça automática de Mago e de Espadachim, 1280×760):
+
+| | antes | depois |
+|---|---|---|
+| Tempo médio por quadro | 32–33 ms | 22–24 ms |
+| Pior quadro (p99) | 50 ms | 33 ms |
+| Lógica do jogo por quadro | 0,42 ms | 0,16 ms |
+| Travadas longas (mais de 50 ms) | 3 em 12 s | nenhuma |
+| Trocar de mapa | 470–560 ms | 18–48 ms |
+
+O que mudou, sem mexer no visual:
+- **Mapas em cache e desenhados aos poucos:** cada mapa é desenhado uma vez e guardado. Enquanto você joga, os mapas vizinhos (destinos dos portais) são desenhados em pedaços de 2,5 ms por quadro, e o primeiro mapa é preparado ainda na tela de título.
+- **Placa de vídeo:** o multisample do WebGL foi desligado (num jogo de sprites ele não muda nada na tela). Os contornos que eram desenhados a cada quadro (anel do alvo, avisos do Bafome) viraram imagens prontas, com borda suave.
+- **Fora da tela:** monstros e objetos longe da câmera ficam ocultos, e monstros só passeando pensam 5 vezes por segundo em vez de todo quadro.
+- **Menos criação de objetos:** números de dano, rótulos ("Golpe Poderoso!"), faíscas e explosões são reaproveitados em vez de criados e destruídos a cada golpe. Os rótulos não geram textura nova a cada uso.
+- **Busca de caminho:** A* com fila de prioridade e vetores fixos, e colisão consultando uma tabela de números em vez de texto.
+- **Movimento mais liso:** ao seguir um caminho, o herói usa todo o deslocamento do quadro e não dá "tranco" a cada ponto.
+- **Interface:** o HUD só escreve na página quando um valor muda, as barras usam `transform` (sem recalcular o layout) e as janelas são atualizadas no máximo uma vez por quadro.
+- Correção: o jogo esperava o evento `ready`, que o Phaser também dispara antes de carregar as imagens. Agora espera o `assets-ready` da BootScene.
 
 ## Novidades da 0.2
 

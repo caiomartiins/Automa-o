@@ -3,7 +3,9 @@ import { TITLE_IMAGE } from './assets';
 import { CLASSES } from './data/classes';
 import { newChar, type CharData } from './game/char';
 import { deleteSave, loadChar } from './game/save';
+import { MAPS } from './data/maps';
 import { BootScene, GameScene } from './scene';
+import { prebake } from './world';
 import { UI } from './ui';
 
 const title = document.getElementById('title')!;
@@ -19,16 +21,27 @@ const game = new Phaser.Game({
   parent: 'game',
   backgroundColor: '#0b1020',
   scale: { mode: Phaser.Scale.RESIZE, width: window.innerWidth, height: window.innerHeight },
-  render: { antialias: true, pixelArt: false },
+  // antialias: texturas suavizadas (a arte continua igual). antialiasGL desligado: o multisample
+  // do WebGL só suaviza bordas de polígonos, que num jogo de sprites não aparecem, e custa caro na placa de vídeo.
+  render: { antialias: true, antialiasGL: false, pixelArt: false, powerPreference: 'high-performance' },
   input: { activePointers: 2 },
   scene: [BootScene, GameScene],
 });
 
 (window as unknown as { aurora: Phaser.Game }).aurora = game;
 
-game.events.once('ready', () => {
+// 'assets-ready' vem da BootScene depois de carregar as imagens (o 'ready' do próprio Phaser chega antes)
+game.events.once('assets-ready', () => {
   ready = true;
-  if (startWith) begin(startWith);
+  if (startWith) { begin(startWith); return; }
+  // enquanto a tela de título está aberta, já vai desenhando o primeiro mapa (6 ms por quadro)
+  const first = MAPS[loadChar()?.map ?? 'campos'] ?? MAPS.campos;
+  const boot = game.scene.getScene('boot');
+  const step = () => {
+    if (startWith) return;
+    if (prebake(boot, [first], 6)) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
 });
 
 function begin(c: CharData) {

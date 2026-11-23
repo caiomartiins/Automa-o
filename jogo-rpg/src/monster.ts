@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { applySheet, hasAnim, spriteHeight } from './assets';
 import type { MonsterDef } from './data/monsters';
 import type { SpawnDef } from './data/maps';
-import { warnCircle } from './fx';
+import { spikes, warnCircle } from './fx';
 import type { World } from './world';
 import { TILE } from './world';
 
@@ -79,18 +79,45 @@ export class Monster {
     return px > this.x - w / 2 && px < this.x + w / 2 && py > this.y - h && py < this.y + 10;
   }
 
+  /** Fora da tela: escondido e com a IA mais espaçada quando está só passeando */
+  culled = false;
+  lodAcc = 0;
+  private depthY = NaN;
+  private barHp = -1;
+
+  setCulled(c: boolean) {
+    if (c === this.culled) return;
+    this.culled = c;
+    this.sprite.setVisible(!c);
+    this.shadow.setVisible(!c);
+    this.bar.setVisible(!c && this.barHp >= 0);
+  }
+
   sync() {
     const { sprite, shadow, bar } = this;
     shadow.setPosition(sprite.x, sprite.y);
-    sprite.setDepth(sprite.y);
-    shadow.setDepth(sprite.y - 1000);
-    bar.clear();
-    if (!this.dead && (this.hp < this.maxHp) && !this.def.boss) {
-      const w = Math.max(36, this.def.radius * 1.8), x = sprite.x - w / 2, y = sprite.y + 8;
-      bar.fillStyle(0x1a1a2a, 0.85); bar.fillRect(x - 1, y - 1, w + 2, 6);
-      bar.fillStyle(0xe04848, 1); bar.fillRect(x, y, w * (this.hp / this.maxHp), 4);
-      bar.setDepth(sprite.y + 1);
+    // só reordena a profundidade quando ela muda de verdade (reordenar a cena custa)
+    const dy = Math.round(sprite.y);
+    if (dy !== this.depthY) {
+      this.depthY = dy;
+      sprite.setDepth(dy);
+      shadow.setDepth(dy - 1000);
+      bar.setDepth(dy + 1);
     }
+    // a barra de vida só é redesenhada quando a vida muda; no resto do tempo só acompanha o monstro
+    const show = !this.dead && this.hp < this.maxHp && !this.def.boss;
+    const hp = show ? Math.max(0, Math.round((this.hp / this.maxHp) * 200)) : -1;
+    if (hp !== this.barHp) {
+      this.barHp = hp;
+      bar.clear();
+      if (show) {
+        const w = Math.max(36, this.def.radius * 1.8);
+        bar.fillStyle(0x1a1a2a, 0.85); bar.fillRect(-w / 2 - 1, 7, w + 2, 6);
+        bar.fillStyle(0xe04848, 1); bar.fillRect(-w / 2, 8, w * (hp / 200), 4);
+      }
+      bar.setVisible(show && !this.culled);
+    }
+    if (show) bar.setPosition(sprite.x, sprite.y);
   }
 
   private play(anim: string) {
@@ -270,12 +297,7 @@ export class Monster {
         scene.time.delayedCall(1000, () => {
           if (this.dead) return;
           a.areaHitsPlayer(this, x, y, 56, 1.1, 'curse');
-          const spike = scene.add.particles(x, y, 'spark', {
-            speedY: { min: -320, max: -160 }, speedX: { min: -30, max: 30 }, lifespan: 420, scale: { start: 0.9, end: 0 },
-            tint: [0x7a2aff, 0x2a0a3a, 0xd08aff], quantity: 18, emitting: false,
-          }).setDepth(y + 2);
-          spike.explode(18);
-          scene.time.delayedCall(600, () => spike.destroy());
+          spikes(scene, x, y);
         });
       }
     }
@@ -284,7 +306,8 @@ export class Monster {
 
   die() {
     this.dead = true;
-    this.bar.clear();
+    this.sync();
+    this.setCulled(false);
     this.sprite.clearTint();
     this.sprite.anims.resume();
     const scene = this.arena.stage;

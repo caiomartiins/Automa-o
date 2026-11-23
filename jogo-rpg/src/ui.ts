@@ -185,8 +185,21 @@ export class UI {
     return `<div class="win panel${wide ? ' wide' : ''}" role="dialog" aria-label="${esc(title)}"><div class="tbar">${esc(title)}<button class="x" data-a="close" aria-label="Fechar">×</button></div><div class="content">${body}</div></div>`;
   }
 
+  private refreshQueued = false;
+
+  /** Junta vários pedidos de atualização num só por quadro (exceto quando forçado) */
   refresh(forceWin = false) {
     if (!this.s || !this.r.hotbar) return;
+    if (!forceWin) {
+      if (this.refreshQueued) return;
+      this.refreshQueued = true;
+      requestAnimationFrame(() => { this.refreshQueued = false; this.refreshNow(false); });
+      return;
+    }
+    this.refreshNow(true);
+  }
+
+  private refreshNow(forceWin: boolean) {
     this.renderHotbar();
     this.tick(true);
     const host = this.r.winhost;
@@ -475,69 +488,98 @@ export class UI {
       if (!h) { img.removeAttribute('src'); n.textContent = ''; lv.textContent = ''; b.title = 'Vazio (escolha em Ajustes)'; return; }
       if (h.kind === 'skill') {
         const sk = skill(h.id), l = s.char.skills[h.id] ?? 0;
-        img.src = skillIcon(sk.id, sk.glyph, sk.color);
+        const url = skillIcon(sk.id, sk.glyph, sk.color);
+        if (img.getAttribute('src') !== url) img.src = url;
         n.textContent = '';
         lv.textContent = l ? String(l) : '';
         b.classList.toggle('off', !l);
         b.title = `${sk.name}${l ? ` (nível ${l})` : ' (não aprendida)'} · SP ${sk.sp?.(Math.max(1, l)) ?? 0}`;
       } else {
         const it = item(h.id), cnt = s.char.inv.find((e) => e.id === h.id)?.n ?? 0;
-        img.src = icon(it);
+        const url = icon(it);
+        if (img.getAttribute('src') !== url) img.src = url;
         n.textContent = String(cnt);
         lv.textContent = '';
         b.classList.toggle('off', cnt === 0);
         b.title = `${it.name} · ${it.desc}`;
       }
+      if (h.kind !== 'skill' && this.last.get(`cd${i}`) !== 0) {
+        this.last.set(`cd${i}`, 0);
+        b.querySelector<HTMLElement>('.cd')!.style.setProperty('--p', '0%');
+      }
     });
+  }
+
+  /** Últimos valores escritos no DOM: só escreve de novo quando mudam (evita recálculo de estilo a cada quadro) */
+  private last = new Map<string, string | number | boolean>();
+  private slotEls: { b: HTMLElement; cd: HTMLElement }[] = [];
+
+  private setText(k: string, v: string) {
+    if (this.last.get(`t:${k}`) === v) return;
+    this.last.set(`t:${k}`, v);
+    this.r[k].textContent = v;
+  }
+  /** Barras usam transform (não força recálculo de layout) */
+  private setBar(k: string, ratio: number) {
+    const v = Math.round(Math.max(0, Math.min(1, ratio)) * 1000) / 1000;
+    if (this.last.get(`b:${k}`) === v) return;
+    this.last.set(`b:${k}`, v);
+    this.r[k].style.transform = `scaleX(${v})`;
+  }
+  private setFlag(el: HTMLElement, key: string, cls: string, on: boolean) {
+    if (this.last.get(key) === on) return;
+    this.last.set(key, on);
+    el.classList.toggle(cls, on);
   }
 
   tick(force = false) {
     const s = this.s;
     if (!s || !this.r.hp) return;
     const c = s.char, d = s.d;
-    const set = (k: string, v: string) => { if (this.r[k].textContent !== v) this.r[k].textContent = v; };
-    set('name', c.name);
-    set('cls', CLASSES[c.cls].name);
+    this.setText('name', c.name);
+    this.setText('cls', CLASSES[c.cls].name);
     const hpk = Math.max(0, c.hp / d.maxHp);
-    this.r.hp.style.width = `${hpk * 100}%`;
-    this.r.hpbar.classList.toggle('low', hpk < 0.25);
-    set('hpt', `${Math.max(0, Math.floor(c.hp))} / ${d.maxHp}`);
-    this.r.sp.style.width = `${(c.sp / d.maxSp) * 100}%`;
-    set('spt', `${Math.floor(c.sp)} / ${d.maxSp}`);
+    this.setBar('hp', hpk);
+    this.setFlag(this.r.hpbar, 'f:low', 'low', hpk < 0.25);
+    this.setText('hpt', `${Math.max(0, Math.floor(c.hp))} / ${d.maxHp}`);
+    this.setBar('sp', c.sp / d.maxSp);
+    this.setText('spt', `${Math.floor(c.sp)} / ${d.maxSp}`);
     const ek = c.baseLv >= MAX_BASE ? 1 : c.baseExp / baseNeed(c.baseLv);
-    this.r.exp.style.width = `${ek * 100}%`;
-    set('blv', `Nv ${c.baseLv}`);
-    set('expt', `${(ek * 100).toFixed(1)}%`);
+    this.setBar('exp', ek);
+    this.setText('blv', `Nv ${c.baseLv}`);
+    this.setText('expt', `${(ek * 100).toFixed(1)}%`);
     const maxJob = CLASSES[c.cls].maxJob;
     const jk = c.jobLv >= maxJob ? 1 : c.jobExp / jobNeed(c.cls, c.jobLv);
-    this.r.job.style.width = `${jk * 100}%`;
-    set('jlv', `Cl ${c.jobLv}`);
-    set('jobt', `${(jk * 100).toFixed(1)}%`);
-    set('zeny', `${fmt(c.zeny)} z`);
+    this.setBar('job', jk);
+    this.setText('jlv', `Cl ${c.jobLv}`);
+    this.setText('jobt', `${(jk * 100).toFixed(1)}%`);
+    if (this.last.get('zeny') !== c.zeny) { this.last.set('zeny', c.zeny); this.setText('zeny', `${fmt(c.zeny)} z`); }
 
     // recarga e SP na barra de atalhos
     const slots = s.hotbar();
-    this.r.hotbar.querySelectorAll<HTMLElement>('.slot').forEach((b, i) => {
+    if (this.slotEls.length === 0) {
+      this.r.hotbar.querySelectorAll<HTMLElement>('.slot').forEach((b) => this.slotEls.push({ b, cd: b.querySelector<HTMLElement>('.cd')! }));
+    }
+    for (let i = 0; i < this.slotEls.length; i++) {
       const h = slots[i];
-      if (!h) return;
-      const cd = b.querySelector<HTMLElement>('.cd')!;
-      if (h.kind === 'skill') {
-        const sk = skill(h.id), l = c.skills[h.id] ?? 0;
-        const total = sk.cd?.(Math.max(1, l)) ?? 0.3;
-        const left = s.cooldownLeft(h.id);
-        cd.style.setProperty('--p', `${left > 0 ? (left / total) * 100 : 0}%`);
-        b.classList.toggle('nosp', l > 0 && c.sp < (sk.sp?.(l) ?? 0));
-      }
-    });
+      if (!h || h.kind !== 'skill') continue;
+      const { b, cd } = this.slotEls[i];
+      const sk = skill(h.id), l = c.skills[h.id] ?? 0;
+      const total = sk.cd?.(Math.max(1, l)) ?? 0.3;
+      const left = s.cooldownLeft(h.id);
+      const p = left > 0 ? Math.round((left / total) * 100) : 0;
+      if (this.last.get(`cd${i}`) !== p) { this.last.set(`cd${i}`, p); cd.style.setProperty('--p', `${p}%`); }
+      this.setFlag(b, `nosp${i}`, 'nosp', l > 0 && c.sp < (sk.sp?.(l) ?? 0));
+    }
 
     // alvo
     const t = s.target && !s.target.dead ? s.target : null;
-    this.r.target.hidden = !t;
+    if (this.last.get('thidden') !== !t) { this.last.set('thidden', !t); this.r.target.hidden = !t; }
     if (t) {
-      set('tname', t.def.name);
-      set('tinfo', `Nv ${t.def.lv} · ${ELEMENT_NAME[t.def.element]} · ${t.def.race}`);
-      this.r.target.classList.toggle('mvp', !!t.def.boss);
-      this.r.thp.style.width = `${Math.max(0, t.hp / t.maxHp) * 100}%`;
+      this.setText('tname', t.def.name);
+      this.setText('tinfo', `Nv ${t.def.lv} · ${ELEMENT_NAME[t.def.element]} · ${t.def.race}`);
+      this.setFlag(this.r.target, 'f:mvp', 'mvp', !!t.def.boss);
+      this.setBar('thp', t.hp / t.maxHp);
     }
 
     // minimapa (4x por segundo)
@@ -545,7 +587,7 @@ export class UI {
     if (force || now - this.miniT > 250) {
       this.miniT = now;
       this.drawMinimap();
-      set('coord', `${Math.floor(s.sprite.x / 64)}, ${Math.floor(s.sprite.y / 64)}`);
+      this.setText('coord', `${Math.floor(s.sprite.x / 64)}, ${Math.floor(s.sprite.y / 64)}`);
     }
   }
 

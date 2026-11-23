@@ -15,7 +15,7 @@ import { blast, damageNumber, DEPTH_FX, floatLabel, hitSpark, levelUpFx, lightni
 import { itemCanvas } from './icons';
 import { Monster, type Arena } from './monster';
 import type { UI } from './ui';
-import { TILE, World } from './world';
+import { prebake, TILE, World, worldFor } from './world';
 
 export type HotSlot = { kind: 'skill'; id: string } | { kind: 'item'; id: string };
 
@@ -30,7 +30,7 @@ export class BootScene extends Phaser.Scene {
   create() {
     setupAll(this);
     makeTextures(this);
-    this.game.events.emit('ready');
+    this.game.events.emit('assets-ready');
   }
 }
 
@@ -41,6 +41,15 @@ export class GameScene extends Phaser.Scene implements Arena {
   buffs: Buffs = {};
   world!: World;
   mapImage?: Phaser.GameObjects.Image;
+  /** Mapas vizinhos sendo desenhados aos poucos, para a troca de mapa ser instantânea */
+  prebakeList: MapDef[] = [];
+  cullT = 0;
+  targetRing!: Phaser.GameObjects.Image;
+  castBar!: Phaser.GameObjects.Graphics;
+  private barsKey = '';
+  private depthY = NaN;
+  private hotCache: (HotSlot | null)[] | null = null;
+  private hotSrc: string[] | null = null;
   mapObjects: Phaser.GameObjects.GameObject[] = [];
   monsters: Monster[] = [];
   respawns: { spawn: SpawnDef; at: number }[] = [];
@@ -103,8 +112,16 @@ export class GameScene extends Phaser.Scene implements Arena {
     this.nameTag = this.add.text(0, 0, this.char.name, {
       fontFamily: 'Nunito, sans-serif', fontStyle: '800', fontSize: '12px', color: '#ffffff', stroke: '#101830', strokeThickness: 3,
     }).setOrigin(0.5, 0);
-    this.bars = this.add.graphics();
+    this.bars = this.add.graphics().setDepth(DEPTH_FX - 2);
+    this.castBar = this.add.graphics().setDepth(DEPTH_FX - 2);
+    this.targetRing = this.add.image(0, 0, 'target-ring').setVisible(false);
     this.setClassLook();
+    // um único ouvinte para o fim do ataque (antes era um por golpe)
+    this.sprite.on('animationcomplete', (anim: Phaser.Animations.Animation) => {
+      if (!anim.key.endsWith('-attack')) return;
+      this.sprite.anims.timeScale = 1;
+      if (!this.player.dead && !this.sitting) this.sprite.play(`${CLASSES[this.char.cls].texture}-idle`);
+    });
 
     const kb = this.input.keyboard!;
     this.keys = kb.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT') as Record<string, Phaser.Input.Keyboard.Key>;
@@ -166,13 +183,15 @@ export class GameScene extends Phaser.Scene implements Arena {
     for (const o of this.mapObjects) o.destroy();
     this.monsters = []; this.drops = []; this.projs = []; this.orbs = []; this.npcs = []; this.mapObjects = []; this.respawns = [];
     this.mapImage?.destroy();
+    this.mapImage = undefined;
     if (this.textures.exists('map')) this.textures.remove('map');
     this.target = null; this.path = null; this.pendingSkill = null; this.pendingNpc = null; this.pendingDrop = null; this.casting = null;
 
     const def = MAPS[id];
-    this.world = new World(this, def);
+    this.world = worldFor(this, def);
     this.textures.addCanvas('map', this.world.canvas);
     this.mapImage = this.add.image(0, 0, 'map').setOrigin(0).setDepth(-100000);
+    this.prebakeList = def.portals.map((p) => MAPS[p.to]);
     for (const o of this.world.objects) {
       const img = this.add.image(o.x, o.y, o.key).setOrigin(0.5, 1).setFlipX(o.flip);
       img.setScale(o.w / img.width).setDepth(o.y);
@@ -228,6 +247,8 @@ export class GameScene extends Phaser.Scene implements Arena {
     this.cameras.main.centerOn(px, py);
     this.portalLock = this.now + 1;
     this.char.map = id;
+    this.depthY = NaN;
+    this.cullT = 0;
     if (!first) this.ui.mapChanged();
   }
 
@@ -359,16 +380,20 @@ export class GameScene extends Phaser.Scene implements Arena {
   // ================================================================ barra de atalhos
 
   hotbar(): (HotSlot | null)[] {
-    return this.char.hotbar.map((h) => {
+    // a barra é lida a cada quadro pela interface: só recalcula quando ela muda
+    if (this.hotCache && this.hotSrc === this.char.hotbar) return this.hotCache;
+    this.hotSrc = this.char.hotbar;
+    return (this.hotCache = this.char.hotbar.map((h) => {
       const [kind, id] = h.split(':');
       if (kind === 'skill' && id) return { kind: 'skill' as const, id };
       if (kind === 'item' && id) return { kind: 'item' as const, id };
       return null;
-    });
+    }));
   }
 
   setHotbar(i: number, value: string) {
     this.char.hotbar[i] = value;
+    this.hotCache = null;
     this.ui.refresh();
   }
 
@@ -849,6 +874,7 @@ export class GameScene extends Phaser.Scene implements Arena {
     invAdd(c, weapon, 1);
     c.equip.arma = weapon;
     c.hotbar = defaultHotbar(cls);
+    this.hotCache = null;
     c.auto.skills = [];
     syncAuto(c);
     this.setClassLook();
@@ -876,10 +902,6 @@ export class GameScene extends Phaser.Scene implements Arena {
     this.sprite.play(`${tex}-attack`);
     const dur = this.sprite.anims.currentAnim?.duration ?? 300;
     this.sprite.anims.timeScale = Math.max(1, dur / 1000 / Math.max(0.2, this.d.delay * 0.9));
-    this.sprite.once('animationcomplete', () => {
-      this.sprite.anims.timeScale = 1;
-      if (!this.player.dead && !this.sitting) this.sprite.play(`${tex}-idle`);
-    });
   }
 
   basicAttack(m: Monster) {
@@ -904,26 +926,40 @@ export class GameScene extends Phaser.Scene implements Arena {
     this.player.x = this.sprite.x;
     this.player.y = this.sprite.y;
 
-    for (const m of this.monsters) m.update(dt, this.now);
+    this.cullT -= dt;
+    if (this.cullT <= 0) { this.cullT = 0.2; this.cull(); }
+    for (const m of this.monsters) {
+      // longe da tela e só passeando: a IA pensa 5 vezes por segundo em vez de todo quadro
+      if (m.culled && m.state === 'idle' && !m.dead) {
+        m.lodAcc += dt;
+        if (m.lodAcc < 0.2) continue;
+        m.update(m.lodAcc, this.now);
+        m.lodAcc = 0;
+      } else m.update(dt, this.now);
+    }
     this.updateProjectiles(dt);
 
     // reaparecimento
-    for (const r of [...this.respawns]) {
+    for (let i = this.respawns.length - 1; i >= 0; i--) {
+      const r = this.respawns[i];
       if (this.now >= r.at) {
-        this.respawns.splice(this.respawns.indexOf(r), 1);
+        this.respawns.splice(i, 1);
         this.spawnMonster(r.spawn);
       }
     }
     // espólios
-    for (const d of [...this.drops]) {
+    for (let i = this.drops.length - 1; i >= 0; i--) {
+      const d = this.drops[i];
       const left = d.until - this.now;
       if (left <= 0) {
-        d.img.destroy(); this.drops.splice(this.drops.indexOf(d), 1);
+        d.img.destroy(); this.drops.splice(i, 1);
         if (this.pendingDrop === d) { this.pendingDrop = null; this.path = null; }
         continue;
       }
-      d.img.setAlpha(left < 8 ? (Math.sin(this.now * 12) > 0 ? 1 : 0.35) : 1);
+      if (left < 8) d.img.setAlpha(Math.sin(this.now * 12) > 0 ? 1 : 0.35);
     }
+    // desenha os mapas vizinhos aos poucos (no máximo 2,5 ms por quadro)
+    if (this.prebakeList.length && !this.changing && !prebake(this, this.prebakeList, 2.5)) this.prebakeList = [];
     // regeneração
     if (!this.player.dead) {
       const k = this.sitting ? 2 : 1;
@@ -938,11 +974,19 @@ export class GameScene extends Phaser.Scene implements Arena {
     this.ui.tick();
   }
 
+  private speedNow() {
+    return this.d.speed * (this.slowUntil > this.now ? 0.6 : 1);
+  }
+
   private movePlayer(dx: number, dy: number, dt: number) {
-    const speed = this.d.speed * (this.slowUntil > this.now ? 0.6 : 1);
+    return this.moveBy(dx, dy, this.speedNow() * dt);
+  }
+
+  /** Anda até `max` pixels na direção (dx, dy), deslizando nas paredes. Devolve quanto andou. */
+  private moveBy(dx: number, dy: number, max: number) {
     const len = Math.hypot(dx, dy);
     if (len < 0.001) return 0;
-    const s = Math.min(len, speed * dt);
+    const s = Math.min(len, max);
     const nx = this.sprite.x + (dx / len) * s, ny = this.sprite.y + (dy / len) * s;
     const w = this.world;
     if (w.canStand(nx, ny)) this.sprite.setPosition(nx, ny);
@@ -951,6 +995,20 @@ export class GameScene extends Phaser.Scene implements Arena {
     else return 0;
     if (Math.abs(dx) > 0.5) this.sprite.setFlipX(dx < 0);
     return s;
+  }
+
+  /** Segue o caminho usando todo o deslocamento do quadro (sem "tranco" ao chegar em cada ponto) */
+  private followPath(dt: number) {
+    let budget = this.speedNow() * dt;
+    let guard = 4;
+    while (budget > 0.01 && this.path && this.path.length && guard-- > 0) {
+      const p = this.path[0];
+      const d = Math.hypot(p.x - this.sprite.x, p.y - this.sprite.y);
+      const moved = this.moveBy(p.x - this.sprite.x, p.y - this.sprite.y, budget);
+      budget -= moved;
+      if (d - moved < 4 || moved === 0) this.path.shift();
+      if (moved === 0) break;
+    }
   }
 
   private setWalkAnim(walking: boolean) {
@@ -1026,10 +1084,7 @@ export class GameScene extends Phaser.Scene implements Arena {
 
     // andando por um caminho
     if (this.path && this.path.length) {
-      const p = this.path[0];
-      const d = Math.hypot(p.x - this.sprite.x, p.y - this.sprite.y);
-      const moved = this.movePlayer(p.x - this.sprite.x, p.y - this.sprite.y, dt);
-      if (d < 4 || moved === 0) this.path.shift();
+      this.followPath(dt);
       this.setWalkAnim(true);
       this.checkPortals();
       this.autoPickup();
@@ -1060,11 +1115,7 @@ export class GameScene extends Phaser.Scene implements Arena {
       this.movePlayer(tx - this.sprite.x, ty - this.sprite.y, dt);
     } else {
       if (!this.path || this.pathT <= 0) { this.path = this.world.findPath(this.sprite.x, this.sprite.y, tx, ty); this.pathT = 0.4; }
-      if (this.path && this.path.length) {
-        const p = this.path[0];
-        const moved = this.movePlayer(p.x - this.sprite.x, p.y - this.sprite.y, dt);
-        if (Math.hypot(p.x - this.sprite.x, p.y - this.sprite.y) < 4 || moved === 0) this.path.shift();
-      }
+      if (this.path && this.path.length) this.followPath(dt);
     }
     this.setWalkAnim(true);
     this.checkPortals();
@@ -1118,25 +1169,44 @@ export class GameScene extends Phaser.Scene implements Arena {
 
   private drawPlayerBits() {
     const { sprite, shadow, nameTag, bars, d, char: c } = this;
-    sprite.setDepth(sprite.y);
-    shadow.setPosition(sprite.x, sprite.y).setDepth(sprite.y - 1000);
+    const dy = Math.round(sprite.y);
+    if (dy !== this.depthY) { this.depthY = dy; sprite.setDepth(dy); shadow.setDepth(dy - 1000); }
+    shadow.setPosition(sprite.x, sprite.y);
     nameTag.setPosition(sprite.x, sprite.y + 16).setDepth(DEPTH_FX - 2);
-    bars.clear().setDepth(DEPTH_FX - 2);
-    const w = 52, x = sprite.x - w / 2, y = sprite.y + 6;
-    bars.fillStyle(0x10182e, 0.85); bars.fillRect(x - 1, y - 1, w + 2, 9);
-    const hpk = Math.max(0, c.hp / d.maxHp);
-    bars.fillStyle(hpk < 0.25 ? 0xe04848 : 0x3fbf5a, 1); bars.fillRect(x, y, w * hpk, 4);
-    bars.fillStyle(0x3c7ee0, 1); bars.fillRect(x, y + 4, w * Math.max(0, c.sp / d.maxSp), 3);
+    // barras de HP/SP: redesenhadas só quando os valores mudam, e só acompanham o herói no resto do tempo
+    const hpk = Math.max(0, Math.min(1, c.hp / d.maxHp)), spk = Math.max(0, Math.min(1, c.sp / d.maxSp));
+    const key = `${Math.round(hpk * 104)}|${Math.round(spk * 104)}`;
+    if (key !== this.barsKey) {
+      this.barsKey = key;
+      const w = 52;
+      bars.clear();
+      bars.fillStyle(0x10182e, 0.85); bars.fillRect(-w / 2 - 1, 5, w + 2, 9);
+      bars.fillStyle(hpk < 0.25 ? 0xe04848 : 0x3fbf5a, 1); bars.fillRect(-w / 2, 6, w * hpk, 4);
+      bars.fillStyle(0x3c7ee0, 1); bars.fillRect(-w / 2, 10, w * spk, 3);
+    }
+    bars.setPosition(sprite.x, sprite.y);
+    this.castBar.clear();
     if (this.casting) {
       const k = (this.now - this.casting.start) / (this.casting.end - this.casting.start);
       const cy = sprite.y - spriteHeight(CLASSES[c.cls].texture) - 14;
-      bars.fillStyle(0x10182e, 0.85); bars.fillRect(sprite.x - 31, cy - 1, 62, 8);
-      bars.fillStyle(0xf2c14e, 1); bars.fillRect(sprite.x - 30, cy, 60 * Math.min(1, k), 6);
+      this.castBar.fillStyle(0x10182e, 0.85); this.castBar.fillRect(sprite.x - 31, cy - 1, 62, 8);
+      this.castBar.fillStyle(0xf2c14e, 1); this.castBar.fillRect(sprite.x - 30, cy, 60 * Math.min(1, k), 6);
     }
-    if (this.target && !this.target.dead) {
-      const t = this.target;
-      bars.lineStyle(2, 0xff5a5a, 0.9);
-      bars.strokeEllipse(t.x, t.y, t.def.radius * 2.4 + 8, t.def.radius + 6);
+    const t = this.target && !this.target.dead ? this.target : null;
+    this.targetRing.setVisible(!!t);
+    if (t) {
+      this.targetRing.setPosition(t.x, t.y).setDisplaySize(t.def.radius * 2.4 + 8, t.def.radius + 6).setDepth(t.y - 999);
+    }
+  }
+
+  /** Esconde o que está longe da tela (menos coisas para a placa de vídeo desenhar) */
+  private cull() {
+    const v = this.cameras.main.worldView, m = 160;
+    const x0 = v.x - m, y0 = v.y - m, x1 = v.right + m, y1 = v.bottom + m + 120;
+    for (const mo of this.monsters) mo.setCulled(mo.x < x0 || mo.x > x1 || mo.y < y0 || mo.y > y1);
+    for (const o of this.mapObjects) {
+      if (!(o instanceof Phaser.GameObjects.Image)) continue;
+      o.setVisible(o.x > x0 - 60 && o.x < x1 + 60 && o.y > y0 && o.y < y1 + 60);
     }
   }
 
