@@ -59,6 +59,12 @@ export const ZUMBI: EnemyDef = {
   from: 0, weight: 0, knockback: 0.1, scale: 2.1, miniboss: true,
   element: 'mortovivo', race: 'mortovivo', size: 'grande', lv: 15
 };
+/** Rainha Magmática: 2ª mini-chefe (alterna com o Carniçal: níveis 20, 40, 60...) */
+export const ARANHA: EnemyDef = {
+  id: 'aranha', name: 'Rainha Magmática', texture: 'en-aranha', hp: 1300, speed: 66, damage: 26, xp: 60, radius: 30,
+  from: 0, weight: 0, knockback: 0.05, scale: 1.5, miniboss: true,
+  element: 'fogo', race: 'inseto', size: 'grande', lv: 22
+};
 /** Minotauro: segundo chefe */
 export const MINOTAURO: EnemyDef = {
   id: 'minotauro', name: 'Minotauro Brutal', texture: 'en-minotauro', hp: 4800, speed: 86, damage: 40, xp: 240, radius: 32,
@@ -79,8 +85,9 @@ export const LICH: EnemyDef = {
  * Cada volta deixa o mesmo chefe mais forte.
  */
 export const BOSS_EVERY = 120;
-/** Mini-chefe (Carniçal) a cada 10 níveis: 10, 20, 30... */
+/** Mini-chefe a cada 10 níveis, alternando: 10 Carniçal, 20 Rainha Magmática, 30 Carniçal... */
 export const MINI_LEVEL_EVERY = 10;
+export const MINI_ROTATION = ['zumbi', 'aranha'] as const;
 /** Chefe a cada 15 níveis: 15 Bafome, 30 Minotauro, 45 Lorde Ossário, e o rodízio recomeça mais forte */
 export const BOSS_LEVEL_EVERY = 15;
 /** Loja no meio da partida a cada 10 níveis */
@@ -109,4 +116,4 @@ export const speedScale = (seconds: number) => 1 + Math.min(0.5, (seconds / 60) 
 export const threatLevel = (seconds: number) => 1 + Math.floor(seconds / 60);
 
 /** Maior raio de colisão entre todos os inimigos (usado nas buscas espaciais) */
-export const MAX_ENEMY_RADIUS = Math.max(...[...ENEMIES, BAFOME, ZUMBI, MINOTAURO, LICH].map((d) => d.radius));
+export const MAX_ENEMY_RADIUS = Math.max(...[...ENEMIES, BAFOME, ZUMBI, ARANHA, MINOTAURO, LICH].map((d) => d.radius));

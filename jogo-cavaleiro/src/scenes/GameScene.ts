@@ -1,11 +1,12 @@
 import Phaser from 'phaser';
 import { Enemy } from '../objects/Enemy';
 import { Pickup } from '../objects/Pickup';
-import { ZUMBI, BAFOME, MINOTAURO, LICH, BOSS_LEVEL_EVERY, MINI_LEVEL_EVERY, BOSS_ROTATION, HARD_FROM, SHOP_LEVEL_EVERY, levelScale, ENEMIES, MAX_ENEMY_RADIUS, dmgScale, hpScale, speedScale, threatLevel, type EnemyDef } from '../data/enemies';
+import { ZUMBI, ARANHA, BAFOME, MINOTAURO, LICH, BOSS_LEVEL_EVERY, MINI_LEVEL_EVERY, MINI_ROTATION, BOSS_ROTATION, HARD_FROM, SHOP_LEVEL_EVERY, levelScale, ENEMIES, MAX_ENEMY_RADIUS, dmgScale, hpScale, speedScale, threatLevel, type EnemyDef } from '../data/enemies';
 import { BafomeAI } from '../boss';
 import { ZombieAI } from '../miniboss';
 import { MinotaurAI } from '../minotaur';
 import { LichAI } from '../lich';
+import { SpiderAI } from '../aranha';
 import { CLASSES, LINES, lineOf, type ClassDef, type ClassId, type LineId } from '../data/classes';
 import { feetOffset, heroScale, needsShadow } from '../sprites';
 import { BASE_STATS, type Stats } from '../data/stats';
@@ -509,14 +510,15 @@ export class GameScene extends Phaser.Scene implements RpgHost {
   }
 
   /** Aplica maldição (lentidão) ou veneno no jogador; VIT dá chance de resistir */
-  afflictPlayer(kind: 'maldicao' | 'veneno', ms: number) {
+  afflictPlayer(kind: 'maldicao' | 'veneno' | 'teia', ms: number) {
     if (Math.random() < Math.min(0.5, this.attr('vit') * ATTR_FX.vitResist)) {
       this.fx.miss(this.player.x, this.player.y - 44);
       return;
     }
-    if (kind === 'maldicao') this.curseUntil = this.elapsed + ms;
-    else this.poisonUntil = this.elapsed + ms;
-    this.events.emit('toast', kind === 'maldicao' ? 'Amaldiçoado! (mais lento)' : 'Envenenado!', kind === 'maldicao' ? '#c8a0ff' : '#9aff7a');
+    if (kind === 'veneno') this.poisonUntil = this.elapsed + ms;
+    else this.curseUntil = this.elapsed + ms;
+    const msg = { maldicao: ['Amaldiçoado! (mais lento)', '#c8a0ff'], veneno: ['Envenenado!', '#9aff7a'], teia: ['Preso na teia! (mais lento)', '#f0e8d8'] }[kind];
+    this.events.emit('toast', msg[0], msg[1]);
   }
 
   /** Dano no jogador (contato, ataques do chefe). `heavy` ignora parte da armadura. */
@@ -819,8 +821,8 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     if (!this.choosing) {
       if (this.pendingMini > 0) {
         this.pendingMini--;
+        this.spawnMiniBoss(MINI_ROTATION[this.miniDone % MINI_ROTATION.length]);
         this.miniDone++;
-        this.spawnMiniBoss();
       }
       const bossAlive = !!this.boss && this.boss.active && !!this.boss.def.boss;
       if (this.pendingBoss > 0 && !bossAlive) {
@@ -838,17 +840,19 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     return r;
   }
 
-  private spawnMiniBoss() {
-    const round = this.nextRound('zumbi');
+  private spawnMiniBoss(id: 'zumbi' | 'aranha' = 'zumbi') {
+    const round = this.nextRound(id);
+    const def = id === 'aranha' ? ARANHA : ZUMBI;
     const p = this.ringPosition();
-    const e = this.spawnEnemy(ZUMBI, p.x, p.y, true);
+    const e = this.spawnEnemy(def, p.x, p.y, true);
     if (!e) return;
     e.hp = e.maxHp = Math.ceil(e.maxHp * (1 + round * 0.8));
     e.damage = Math.round(e.damage * (1 + round * 0.4));
-    this.bossAIs.push(new ZombieAI(this, e, round ? 0.7 : 1));
+    this.bossAIs.push(id === 'aranha' ? new SpiderAI(this, e, round ? 0.75 : 1) : new ZombieAI(this, e, round ? 0.7 : 1));
     if (!this.boss || !this.boss.active) this.boss = e;
     this.cameras.main.shake(250, 0.005);
-    this.events.emit('announce', round ? `Um Carniçal mais forte surgiu! (${round + 1}ª vez)` : 'Um Carniçal faminto surgiu!');
+    const name = id === 'aranha' ? 'A Rainha Magmática saiu do ninho!' : 'Um Carniçal faminto surgiu!';
+    this.events.emit('announce', round ? `${def.name} voltou mais forte! (${round + 1}ª vez)` : name);
   }
 
   private spawnBoss(id: 'bafome' | 'minotauro' | 'lich') {
@@ -1100,6 +1104,8 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       // mini-chefe: queda animada, gemas, zeny e chance de carta
       if (this.boss === e) this.boss = null;
       const corpse = this.add.sprite(x, y, def.texture).setScale(e.scaleX).setFlipX(e.flipX).setDepth(y).play(`${def.texture}-die`);
+      // a aranha não tem quadro de morte: cai de pernas para o ar, escurecida
+      if (def.id === 'aranha') this.time.delayedCall(600, () => corpse.active && corpse.setFlipY(true).setTint(0x6a4a40));
       this.tweens.add({ targets: corpse, alpha: 0, delay: 1600, duration: 600, onComplete: () => corpse.destroy() });
       for (let k = 0; k < 5; k++) {
         const a = (k / 5) * Math.PI * 2;
@@ -1109,7 +1115,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       if (Math.random() < 0.35) this.dropPickup('carta', 0, x + 24, y, def.id);
       this.rollRare(def.id, x, y);
       this.gainJob(15);
-      this.events.emit('toast', 'Carniçal derrotado!', '#9aff8a');
+      this.events.emit('toast', `${def.name} derrotada!`.replace('Carniçal derrotada', 'Carniçal derrotado'), '#9aff8a');
       return;
     }
     if (def.boss) {
@@ -1175,7 +1181,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
         if (p) p.magnetized = true;
         this.fx.ring(x, y, 20, 9, 900, item.glow, 0.6);
         this.cameras.main.flash(400, (item.glow >> 16) & 255, (item.glow >> 8) & 255, item.glow & 255);
-        const from = [BAFOME, MINOTAURO, LICH, ZUMBI].find((d) => d.id === monster)?.name ?? 'chefe';
+        const from = [BAFOME, MINOTAURO, LICH, ZUMBI, ARANHA].find((d) => d.id === monster)?.name ?? 'chefe';
         this.events.emit('announce', `✦ ARMA MÍTICA! ${item.name} caiu do ${from}! ✦`);
       }
     }

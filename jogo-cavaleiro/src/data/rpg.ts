@@ -184,6 +184,10 @@ export const CARDS: CardDef[] = [
     apply: (g) => { g.stats.armor += 2; add(g.mods.raceDmg, 'humanoide', 0.1); },
   },
   {
+    monster: 'aranha', name: 'Carta Rainha Magmática', desc: '+20% de dano de Fogo e +2 AGI',
+    apply: (g) => { add(g.mods.elemDmg, 'fogo', 0.2); g.addAttr('agi', 2); },
+  },
+  {
     monster: 'lich', name: 'Carta Lorde Ossário', desc: '+15% de dano mágico, +5% de crítico e +3 INT',
     apply: (g) => { g.mods.kindDmg.magic += 0.15; g.mods.crit += 0.05; g.addAttr('int', 3); },
   },

@@ -129,6 +129,8 @@ export const EQUIPMENT: EquipDef[] = [
   { id: 'foice-almas', name: 'Foice das Almas', slot: 'arma', price: 0, drop: { monster: 'lich', chance: 0.03 }, glow: 0x6aff9a, icon: 'eq-espada', tint: 0x6aff9a, stats: { atk: 0.55, matk: 0.55, crit: 0.1, attrs: { sor: 5 } } },
   { id: 'coroa-ossaria', name: 'Coroa Ossária', slot: 'cabeca', price: 0, drop: { monster: 'lich', chance: 0.35 }, icon: 'eq-tiara', tint: 0xe8e0c8, stats: { def: 4, hp: 25, matk: 0.12 } },
   { id: 'manto-almas', name: 'Manto das Almas', slot: 'capa', price: 0, drop: { monster: 'lich', chance: 0.35 }, icon: 'eq-capa', tint: 0x2a3a2a, stats: { flee: 0.05, atk: 0.08, matk: 0.08 } },
+  { id: 'presa-magma', name: 'Presa de Magma', slot: 'acessorio', price: 0, drop: { monster: 'aranha', chance: 0.25 }, icon: 'eq-colar', tint: 0xff6a20, stats: { atk: 0.08, matk: 0.08, attrs: { des: 2 } } },
+  { id: 'seda-rainha', name: 'Capa de Seda Rubra', slot: 'capa', price: 0, drop: { monster: 'aranha', chance: 0.25 }, icon: 'eq-capa', tint: 0xb02a1a, stats: { def: 2, flee: 0.05, speed: 10 } },
   { id: 'gema-gosmenta', name: 'Gema Gosmenta', slot: 'acessorio', price: 0, drop: { monster: 'gosma', chance: 0.001 }, icon: 'eq-colar', tint: 0x5ab0ff, stats: { magnet: 0.3, attrs: { sor: 2 } } },
 ];
 

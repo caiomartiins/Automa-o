@@ -20,6 +20,7 @@ import critUrl from './assets/fx-crit.webp?inline';
 import impactoUrl from './assets/fx-impacto.webp?inline';
 import fxSombraUrl from './assets/fx-cacador.webp?inline';
 import lichUrl from './assets/lich.webp?inline';
+import aranhaUrl from './assets/aranha.webp?inline';
 import projSombraUrl from './assets/proj-sombra.webp?inline';
 
 /** Imagens soltas (efeitos e a fonte dos números de dano) */
@@ -88,6 +89,22 @@ const SPRITE_SCALE = 0.72;
 const FEET_Y = 122;
 
 const SHEETS: SheetDef[] = [
+  {
+    // Rainha Magmática: quadros 480x180 (corpo no centro), pés na linha 172 (efeitos de ataque à direita)
+    key: 'en-aranha', url: aranhaUrl, cellW: 480, cellH: 180, feetY: 172, scale: SPRITE_SCALE,
+    frames: ['idle', 'spit', 'rear', 'stomp', 'crouch', 'step', 'web', 'rage', 'webbig', 'acid', 'rage2'],
+    anims: [
+      { name: 'move', frames: ['idle', 'step', 'crouch', 'step'], rate: 7, repeat: -1 },
+      { name: 'rage', frames: ['rage', 'step', 'rage2', 'step'], rate: 9, repeat: -1 },
+      { name: 'spit', frames: ['crouch', 'spit'], rate: 5, repeat: 0 },
+      { name: 'stomp', frames: ['rear', 'rear', 'stomp'], rate: 5, repeat: 0 },
+      { name: 'web', frames: ['web', 'webbig'], rate: 3, repeat: 0 },
+      { name: 'acid', frames: ['crouch', 'acid'], rate: 3, repeat: 0 },
+      { name: 'crouch', frames: ['crouch'], rate: 1, repeat: 0 },
+      { name: 'step', frames: ['step'], rate: 1, repeat: 0 },
+      { name: 'die', frames: ['rage2', 'crouch'], rate: 3, repeat: 0 },
+    ],
+  },
   {
     // Lorde Ossário: folha em alta resolução (quadros 300x236, pés na linha 226)
     key: 'en-lich', url: lichUrl, cellW: 300, cellH: 236, feetY: 226, scale: SPRITE_SCALE,

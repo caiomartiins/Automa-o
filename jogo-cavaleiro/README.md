@@ -91,7 +91,9 @@ Todas as habilidades vão até o nível 5. Ativas corpo a corpo usam FOR, à dis
 
 ## Calendário de chefes
 
-**Mini-chefe** (Carniçal) a cada **10 níveis** (10, 20, 30...) e **chefe** a cada **15 níveis**: **15** Bafome, **30** Minotauro, **45** Lorde Ossário, e o rodízio recomeça (cada volta do mesmo chefe vem muito mais forte).
+**Mini-chefe** a cada **10 níveis**, alternando **Carniçal** (10, 30, 50...) e **Rainha Magmática** (20, 40, 60...); **chefe** a cada **15 níveis**: **15** Bafome, **30** Minotauro, **45** Lorde Ossário, e o rodízio recomeça (cada volta do mesmo chefe vem muito mais forte).
+
+**Rainha Magmática** (`src/aranha.ts`): aranha de lava com Cuspe de Fogo, Pisada de Magma (deixa poça que queima), Teia (prende e deixa lento), Jato Ácido (envenena) e Salto (marca o chão e cai em cima); fúria com metade da vida. Solta Presa de Magma, Capa de Seda Rubra e a carta dela.
 
 **Durante a luta contra um chefe**: ao surgir, ele espanta 70% dos monstros comuns (menos os colados no jogador); enquanto estiver vivo vêm cerca de um terço dos monstros (no máximo 35% do limite na tela) e nenhuma horda, mas cada monstro tem vida ×2 e dano ×1,5.
 
