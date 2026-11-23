@@ -54,12 +54,13 @@ export class UIScene extends Phaser.Scene {
   create() {
     this.game_ = this.scene.get('Game') as GameScene;
     const { width, height } = this.scale;
-    const k = (this.k = uiScale(this));
     const portrait = (this.portrait = isPortrait(this));
+    // em pé, o HUD fica um pouco mais compacto para sobrar tela para o jogo
+    const k = (this.k = uiScale(this) * (portrait ? 0.85 : 1));
     this.last = { info: '', time: '', skills: '', items: '', boss: '', points: '' };
 
     // ---- informações básicas (canto superior esquerdo)
-    const iw = Math.min(250 * k, width * (portrait ? 0.6 : 0.3));
+    const iw = Math.min(250 * k, width * (portrait ? 0.56 : 0.3));
     const rowH = 18 * k;
     const ih = 24 * k + 2 + 8 + rowH * 4 + 6;
     this.info = uiWindow(this, 8, 8, iw, ih, '', k);
@@ -80,12 +81,12 @@ export class UIScene extends Phaser.Scene {
     this.jobText = wtext(this, this.barX + this.barW / 2, this.rowY[2] + rowH / 2, '', 11 * k, '#ffffff', true).setOrigin(0.5);
     this.zenyText = wtext(this, this.barX, this.rowY[3] + rowH / 2, '', 12 * k, WIN.gold, true).setOrigin(0, 0.5);
     c.add([this.hpText, this.baseText, this.jobText, this.zenyText]);
-    this.statusText = wtext(this, 12, 8 + ih + 6, '', 13 * k, '#e2c8ff', true).setStroke('#22143a', 3);
-
-    // ---- barra de tempo (centro no alto; em pé, abaixo das informações)
-    const tw = Math.min(330 * k, width - 30);
-    const ty = portrait ? 8 + ih + 30 * k : 8;
+    // ---- barra de tempo (centro no alto; em pé, colada embaixo das informações, na largura toda)
+    const tw = portrait ? width - 16 : Math.min(330 * k, width - 30);
+    const ty = portrait ? 8 + ih + 6 : 8;
     this.timeBar = uiWindow(this, (width - tw) / 2, ty, tw, 26 * k, '', k);
+    // estados do jogador (amaldiçoado, envenenado): embaixo das informações / do tempo
+    this.statusText = wtext(this, 12, portrait ? ty + 26 * k + 6 : 8 + ih + 6, '', 13 * k, '#e2c8ff', true).setStroke('#22143a', 3);
     this.timeBar.title.setX(tw / 2).setOrigin(0.5, 0.5);
 
     // ---- chefe
@@ -104,9 +105,12 @@ export class UIScene extends Phaser.Scene {
     // pontos para distribuir: botão piscando ao lado da pausa
     const pw = 118 * k;
     // deitado: ao lado da pausa; em pé (pouco espaço): logo abaixo dos botões
-    const px = portrait ? width - 8 - pw / 2 : width - 8 - bs - 8 - (fs ? bs + 8 : 0) - pw / 2;
+    // em pé: ocupa a coluna da direita (ao lado das informações), logo abaixo da pausa
+    const colW = width - 8 - iw - 16;
+    const pW = portrait ? Math.min(colW, 200 * k) : pw;
+    const px = portrait ? width - 8 - pW / 2 : width - 8 - bs - 8 - (fs ? bs + 8 : 0) - pw / 2;
     const py = portrait ? 8 + bs + 8 + bs / 2 : 8 + bs / 2;
-    this.pointsBtn = uiButton(this, px, py, pw, bs, '', () => this.openPoints(), { size: 13 * k, primary: true });
+    this.pointsBtn = uiButton(this, px, py, pW, bs, '', () => this.openPoints(), { size: 13 * k, primary: true });
     this.pointsBtn.c.setVisible(false);
     this.tweens.add({ targets: this.pointsBtn.c, scale: 1.08, duration: 520, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
 
@@ -125,7 +129,9 @@ export class UIScene extends Phaser.Scene {
     items.c.add([this.wingBtn.c, this.penaText]);
 
     // ---- avisos
-    this.announceText = headline(this, width / 2, portrait ? height * 0.3 : 170, '', 26 * k, '#ffe9a0')
+    // em pé: avisos logo abaixo da barra do chefe (sem ficar atrás dela)
+    const bossBottom = ty + 34 * k + 26 * k + 22 * k;
+    this.announceText = headline(this, width / 2, portrait ? bossBottom + 40 * k : 170, '', 24 * k, '#ffe9a0')
       .setOrigin(0.5).setAlign('center').setWordWrapWidth(width - 40).setAlpha(0);
     this.toastText = headline(this, width / 2, height - 130 * k, '', 16 * k, '#ffffff')
       .setOrigin(0.5).setAlign('center').setWordWrapWidth(width - 40).setAlpha(0);

@@ -52,8 +52,10 @@ export interface EquipDef {
   stats: EquipStats;
   /** Item raro: não é vendido, só cai do monstro indicado */
   drop?: { monster: string; chance: number };
-  /** Item lendário (o mais caro da loja) */
+  /** Item lendário (caro, fim de jogo) */
   legend?: boolean;
+  /** Item épico (o tier mais alto da loja) */
+  epic?: boolean;
   /** Arma mítica de chefe: o herói brilha com esta cor quando equipada */
   glow?: number;
 }
@@ -108,6 +110,19 @@ export const EQUIPMENT: EquipDef[] = [
   { id: 'botas-vento', name: 'Botas do Vento', slot: 'calcado', price: 2400, legend: true, icon: 'eq-bota', tint: 0x9ae8ff, stats: { speed: 40, flee: 0.04, aspd: 0.05 } },
   { id: 'anel-rei', name: 'Anel do Rei', slot: 'acessorio', price: 3000, legend: true, icon: 'eq-anel', tint: 0xffd04a, stats: { attrs: { for: 3, int: 3, des: 3 } } },
 
+  // ---- épicos da loja: o tier mais alto (meta de zeny de longo prazo)
+  { id: 'espada-celeste', name: 'Espada Celestial', slot: 'arma', price: 6500, epic: true, icon: 'eq-espada', tint: 0x9ae0ff, stats: { atk: 0.55, crit: 0.05, attrs: { for: 4 } } },
+  { id: 'cajado-astral', name: 'Cajado Astral', slot: 'arma', price: 6500, epic: true, icon: 'eq-cajado', tint: 0xc8a0ff, stats: { matk: 0.62, attrs: { int: 4 } } },
+  { id: 'arco-celeste', name: 'Arco Celestial', slot: 'arma', price: 6500, epic: true, icon: 'eq-arco', tint: 0xa0e8ff, stats: { atk: 0.5, crit: 0.08, attrs: { des: 4 } } },
+  { id: 'martelo-sagrado', name: 'Martelo da Aurora', slot: 'arma', price: 6000, epic: true, icon: 'eq-espada', tint: 0xffe9a0, stats: { atk: 0.4, hp: 40, attrs: { vit: 5 } } },
+  { id: 'elmo-celeste', name: 'Elmo Celestial', slot: 'cabeca', price: 5000, epic: true, icon: 'eq-elmo', tint: 0xcfe8ff, stats: { def: 5, hp: 30, attrs: { for: 1, agi: 1, vit: 1, int: 1, des: 1, sor: 1 } } },
+  { id: 'armadura-celeste', name: 'Armadura Celestial', slot: 'corpo', price: 5500, epic: true, icon: 'eq-armadura', tint: 0xcfe8ff, stats: { def: 12, hp: 70 } },
+  { id: 'egide', name: 'Égide Radiante', slot: 'escudo', price: 5500, epic: true, icon: 'eq-escudo', tint: 0xffe9a0, stats: { def: 10, hp: 40, regen: 1 } },
+  { id: 'manto-estelar', name: 'Manto Estelar', slot: 'capa', price: 5000, epic: true, icon: 'eq-capa', tint: 0x6a7ad0, stats: { def: 4, flee: 0.06, atk: 0.08, matk: 0.08 } },
+  { id: 'botas-hermes', name: 'Botas Aladas de Prata', slot: 'calcado', price: 5000, epic: true, icon: 'eq-bota', tint: 0xe8f0ff, stats: { speed: 50, flee: 0.05, aspd: 0.08 } },
+  { id: 'anel-celeste', name: 'Anel Celestial', slot: 'acessorio', price: 8000, epic: true, icon: 'eq-anel', tint: 0x9ae0ff, stats: { attrs: { for: 4, agi: 4, vit: 4, int: 4, des: 4, sor: 4 } } },
+  { id: 'amuleto-vida', name: 'Amuleto da Vida Eterna', slot: 'acessorio', price: 4500, epic: true, icon: 'eq-colar', tint: 0x9aff8a, stats: { hp: 60, regen: 1, attrs: { vit: 4 } } },
+
   // ---- raros: só caem dos monstros (chance multiplicada pela Sorte)
   { id: 'foice-bafome', name: 'Foice do Bafome', slot: 'arma', price: 0, drop: { monster: 'bafome', chance: 0.35 }, icon: 'eq-espada', tint: 0x9a3a4a, stats: { atk: 0.38, crit: 0.05, attrs: { for: 2 } } },
   { id: 'manto-infernal', name: 'Manto Infernal', slot: 'capa', price: 0, drop: { monster: 'bafome', chance: 0.35 }, icon: 'eq-capa', tint: 0x5a1a2a, stats: { def: 3, atk: 0.1, matk: 0.1 } },
@@ -133,6 +148,12 @@ export const EQUIPMENT: EquipDef[] = [
   { id: 'seda-rainha', name: 'Capa de Seda Rubra', slot: 'capa', price: 0, drop: { monster: 'aranha', chance: 0.25 }, icon: 'eq-capa', tint: 0xb02a1a, stats: { def: 2, flee: 0.05, speed: 10 } },
   { id: 'pele-lobo', name: 'Capa de Pele de Lobo', slot: 'capa', price: 0, drop: { monster: 'lobo', chance: 0.0015 }, icon: 'eq-capa', tint: 0x8a96a8, stats: { flee: 0.03, speed: 12, attrs: { agi: 1 } } },
   { id: 'coroa-folhas', name: 'Coroa de Folhas', slot: 'cabeca', price: 0, drop: { monster: 'arvore', chance: 0.003 }, icon: 'eq-tiara', tint: 0x6ac04a, stats: { hp: 25, regen: 0.4, def: 1 } },
+  { id: 'lamina-negra', name: 'Lâmina Negra', slot: 'arma', price: 0, drop: { monster: 'cavaleiro-negro', chance: 0.04 }, icon: 'eq-espada', tint: 0x4a4a6a, stats: { atk: 0.35, crit: 0.04, attrs: { for: 2 } } },
+  { id: 'amuleto-bafome', name: 'Amuleto Profano', slot: 'acessorio', price: 0, drop: { monster: 'bafome', chance: 0.25 }, icon: 'eq-colar', tint: 0x9a2a4a, stats: { atk: 0.1, matk: 0.1, crit: 0.02 } },
+  { id: 'escudo-minotauro', name: 'Escudo do Labirinto', slot: 'escudo', price: 0, drop: { monster: 'minotauro', chance: 0.3 }, icon: 'eq-escudo', tint: 0x8a5a2a, stats: { def: 7, hp: 35, attrs: { vit: 2 } } },
+  { id: 'grimorio-almas', name: 'Grimório das Almas', slot: 'escudo', price: 0, drop: { monster: 'lich', chance: 0.3 }, icon: 'eq-livro', tint: 0x6aff9a, stats: { matk: 0.15, aspd: 0.06, attrs: { int: 3 } } },
+  { id: 'anel-carnical', name: 'Anel Pútrido', slot: 'acessorio', price: 0, drop: { monster: 'zumbi', chance: 0.2 }, icon: 'eq-anel', tint: 0x7a8a5a, stats: { regen: 0.6, attrs: { vit: 3 } } },
+  { id: 'botas-seda', name: 'Botas de Seda Rubra', slot: 'calcado', price: 0, drop: { monster: 'aranha', chance: 0.2 }, icon: 'eq-bota', tint: 0xb02a1a, stats: { speed: 25, flee: 0.03, attrs: { agi: 2 } } },
   { id: 'gema-gosmenta', name: 'Gema Gosmenta', slot: 'acessorio', price: 0, drop: { monster: 'gosma', chance: 0.001 }, icon: 'eq-colar', tint: 0x5ab0ff, stats: { magnet: 0.3, attrs: { sor: 2 } } },
 ];
 
@@ -150,6 +171,9 @@ export const SETS: SetDef[] = [
   { id: 'ferro', name: 'Guardião de Ferro', items: ['elmo', 'malha', 'escudo-torre'], bonus: { def: 4, hp: 40 } },
   { id: 'demonio', name: 'Pacto Demoníaco', items: ['chifres', 'foice-bafome', 'manto-infernal'], bonus: { atk: 0.15, matk: 0.15, crit: 0.05 } },
   { id: 'real', name: 'Realeza', items: ['coroa', 'anel-rei', 'capa-valquiria'], bonus: { attrs: { for: 3, agi: 3, vit: 3, int: 3, des: 3, sor: 3 } } },
+  { id: 'celeste', name: 'Celestial', items: ['elmo-celeste', 'armadura-celeste', 'manto-estelar'], bonus: { atk: 0.12, matk: 0.12, hp: 60 } },
+  { id: 'seda', name: 'Seda Rubra', items: ['seda-rainha', 'botas-seda', 'presa-magma'], bonus: { speed: 20, flee: 0.05, crit: 0.04 } },
+  { id: 'guardiao', name: 'Guardião do Labirinto', items: ['escudo-minotauro', 'botas-brutas', 'machado-minotauro'], bonus: { def: 5, hp: 60, atk: 0.1 } },
 ];
 
 /** Conjuntos completos com o que está equipado */
@@ -167,6 +191,8 @@ export const COLLECTION: { count: number; desc: string; bonus: EquipStats }[] = 
   { count: 20, desc: '+5% de dano (físico e mágico)', bonus: { atk: 0.05, matk: 0.05 } },
   { count: 30, desc: '+1 em todos os atributos', bonus: { attrs: { for: 1, agi: 1, vit: 1, int: 1, des: 1, sor: 1 } } },
   { count: 40, desc: '+10% de velocidade de ataque', bonus: { aspd: 0.1 } },
+  { count: 55, desc: '+10% de dano (físico e mágico)', bonus: { atk: 0.1, matk: 0.1 } },
+  { count: 70, desc: '+2 em todos os atributos', bonus: { attrs: { for: 2, agi: 2, vit: 2, int: 2, des: 2, sor: 2 } } },
   { count: EQUIPMENT.length, desc: 'Coleção completa: +3 em todos os atributos', bonus: { attrs: { for: 3, agi: 3, vit: 3, int: 3, des: 3, sor: 3 } } },
 ];
 

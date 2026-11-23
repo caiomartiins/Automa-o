@@ -37,7 +37,8 @@ export class StatusScene extends Phaser.Scene {
     const levelUp = this.data_.reason !== 'pause';
     const start = this.data_.reason === 'start';
     const portrait = height > width;
-    dim(this, 0.4);
+    // em pé, escurece mais o fundo para o título não embolar com o HUD
+    dim(this, portrait ? 0.62 : 0.4);
 
     const w = Math.min(760 * k, width - 20);
     const pad = 10;

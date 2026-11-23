@@ -70,7 +70,9 @@ export class ShopScene extends Phaser.Scene {
     }
 
     // ---- itens da categoria
-    const refineH = 58 * k;
+    // na aba Coleção o Ferreiro some (sobra espaço para a lista)
+    const showRefine = this.cat !== 'colecao';
+    const refineH = showRefine ? 58 * k : -8;
     const bottomH = 44 * k;
     const listW = w - listX - pad;
     const listH = h - (listY - 0) - refineH - bottomH - 22;
@@ -101,8 +103,8 @@ export class ShopScene extends Phaser.Scene {
       c.add(this.add.image(listX + 10 + icon / 2, cy, item.icon).setDisplaySize(icon, icon).setTint(item.tint));
       const tx = listX + 20 + icon;
       const owned0 = save.owned.includes(item.id);
-      const nameCol = item.glow ? '#c0186a' : item.drop ? '#7a2ab0' : item.legend ? WIN.gold : WIN.text;
-      const tag = item.glow ? '  ✦ mítica (brilha)' : item.drop ? '  ★ raro' : item.legend ? '  ★ lendário' : '';
+      const nameCol = item.glow ? '#c0186a' : item.drop ? '#7a2ab0' : item.epic ? '#1a6ad0' : item.legend ? WIN.gold : WIN.text;
+      const tag = item.glow ? '  ✦ mítica (brilha)' : item.drop ? '  ★ raro' : item.epic ? '  ◆ épico' : item.legend ? '  ★ lendário' : '';
       c.add(wtext(this, tx, cy - 9 * k, item.name + tag, 14 * k, nameCol, true).setOrigin(0, 0.5));
       // ícone das míticas pulsando
       if (item.glow && owned0) {
@@ -162,29 +164,35 @@ export class ShopScene extends Phaser.Scene {
 
     // ---- ferreiro
     const ry = listY + listH + 8;
-    c.add(uiPanel(this, pad, ry, w - pad * 2, refineH));
+    if (showRefine) c.add(uiPanel(this, pad, ry, w - pad * 2, refineH));
     const weapon = equipById(save.equip.arma);
     const next = save.refine + 1;
     const canRefine = !!weapon && save.refine < MAX_REFINE;
     const chance = refineChance(next);
-    c.add(wtext(this, pad + 12, ry + refineH * 0.32, weapon ? `Ferreiro: refinar ${weapon.name} +${save.refine} → +${next}` : 'Ferreiro: equipe uma arma para refinar', 14 * k, WIN.text, true).setOrigin(0, 0.5));
-    c.add(wtext(this, pad + 12, ry + refineH * 0.7, canRefine
-      ? `+${Math.round(REFINE_DMG * 100)}% de dano por nível. Chance: ${Math.round(chance * 100)}%${next >= 5 ? '. Se falhar, volta a +0!' : ''}`
-      : weapon ? 'Arma no refino máximo.' : 'O refino vale para a arma equipada.', 11 * k, WIN.label).setOrigin(0, 0.5));
-    c.add(uiButton(this, w - pad - 10 - btnW / 2, ry + refineH / 2, btnW, 32 * k, canRefine ? `${refineCost(next)} z` : '—', () => {
-      save.zeny -= refineCost(next);
-      if (Math.random() < chance) {
-        save.refine = next;
-        this.message = `Sucesso! ${weapon!.name} +${next}.`;
-        this.effect = 'sucesso';
-      } else {
-        save.refine = 0;
-        this.message = 'Falhou... o refino voltou a +0.';
-        this.effect = 'falha';
-      }
-      writeSave(save);
-      this.scene.restart();
-    }, { size: 12 * k, enabled: canRefine && save.zeny >= refineCost(next) }).c);
+    if (showRefine) {
+      const refineTitle = wtext(this, pad + 12, ry + refineH * 0.32, weapon ? `Ferreiro: refinar ${weapon.name} +${save.refine} → +${next}` : 'Ferreiro: equipe uma arma para refinar', 14 * k, WIN.text, true).setOrigin(0, 0.5);
+      // não encosta no botão: diminui a letra se o nome da arma for comprido
+      const maxTitleW = w - pad * 2 - btnW - 40;
+      if (refineTitle.width > maxTitleW) refineTitle.setFontSize(14 * k * Math.max(0.7, maxTitleW / refineTitle.width));
+      c.add(refineTitle);
+      c.add(wtext(this, pad + 12, ry + refineH * 0.7, canRefine
+        ? `+${Math.round(REFINE_DMG * 100)}% de dano por nível. Chance: ${Math.round(chance * 100)}%${next >= 5 ? '. Se falhar, volta a +0!' : ''}`
+        : weapon ? 'Arma no refino máximo.' : 'O refino vale para a arma equipada.', 11 * k, WIN.label).setOrigin(0, 0.5));
+      c.add(uiButton(this, w - pad - 10 - btnW / 2, ry + refineH / 2, btnW, 32 * k, canRefine ? `${refineCost(next)} z` : '—', () => {
+        save.zeny -= refineCost(next);
+        if (Math.random() < chance) {
+          save.refine = next;
+          this.message = `Sucesso! ${weapon!.name} +${next}.`;
+          this.effect = 'sucesso';
+        } else {
+          save.refine = 0;
+          this.message = 'Falhou... o refino voltou a +0.';
+          this.effect = 'falha';
+        }
+        writeSave(save);
+        this.scene.restart();
+      }, { size: 12 * k, enabled: canRefine && save.zeny >= refineCost(next) }).c);
+    }
 
     // ---- mensagem e voltar
     if (this.effect === 'sucesso') this.cameras.main.flash(350, 255, 230, 120);
@@ -230,7 +238,7 @@ export class ShopScene extends Phaser.Scene {
       const ix = x + 12 + (i % perRow) * (icon + gap) + icon / 2;
       const iy = cy + Math.floor(i / perRow) * (icon + gap) + icon / 2;
       const got = have.has(e.id);
-      c.add(this.add.rectangle(ix, iy, icon + 2, icon + 2, got ? (e.glow ? 0xffe0f0 : e.drop ? 0xeedcff : e.legend ? 0xfff0c0 : 0xdde6f3) : 0xeef1f5).setStrokeStyle(e.glow ? 2 : 1, e.glow ?? WIN.panelBorder));
+      c.add(this.add.rectangle(ix, iy, icon + 2, icon + 2, got ? (e.glow ? 0xffe0f0 : e.drop ? 0xeedcff : e.epic ? 0xd8e8ff : e.legend ? 0xfff0c0 : 0xdde6f3) : 0xeef1f5).setStrokeStyle(e.glow ? 2 : 1, e.glow ?? WIN.panelBorder));
       const img = this.add.image(ix, iy, e.icon).setDisplaySize(icon - 2, icon - 2);
       if (got) img.setTint(e.tint);
       else img.setTint(0xb0b8c4).setAlpha(0.35);
@@ -255,11 +263,8 @@ export class ShopScene extends Phaser.Scene {
     }).join('\n');
     const t2 = wtext(this, x + 16, cy, setLines, 11 * k, WIN.label).setLineSpacing(3).setWordWrapWidth(w - 30);
     c.add(t2);
-    // se não couber, reduz a fonte
-    if (cy + t2.height > y + h - 6) {
-      const f = Math.max(0.6, (y + h - 6 - cy) / t2.height);
-      t2.setFontSize(11 * k * f);
-    }
+    // se não couber, reduz a letra aos poucos (só o necessário)
+    for (let f = 0.92; cy + t2.height > y + h - 6 && f >= 0.6; f -= 0.06) t2.setFontSize(11 * k * f);
   }
 
   private pick(cat: Cat) {
