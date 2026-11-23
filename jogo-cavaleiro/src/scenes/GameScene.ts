@@ -771,16 +771,30 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     e.sepY = sy * strength;
   }
 
+  /** Luta contra um chefe (não conta o mini-chefe): menos monstros, mas mais fortes */
+  get bossFight() {
+    return !!this.boss && this.boss.active && !!this.boss.def.boss;
+  }
+
   private updateSpawner(dt: number) {
     const t = this.elapsed / 1000;
+    const fight = this.bossFight;
     this.spawnTimer -= dt;
     if (this.spawnTimer <= 0) {
       // depois dos 4:00 os monstros vêm em maior número
       const lateMin = Math.max(0, t - HARD_FROM) / 60;
-      this.spawnTimer = Math.max(lateMin > 0 ? 110 : 160, 1000 - t * 2.8);
-      const batch = 1 + Math.floor(t / 45) + Math.floor(lateMin * 1.5);
+      this.spawnTimer = Math.max(lateMin > 0 ? 110 : 160, 1000 - t * 2.8) * (fight ? 1.8 : 1);
+      let batch = 1 + Math.floor(t / 45) + Math.floor(lateMin * 1.5);
+      // na luta contra o chefe: cerca de um terço dos monstros, e no máximo 35% do limite na tela
+      if (fight) {
+        batch = Math.max(1, Math.round(batch * 0.6));
+        if (this.enemies.countActive(true) >= this.maxEnemies * 0.35) batch = 0;
+      }
       for (let i = 0; i < batch; i++) this.spawnEnemy(this.pickEnemy(t));
     }
+
+    // durante a luta contra o chefe não vêm hordas (a próxima espera a luta acabar)
+    if (fight && t >= this.nextWaveAt - 15) this.nextWaveAt = t + 15;
 
     // a cada minuto, uma horda cerca o jogador
     if (t >= this.nextWaveAt) {
@@ -847,12 +861,25 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     e.hp = e.maxHp = Math.ceil(e.maxHp * (1 + round * 1.5));
     const power = { dmg: 1 + round * 0.6, cd: Math.max(0.5, 1 - round * 0.3), enraged: round > 0 };
     this.boss = e;
+    this.clearForBoss();
     this.bossAIs.push(id === 'bafome' ? new BafomeAI(this, e, power) : id === 'minotauro' ? new MinotaurAI(this, e, power) : new LichAI(this, e, power));
     this.cameras.main.shake(500, 0.008);
     const flash = { bafome: [80, 0, 90], minotauro: [120, 60, 20], lich: [30, 140, 70] }[id];
     this.cameras.main.flash(300, flash[0], flash[1], flash[2]);
     const name = { bafome: 'O BAFOME DESPERTOU!', minotauro: 'O MINOTAURO BRUTAL CHEGOU!', lich: 'O LORDE OSSÁRIO ERGUEU-SE DAS SOMBRAS!' }[id];
     this.events.emit('announce', round ? `${name}\nVOLTOU MUITO MAIS FORTE! Desvie dos ataques!` : name);
+  }
+
+  /** O chefe chegou: 70% dos monstros comuns fogem (sem drop), menos os colados no jogador */
+  private clearForBoss() {
+    const p = this.player;
+    for (const e of this.enemies.getChildren() as Enemy[]) {
+      if (!e.active || e.def.boss || e.def.miniboss || e.def.elite) continue;
+      if ((e.x - p.x) ** 2 + (e.y - p.y) ** 2 < 100 * 100 || Math.random() > 0.7) continue;
+      this.fx.ring(e.x, e.y, e.def.radius, 1.5, 250, 0x2a1a3a, 0.4);
+      e.kill();
+    }
+    this.time.delayedCall(2600, () => this.events.emit('toast', 'Os monstros recuaram... os que ficaram estão mais fortes!', '#ff9a7a'));
   }
 
   /** Poeira no chão (golpes pesados) */
@@ -904,7 +931,9 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     const ts = def.boss || def.miniboss ? t / 2 : t;
     const boss = def.boss || def.miniboss;
     const lv = boss ? { hp: 1, dmg: 1, speed: 0 } : levelScale(this.level);
-    e.spawn(def, x, y, hpScale(ts) * lv.hp, dmgScale(ts) * lv.dmg, def.boss ? 1 : speedScale(t) + lv.speed);
+    // na luta contra um chefe, os monstros comuns que aparecem são mais fortes
+    const fortify = !boss && this.bossFight;
+    e.spawn(def, x, y, hpScale(ts) * lv.hp * (fortify ? 2 : 1), dmgScale(ts) * lv.dmg * (fortify ? 1.5 : 1), def.boss ? 1 : speedScale(t) + lv.speed);
     // nível do monstro: define o acerto (HIT) e a esquiva (Flee)
     const mlv = (def.lv ?? 1) + Math.floor(t / 60) * 2 + Math.max(0, this.level - 7) * 2;
     e.mlv = mlv;

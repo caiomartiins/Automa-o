@@ -24,8 +24,8 @@ interface Wave {
 
 /** Recargas (ms), danos e quantidades por fase */
 const PHASES = [
-  { orb: 3600, sweep: 2600, nova: 6200, blink: 7500, rain: 0, orbs: 1, waves: 2, spots: 0, orbDmg: 42, sweepDmg: 50, waveDmg: 46, beamDmg: 58, rainDmg: 44, speed: 1 },
-  { orb: 2700, sweep: 2000, nova: 4600, blink: 5200, rain: 5600, orbs: 3, waves: 3, spots: 9, orbDmg: 50, sweepDmg: 60, waveDmg: 54, beamDmg: 68, rainDmg: 52, speed: 1.3 },
+  { orb: 3000, sweep: 2200, nova: 5200, blink: 6200, rain: 0, orbs: 2, waves: 3, spots: 0, orbDmg: 54, sweepDmg: 64, waveDmg: 58, beamDmg: 75, rainDmg: 56, speed: 1.1 },
+  { orb: 2200, sweep: 1700, nova: 3800, blink: 4300, rain: 4600, orbs: 4, waves: 4, spots: 12, orbDmg: 64, sweepDmg: 76, waveDmg: 68, beamDmg: 88, rainDmg: 66, speed: 1.4 },
 ];
 
 const GREEN = 0x6aff9a;

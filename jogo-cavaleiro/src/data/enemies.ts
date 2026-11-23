@@ -66,9 +66,9 @@ export const MINOTAURO: EnemyDef = {
   element: 'terra', race: 'bruto', size: 'grande', lv: 30
 };
 
-/** Lorde Ossário: o chefe mais forte (3º do rodízio: nível 45) */
+/** Lorde Ossário: o chefe mais forte. Só aparece a partir do nível 45 (3º do rodízio: 45, 90, 135...) */
 export const LICH: EnemyDef = {
-  id: 'lich', name: 'Lorde Ossário', texture: 'en-lich', hp: 9000, speed: 74, damage: 46, xp: 360, radius: 38,
+  id: 'lich', name: 'Lorde Ossário', texture: 'en-lich', hp: 15000, speed: 78, damage: 60, xp: 420, radius: 38,
   from: 0, weight: 0, knockback: 0, scale: 1.9, boss: true,
   element: 'mortovivo', race: 'mortovivo', size: 'grande', lv: 40
 };

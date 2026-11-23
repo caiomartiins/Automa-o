@@ -93,7 +93,9 @@ Todas as habilidades vão até o nível 5. Ativas corpo a corpo usam FOR, à dis
 
 **Mini-chefe** (Carniçal) a cada **10 níveis** (10, 20, 30...) e **chefe** a cada **15 níveis**: **15** Bafome, **30** Minotauro, **45** Lorde Ossário, e o rodízio recomeça (cada volta do mesmo chefe vem muito mais forte).
 
-**Lorde Ossário** (`src/lich.ts`), o chefe mais forte: Esfera da Alma (esferas verdes que perseguem), Ceifa Sombria (golpe giratório de perto), Explosão Profana (ondas de choque que se espalham), Passo Fantasma + Raio Necrótico (some, reaparece perto e dispara um raio em linha). Com metade da vida: fúria, invoca fantasmas e esqueletos e faz cair uma Chuva de Caveiras. Solta a Coroa Ossária, o Manto das Almas, a carta dele e a arma mítica Foice das Almas (brilho verde).
+**Durante a luta contra um chefe**: ao surgir, ele espanta 70% dos monstros comuns (menos os colados no jogador); enquanto estiver vivo vêm cerca de um terço dos monstros (no máximo 35% do limite na tela) e nenhuma horda, mas cada monstro tem vida ×2 e dano ×1,5.
+
+**Lorde Ossário** (`src/lich.ts`), o chefe mais forte (15.000 de vida, só a partir do nível 45): Esfera da Alma (esferas verdes que perseguem), Ceifa Sombria (golpe giratório de perto), Explosão Profana (ondas de choque que se espalham), Passo Fantasma + Raio Necrótico (some, reaparece perto e dispara um raio em linha). Com metade da vida: fúria, invoca fantasmas e esqueletos e faz cair uma Chuva de Caveiras. Solta a Coroa Ossária, o Manto das Almas, a carta dele e a arma mítica Foice das Almas (brilho verde).
 
 ## Inimigos e chefes
 Gosma, Morcego, Cogumelo Andante, Esqueleto, Fantasma, Orc e Cavaleiro Negro (elite) aparecem conforme o tempo passa. A cada minuto vem uma horda.
