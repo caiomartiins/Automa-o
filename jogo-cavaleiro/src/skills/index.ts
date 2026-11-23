@@ -13,7 +13,7 @@ import { SniperSkill } from './SniperSkill';
 import { ImpactSkill } from './ImpactSkill';
 import { AuraSkill } from './AuraSkill';
 import { BookSkill } from './BookSkill';
-import { ArrowShowerSkill, BrandishSkill, DoubleStrafeSkill, ExplosiveArrowSkill, FalconSkill, GrandCrossSkill, MagnumSkill, ShieldBoomerangSkill, TrapSkill } from './LineSkills';
+import { HeroicChargeSkill, WhirlwindSkill, XSlashSkill, ArrowShowerSkill, BrandishSkill, DoubleStrafeSkill, ExplosiveArrowSkill, FalconSkill, GrandCrossSkill, MagnumSkill, ShieldBoomerangSkill, TrapSkill } from './LineSkills';
 import { EarthSpikeSkill, FireWallSkill, FrostDiverSkill, IceBoltSkill, LordSkill, QuagmireSkill, SoulSkill, StormGustSkill, ThunderBoltSkill, ThunderstormSkill } from './MageSkills';
 
 const FACTORIES: Record<SkillId, new (g: GameScene) => Skill> = {
@@ -45,6 +45,9 @@ const FACTORIES: Record<SkillId, new (g: GameScene) => Skill> = {
   armadilha: TrapSkill,
   falcao: FalconSkill,
   explosiva: ExplosiveArrowSkill,
+  investida: HeroicChargeSkill,
+  cortex: XSlashSkill,
+  turbilhao: WhirlwindSkill,
   flecha: ArrowSkill,
   chuva: ArrowRainSkill,
   tiro: SniperSkill,

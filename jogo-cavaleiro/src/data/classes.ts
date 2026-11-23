@@ -45,7 +45,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
   },
   cavaleiro: {
     id: 'cavaleiro', name: 'Cavaleiro', texture: 'hero-cavaleiro', minLevel: SECOND_CLASS_LEVEL,
-    description: 'Lança e espadão: libera Investida de Lança, Golpe Devastador, Brandir Lança e passivas de ataque. +40 Vida, +25% Dano, +2 Armadura.',
+    description: 'Cavaleiro de espada e capa: libera Investida Heroica, Corte em X, Turbilhão de Lâminas, Golpe Devastador e passivas de espada. +40 Vida, +25% Dano, +2 Armadura.',
     statBonus: { maxHp: 40, armor: 2, might: 0.25, speed: 10 }, grantsSkill: 'impacto',
   },
   paladino: {

@@ -312,3 +312,128 @@ export class ExplosiveArrowSkill extends Skill {
   }
 }
 
+
+/** Investida Heroica: o Cavaleiro avança em linha reta ferindo todos no caminho (invulnerável no avanço) */
+export class HeroicChargeSkill extends Skill {
+  readonly id = 'investida' as const;
+  private timer = 600;
+  get damage() { return (60 + 18 * (this.level - 1)) * this.g.stats.might; }
+  get cooldown() { return (this.level >= 3 ? 1700 : 2100) / this.g.stats.haste; }
+  get dist() { return (130 + (this.level >= 2 ? 25 : 0) + (this.level >= 4 ? 25 : 0)) * this.g.stats.area; }
+
+  update(dt: number) {
+    this.timer -= dt;
+    if (this.timer > 0) return;
+    const p = this.g.player;
+    const t = this.g.nearestEnemies(p.x, p.y, 1, this.dist + 60)[0];
+    if (!t) {
+      this.timer = 150;
+      return;
+    }
+    this.timer = this.cooldown;
+    this.g.playerAttacked();
+    const a = Math.atan2(t.y - p.y, t.x - p.x);
+    this.dash(a);
+    // nível 5: volta com um segundo avanço
+    if (this.level >= 5) this.g.time.delayedCall(260, () => this.dash(a + Math.PI));
+  }
+
+  private dash(a: number) {
+    const p = this.g.player;
+    const len = this.dist;
+    const x0 = p.x;
+    const y0 = p.y;
+    this.g.grantInvuln(320);
+    this.g.fx.lance(x0, y0 - 8, a, len + 30, 46, 0xe8eef8);
+    // rastro de "imagens" do herói pelo caminho
+    for (let k = 1; k <= 3; k++) this.g.fx.ring(x0 + Math.cos(a) * len * (k / 4), y0 + Math.sin(a) * len * (k / 4), 14, 1.8, 220, 0xcfe0ff, 0.35);
+    p.setPosition(x0 + Math.cos(a) * len, y0 + Math.sin(a) * len);
+    p.setFlipX(Math.cos(a) < 0);
+    for (const e of this.g.queryEnemies(x0 + Math.cos(a) * len / 2, y0 + Math.sin(a) * len / 2, len / 2 + 40, this.near).slice()) {
+      if (!e.active) continue;
+      const px = e.x - x0;
+      const py = e.y - y0;
+      const along = px * Math.cos(a) + py * Math.sin(a);
+      const across = Math.abs(-px * Math.sin(a) + py * Math.cos(a));
+      if (along > -10 && along < len + 20 && across < 34 + e.def.radius) this.g.damageEnemy(e, this.damage, 220, x0, y0, this.id);
+    }
+  }
+}
+
+/** Corte em X: dois cortes cruzados à frente (cada inimigo leva dois golpes) */
+export class XSlashSkill extends Skill {
+  readonly id = 'cortex' as const;
+  private timer = 400;
+  private readonly arc = Phaser.Math.DegToRad(120);
+  get damage() { return (24 + 10 * (this.level - 1)) * this.g.stats.might; }
+  get cooldown() { return (this.level >= 3 ? 1250 : 1550) / this.g.stats.haste; }
+  get range() { return (105 + (this.level >= 2 ? 15 : 0) + (this.level >= 4 ? 15 : 0)) * this.g.stats.area; }
+
+  update(dt: number) {
+    this.timer -= dt;
+    if (this.timer > 0) return;
+    const p = this.g.player;
+    const t = this.g.nearestEnemies(p.x, p.y, 1, this.range + 20)[0];
+    if (!t) {
+      this.timer = 150;
+      return;
+    }
+    this.timer = this.cooldown;
+    this.g.playerAttacked();
+    const a = Math.atan2(t.y - p.y, t.x - p.x);
+    this.cross(a);
+    if (this.level >= 5) this.cross(a + Math.PI);
+  }
+
+  private cross(a: number) {
+    const p = this.g.player;
+    const r = this.range;
+    this.g.fx.slash(p.x, p.y, a - 0.5, r, 0xffffff);
+    this.g.time.delayedCall(90, () => this.g.fx.slash(p.x, p.y, a + 0.5, r, 0xcfe0ff));
+    const hit = (dmg: number) => {
+      for (const e of this.g.queryEnemies(p.x, p.y, r, this.near).slice()) {
+        if (!e.active) continue;
+        const dx = e.x - p.x;
+        const dy = e.y - p.y;
+        if (dx * dx + dy * dy > (r + e.def.radius) ** 2) continue;
+        if (Math.abs(Phaser.Math.Angle.Wrap(Math.atan2(dy, dx) - a)) <= this.arc / 2) this.g.damageEnemy(e, dmg, 90, p.x, p.y, this.id);
+      }
+    };
+    hit(this.damage);
+    this.g.time.delayedCall(90, () => hit(this.damage));
+  }
+}
+
+/** Turbilhão de Lâminas: gira com a espada golpeando tudo em volta várias vezes */
+export class WhirlwindSkill extends Skill {
+  readonly id = 'turbilhao' as const;
+  private timer = 900;
+  get damage() { return (15 + 5 * (this.level - 1)) * this.g.stats.might; }
+  get cooldown() { return (this.level >= 4 ? 3600 : 4200) / this.g.stats.haste; }
+  get radius() { return (105 + 8 * this.level) * this.g.stats.area; }
+  get spins() { return 3 + (this.level >= 3 ? 1 : 0) + (this.level >= 5 ? 2 : 0); }
+
+  update(dt: number) {
+    this.timer -= dt;
+    if (this.timer > 0) return;
+    const p = this.g.player;
+    if (!this.g.nearestEnemies(p.x, p.y, 1, this.radius).length) {
+      this.timer = 150;
+      return;
+    }
+    this.timer = this.cooldown;
+    this.g.playerAttacked();
+    for (let k = 0; k < this.spins; k++) {
+      this.g.time.delayedCall(k * 140, () => {
+        const pl = this.g.player;
+        const r = this.radius;
+        const a = k * 2.1;
+        this.g.fx.slash(pl.x, pl.y, a, r, 0xcfe0ff);
+        this.g.fx.slash(pl.x, pl.y, a + Math.PI, r * 0.9, 0xffffff);
+        for (const e of this.g.queryEnemies(pl.x, pl.y, r, this.near).slice()) {
+          if (e.active && (e.x - pl.x) ** 2 + (e.y - pl.y) ** 2 <= (r + e.def.radius) ** 2) this.g.damageEnemy(e, this.damage, 60, pl.x, pl.y, this.id);
+        }
+      });
+    }
+  }
+}

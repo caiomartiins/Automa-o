@@ -1472,6 +1472,11 @@ export class GameScene extends Phaser.Scene implements RpgHost {
 
   // ---------------------------------------------------------------- árvore de habilidades
 
+  /** Invulnerável por um instante (avanços e esquivas de habilidades) */
+  grantInvuln(ms: number) {
+    this.invulnUntil = Math.max(this.invulnUntil, this.elapsed + ms);
+  }
+
   /** Caçador de Sombras: flechas e efeitos sombrios */
   get shadowFx() {
     return this.classId === 'cacador';

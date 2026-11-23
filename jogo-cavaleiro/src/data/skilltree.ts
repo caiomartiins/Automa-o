@@ -23,7 +23,7 @@ export type PassiveId =
   | 'lembranca' | 'vulcao' | 'diluvio' | 'vendaval' | 'dracologia' | 'conjuracao'
   // Espadachim / Cavaleiro / Paladino
   | 'pericia' | 'vigor' | 'recuperar' | 'furia'
-  | 'periciaLanca' | 'rapidez' | 'contra' | 'montaria'
+  | 'rapidez' | 'contra' | 'determinacao' | 'esgrima'
   | 'fe' | 'defensor' | 'cura'
   // Arqueiro / Caçador de Sombras / Atirador de Elite
   | 'coruja' | 'aguia' | 'concentracao'
@@ -161,25 +161,26 @@ export const TREE: TreeNode[] = [
     passive: P('Fúria', 0xff5a4a, 'Quanto mais ferido, mais forte: dano extra com menos da metade do HP.', (l) => `+${l * 8}% de dano com HP abaixo de 50%`, { berserk: 0.08 }),
   },
 
-  // ================= Cavaleiro
-  { id: 'lanca', cls: 'cavaleiro', col: 0, row: 0, req: [] },
+  // ================= Cavaleiro (espada e capa)
+  { id: 'investida', cls: 'cavaleiro', col: 0, row: 0, req: [] },
   { id: 'impacto', cls: 'cavaleiro', col: 1, row: 0, req: [] },
   {
     id: 'contra', cls: 'cavaleiro', col: 2, row: 0, req: [],
     passive: P('Contra-Ataque', 0xffa060, 'Ao ser atingido, chance de revidar com um golpe forte no agressor.', (l) => `${l * 8}% de chance de revidar`, { counter: 0.08 }),
   },
-  { id: 'brandir', cls: 'cavaleiro', col: 0, row: 1, req: [{ id: 'lanca', lv: 3 }] },
+  { id: 'cortex', cls: 'cavaleiro', col: 0, row: 1, req: [{ id: 'investida', lv: 2 }] },
   {
     id: 'rapidez', cls: 'cavaleiro', col: 1, row: 1, req: [{ id: 'impacto', lv: 1 }],
-    passive: P('Rapidez com Duas Mãos', 0xffe080, 'Golpes mais rápidos com armas grandes.', (l) => `+${l * 6}% de velocidade de ataque`, { haste: 0.06 }),
+    passive: P('Esgrima Veloz', 0xffe080, 'Golpes de espada mais rápidos.', (l) => `+${l * 6}% de velocidade de ataque`, { haste: 0.06 }),
   },
   {
-    id: 'montaria', cls: 'cavaleiro', col: 2, row: 1, req: [],
-    passive: P('Montaria', 0xc8a070, 'Monta no seu peco-peco: mais rápido e mais difícil de acertar.', (l) => `+${l * 4}% de movimento e +${l * 3} Flee`, { speedPct: 0.04, flee: 3 }),
+    id: 'determinacao', cls: 'cavaleiro', col: 2, row: 1, req: [{ id: 'contra', lv: 1 }],
+    passive: P('Determinação', 0xe8eef8, 'Vontade de cavaleiro: mais vida e menos dano recebido.', (l) => `+${l * 5}% de HP máx. e -${l * 3}% de dano recebido`, { hpPct: 0.05, dmgTaken: 0.03 }),
   },
+  { id: 'turbilhao', cls: 'cavaleiro', col: 0, row: 2, req: [{ id: 'cortex', lv: 2 }, { id: 'impacto', lv: 2 }] },
   {
-    id: 'periciaLanca', cls: 'cavaleiro', col: 0, row: 2, req: [{ id: 'lanca', lv: 1 }],
-    passive: P('Perícia com Lança', 0xffd04a, 'Domínio da lança: mais dano e acerto, ainda mais contra alvos grandes.', (l) => `+${l * 5}% de dano corpo a corpo e +${l * 3} HIT`, { melee: 0.05, hit: 3 }),
+    id: 'esgrima', cls: 'cavaleiro', col: 1, row: 2, req: [{ id: 'investida', lv: 1 }],
+    passive: P('Perícia de Cavaleiro', 0xd8d8e8, 'Domínio da espada: mais dano corpo a corpo e mais acerto.', (l) => `+${l * 5}% de dano corpo a corpo e +${l * 3} HIT`, { melee: 0.05, hit: 3 }),
   },
 
   // ================= Paladino

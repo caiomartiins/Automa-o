@@ -5,6 +5,7 @@ export type SkillId =
   | 'nevasca' | 'trovao' | 'pantano' | 'espinhos'
   | 'explosao' | 'brandir' | 'bumerangue' | 'cruz'
   | 'duplo' | 'rajada' | 'armadilha' | 'falcao' | 'explosiva'
+  | 'investida' | 'cortex' | 'turbilhao'
   | 'flecha' | 'chuva' | 'tiro';
 
 import type { DamageKind, Element, Size, StatusId } from './rpg';
@@ -226,6 +227,38 @@ export const SKILLS: Record<SkillId, SkillDef> = {
       '+8 dano, área maior.',
       '+1 espinho, +8 dano.',
       '+1 espinho, +8 dano, recarga menor.',
+    ],
+  },
+
+  // ---- Cavaleiro (espada e capa)
+  investida: {
+    id: 'investida', name: 'Investida Heroica', maxLevel: 5, color: 0xe8eef8, element: 'neutro', kind: 'melee', status: { id: 'sangrando', chance: 0.2 },
+    levelDesc: [
+      'Avança com a espada em linha reta, ferindo todos no caminho. Fica invulnerável durante o avanço.',
+      '+18 dano, avança mais longe.',
+      '+18 dano, recarga menor.',
+      '+18 dano, avança mais longe.',
+      'Volta com um segundo avanço! +18 dano.',
+    ],
+  },
+  cortex: {
+    id: 'cortex', name: 'Corte em X', maxLevel: 5, color: 0xffffff, element: 'neutro', kind: 'melee', status: { id: 'sangrando', chance: 0.3 }, sizeMod: { grande: 1.15 },
+    levelDesc: [
+      'Dois cortes cruzados à frente: cada inimigo leva dois golpes.',
+      '+10 dano por corte, alcance maior.',
+      '+10 dano por corte, recarga menor.',
+      '+10 dano por corte, alcance maior.',
+      'Corta também para trás! +10 dano.',
+    ],
+  },
+  turbilhao: {
+    id: 'turbilhao', name: 'Turbilhão de Lâminas', maxLevel: 5, color: 0xcfe0ff, element: 'vento', kind: 'melee', status: { id: 'atordoado', chance: 0.12 },
+    levelDesc: [
+      'Gira com a espada, golpeando todos em volta várias vezes.',
+      '+5 dano por giro, área maior.',
+      '+1 giro, +5 dano.',
+      '+5 dano, recarga menor, área maior.',
+      '+2 giros, +5 dano.',
     ],
   },
 
