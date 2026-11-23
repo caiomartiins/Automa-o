@@ -1004,14 +1004,30 @@ function drawProjectiles(scene: Phaser.Scene) {
     c.quadraticCurveTo(13, 32, 20, 20);
     c.fill();
   });
-  single(scene, 'proj-escudo', 26, 26, (c) => {
-    // escudo redondo girando (visto de frente)
-    paint(c, ell(c, 13, 13, 11.5, 11.5), vgrad(c, 2, 24, '#8ab0ff', '#2a4a9a'), 1.3, '#0e1a3a');
-    paint(c, ell(c, 13, 13, 7.5, 7.5), vgrad(c, 6, 20, '#e8eef8', '#9aa8c0'), 0.9, '#3a4a6a');
-    c.fillStyle = '#ffd04a';
-    c.beginPath();
-    c.arc(13, 13, 2.6, 0, TAU);
-    c.fill();
+  single(scene, 'proj-escudo', 26, 30, (c) => {
+    // escudo do Paladino: branco, pontudo, com borda e cruz douradas
+    const shape = () => {
+      c.moveTo(13, 1.5);
+      c.quadraticCurveTo(23, 3, 24, 6);
+      c.quadraticCurveTo(24.5, 19, 13, 28.5);
+      c.quadraticCurveTo(1.5, 19, 2, 6);
+      c.quadraticCurveTo(3, 3, 13, 1.5);
+      c.closePath();
+    };
+    c.save();
+    c.shadowColor = '#ffe08a';
+    c.shadowBlur = 5;
+    paint(c, shape, vgrad(c, 2, 28, '#f0c850', '#a87818'), 1.2, '#4a3008');
+    c.restore();
+    c.save();
+    c.translate(13, 15);
+    c.scale(0.78, 0.8);
+    c.translate(-13, -15);
+    paint(c, shape, vgrad(c, 2, 28, '#ffffff', '#d8dde8'), 0.6, '#8a7a5a');
+    c.restore();
+    c.fillStyle = '#d8a828';
+    c.fillRect(11.6, 7, 2.8, 15);
+    c.fillRect(7.5, 11.5, 11, 2.8);
   });
   single(scene, 'fx-armadilha', 40, 28, (c) => {
     // armadilha no chão: placa de metal com pavio aceso

@@ -565,6 +565,11 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       : statusAtk(this.attr('for'), this.attr('des'), this.attr('sor'));
   }
 
+  /** Atq de status pela VIT (habilidades de escudo e sagradas do Paladino) */
+  vitAtk() {
+    return statusAtk(this.attr('vit'), this.attr('for'), this.attr('sor'));
+  }
+
   matk(): [number, number] {
     return matkRange(this.attr('int'));
   }
@@ -993,7 +998,8 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       let mult = (1 + this.mods.dmgAll) * (1 + (this.jobLevel - 1) * 0.02);
       let elemMult = 1;
       const crit = Math.random() < this.critChance();
-      if (sk && sk.kind !== 'magic' && !crit) {
+      // magia e habilidades pela VIT (escudo e sagradas) nunca erram
+      if (sk && sk.kind !== 'magic' && !sk.stat && !crit) {
         const chance = Phaser.Math.Clamp(ATTR_FX.hitBase + this.hit() - e.flee, 5, 95) / 100;
         if (Math.random() > chance) {
           this.fx.miss(e.x, e.y - 24);
@@ -1004,7 +1010,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
         // Matq varia entre o mínimo e o máximo da INT
         const attrBonus = sk.kind === 'magic'
           ? Phaser.Math.Between(...this.matk()) / ATTR_FX.atkDiv
-          : this.attrDamage(sk.kind);
+          : sk.stat === 'vit' ? this.vitAtk() / ATTR_FX.atkDiv : this.attrDamage(sk.kind);
         mult *= 1 + attrBonus + this.mods.kindDmg[sk.kind];
         elemMult = elementMult(sk.element, e.def.element);
         mult *= elemMult * (1 + (this.mods.elemDmg[sk.element] ?? 0));

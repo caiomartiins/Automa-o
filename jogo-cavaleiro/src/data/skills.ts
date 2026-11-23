@@ -25,6 +25,8 @@ export interface SkillDef {
   statusPerLv?: number;
   /** Multiplicador de dano por tamanho do alvo */
   sizeMod?: Partial<Record<Size, number>>;
+  /** Atributo do dano físico: 'vit' = habilidades de escudo e sagradas do Paladino (dano pela VIT, nunca erram) */
+  stat?: 'vit';
 }
 
 export const SKILLS: Record<SkillId, SkillDef> = {
@@ -40,7 +42,7 @@ export const SKILLS: Record<SkillId, SkillDef> = {
     ],
   },
   escudo: {
-    id: 'escudo', name: 'Escudo Giratório', maxLevel: 5, color: 0x5a8cff, element: 'neutro', kind: 'melee', status: { id: 'atordoado', chance: 0.08 },
+    id: 'escudo', name: 'Escudo Giratório', maxLevel: 5, color: 0x5a8cff, element: 'neutro', kind: 'melee', stat: 'vit', status: { id: 'atordoado', chance: 0.08 },
     levelDesc: [
       'Um escudo gira ao seu redor ferindo inimigos.',
       '+1 escudo, +4 dano.',
@@ -71,7 +73,7 @@ export const SKILLS: Record<SkillId, SkillDef> = {
     ],
   },
   aura: {
-    id: 'aura', name: 'Aura Sagrada', maxLevel: 5, color: 0xfff0a0, element: 'sagrado', kind: 'melee',
+    id: 'aura', name: 'Aura Sagrada', maxLevel: 5, color: 0xfff0a0, element: 'sagrado', kind: 'melee', stat: 'vit',
     levelDesc: [
       'Uma aura ao seu redor fere os inimigos e cura você aos poucos.',
       '+3 dano, área maior, cura mais.',
@@ -284,7 +286,7 @@ export const SKILLS: Record<SkillId, SkillDef> = {
     ],
   },
   bumerangue: {
-    id: 'bumerangue', name: 'Escudo Bumerangue', maxLevel: 5, color: 0x8ab0ff, element: 'neutro', kind: 'melee', status: { id: 'atordoado', chance: 0.12 },
+    id: 'bumerangue', name: 'Escudo Bumerangue', maxLevel: 5, color: 0xffe9a0, element: 'sagrado', kind: 'melee', stat: 'vit', status: { id: 'atordoado', chance: 0.12 },
     levelDesc: [
       'Arremessa o escudo, que atravessa vários inimigos.',
       '+10 dano, atravessa +1.',
@@ -294,7 +296,7 @@ export const SKILLS: Record<SkillId, SkillDef> = {
     ],
   },
   cruz: {
-    id: 'cruz', name: 'Cruz Sagrada', maxLevel: 5, color: 0xfff0a0, element: 'sagrado', kind: 'melee', status: { id: 'atordoado', chance: 0.15 },
+    id: 'cruz', name: 'Cruz Sagrada', maxLevel: 5, color: 0xfff0a0, element: 'sagrado', kind: 'melee', stat: 'vit', status: { id: 'atordoado', chance: 0.15 },
     levelDesc: [
       'Uma cruz de luz sagrada se abre ao seu redor. Muito forte contra mortos-vivos e demônios.',
       '+12 dano, cruz maior.',

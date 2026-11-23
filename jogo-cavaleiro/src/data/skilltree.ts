@@ -24,7 +24,7 @@ export type PassiveId =
   // Espadachim / Cavaleiro / Paladino
   | 'pericia' | 'vigor' | 'recuperar' | 'furia'
   | 'rapidez' | 'contra' | 'determinacao' | 'esgrima'
-  | 'fe' | 'defensor' | 'cura'
+  | 'fe' | 'defensor' | 'cura' | 'baluarte'
   // Arqueiro / Caçador de Sombras / Atirador de Elite
   | 'coruja' | 'aguia' | 'concentracao'
   | 'feras' | 'veneno' | 'sombra'
@@ -198,6 +198,11 @@ export const TREE: TreeNode[] = [
   {
     id: 'defensor', cls: 'paladino', col: 2, row: 1, req: [{ id: 'fe', lv: 2 }],
     passive: P('Defensor', 0x8ab0ff, 'Postura de escudo: bem menos dano recebido.', (l) => `-${l * 5}% de dano recebido`, { dmgTaken: 0.05 }),
+  },
+
+  {
+    id: 'baluarte', cls: 'paladino', col: 1, row: 2, req: [{ id: 'defensor', lv: 1 }],
+    passive: P('Baluarte Sagrado', 0xffd04a, 'A força do Paladino vem da resistência: mais VIT (que dá dano às habilidades de escudo e sagradas).', (l) => `+${l * 3} VIT e +${l * 4}% de dano Sagrado`, { attrs: { vit: 3 }, elem: { sagrado: 0.04 } }),
   },
 
   // ================= Arqueiro

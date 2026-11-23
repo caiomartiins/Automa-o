@@ -260,7 +260,7 @@ export class SkillTreeScene extends Phaser.Scene {
       if (lv < max) lines.push(`Próximo (Nv ${lv + 1}): ${n.passive.per(lv + 1)}`);
     } else {
       const sk = SKILLS[n.id as SkillId];
-      const kind = sk.kind === 'magic' ? 'magia: dano pela INT' : sk.kind === 'ranged' ? 'à distância: dano pela DES' : 'corpo a corpo: dano pela FOR';
+      const kind = sk.kind === 'magic' ? 'magia: dano pela INT' : sk.stat === 'vit' ? 'dano pela VIT, nunca erra' : sk.kind === 'ranged' ? 'à distância: dano pela DES' : 'corpo a corpo: dano pela FOR';
       desc = `${sk.levelDesc[0]}  [${ELEMENTS[sk.element].name}, ${kind}]`;
       if (lv > 0 && lv < max) lines.push(`Próximo (Nv ${lv + 1}): ${sk.levelDesc[lv]}`);
       if (lv === 0) lines.push('Aprender: Nv 1');

@@ -60,7 +60,7 @@ export const ATTR_IDS: Attr[] = ['for', 'agi', 'vit', 'int', 'des', 'sor'];
 export const ATTRS: Record<Attr, { short: string; name: string; desc: string; color: number }> = {
   for: { short: 'FOR', name: 'Força', desc: 'Atq corpo a corpo: FOR + (FOR/10)². A cada 10 pontos o bônus cresce muito', color: 0xff7a6a },
   agi: { short: 'AGI', name: 'Agilidade', desc: 'Flee (esquiva) +1 por ponto e velocidade de ataque', color: 0x7ae0a0 },
-  vit: { short: 'VIT', name: 'Vitalidade', desc: '+1% de HP por ponto, defesa macia e resistência a estados', color: 0xffc06a },
+  vit: { short: 'VIT', name: 'Vitalidade', desc: '+1% de HP por ponto, defesa macia e resistência a estados. Paladino: dano das habilidades de escudo e sagradas', color: 0xffc06a },
   int: { short: 'INT', name: 'Inteligência', desc: 'Matq: de INT + (INT/7)² até INT + (INT/5)²', color: 0x9a8aff },
   des: { short: 'DES', name: 'Destreza', desc: 'HIT +1 por ponto (acertar), Atq à distância: DES + (DES/10)²', color: 0x6ad0ff },
   sor: { short: 'SOR', name: 'Sorte', desc: 'Crítico +0,3% por ponto, esquiva perfeita e mais itens', color: 0xffe36a },

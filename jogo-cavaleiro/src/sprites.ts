@@ -160,7 +160,7 @@ const SHEETS: SheetDef[] = [
   },
   hero('hero-espadachim', espadachimUrl, 2, 4, 2, 2),
   hero('hero-cavaleiro', cavaleiroUrl, 2, 3, 1, 2, true, 2),
-  hero('hero-paladino', paladinoUrl, 3, 6, 3, 2),
+  hero('hero-paladino', paladinoUrl, 2, 4, 1, 2, true, 2),
   hero('hero-mago', magoUrl, 2, 4, 1, 2, false),
   hero('hero-bruxo', bruxoUrl, 2, 4, 3, 3),
   hero('hero-professor', professorUrl, 2, 3, 2, 2),

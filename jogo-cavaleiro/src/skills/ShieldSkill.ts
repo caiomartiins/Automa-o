@@ -38,8 +38,11 @@ export class ShieldSkill extends Skill {
     const scale = this.g.stats.area;
     const now = this.g.elapsed;
 
+    // Paladino: escudos dourados (o mesmo do arremesso)
+    const tex = this.g.classId === 'paladino' ? 'proj-escudo' : 'escudo';
     for (let i = 0; i < n; i++) {
       const s = this.shields[i];
+      if (s.texture.key !== tex) s.setTexture(tex);
       const a = this.angle + (i / n) * Math.PI * 2;
       s.setPosition(p.x + Math.cos(a) * r, p.y + Math.sin(a) * r).setScale(scale * 0.5).setRotation(a + Math.PI / 2);
       for (const e of this.g.queryEnemies(s.x, s.y, 14 * scale, this.near)) {

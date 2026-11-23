@@ -238,7 +238,10 @@ export class StatusScene extends Phaser.Scene {
     const eq = g.equipTotals;
     const [m0, m1] = g.matk();
     const left: [string, string][] = [
-      [archer ? 'Atq (DES)' : 'Atq (FOR)', `${g.physAtk(archer ? 'ranged' : 'melee')}${eq.atk ? ` + ${pct(eq.atk)}` : ''}`],
+      // Paladino: mostra também o Atq pela VIT (escudo e sagradas)
+      g.classId === 'paladino'
+        ? ['Atq FOR / VIT', `${g.physAtk('melee')} / ${g.vitAtk()}${eq.atk ? ` + ${pct(eq.atk)}` : ''}`]
+        : [archer ? 'Atq (DES)' : 'Atq (FOR)', `${g.physAtk(archer ? 'ranged' : 'melee')}${eq.atk ? ` + ${pct(eq.atk)}` : ''}`],
       ['Matq', `${m0}~${m1}${eq.matk ? ` + ${pct(eq.matk)}` : ''}`],
       ['HIT', `${g.hit()}`],
       ['Crítico', pct(g.critChance())],

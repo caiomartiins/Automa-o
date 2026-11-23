@@ -119,8 +119,13 @@ export class GrandCrossSkill extends Skill {
     this.g.playerAttacked();
     const dirs = this.level >= 5 ? 8 : 4;
     const half = 22;
-    this.g.fx.ring(p.x, p.y, 18, 3, 300, 0xfff0a0, 0.5);
-    for (let d = 0; d < dirs; d++) this.g.fx.lance(p.x, p.y, (d / dirs) * Math.PI * 2, len, half * 2, 0xfff6c0);
+    this.g.fx.ring(p.x, p.y, 18, 4, 380, 0xffd04a, 0.55);
+    this.g.fx.ring(p.x, p.y, 10, 2.5, 250, 0xffffff, 0.8);
+    for (let d = 0; d < dirs; d++) {
+      const a = (d / dirs) * Math.PI * 2;
+      this.g.fx.lance(p.x, p.y, a, len, half * 2, 0xffd04a);
+      this.g.fx.lance(p.x, p.y, a, len * 0.95, half * 0.8, 0xffffff);
+    }
     for (const e of this.g.queryEnemies(p.x, p.y, len, this.near).slice()) {
       if (!e.active) continue;
       const dx = e.x - p.x;
