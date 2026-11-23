@@ -89,6 +89,10 @@ Todas as habilidades vão até o nível 5. Ativas corpo a corpo usam FOR, à dis
 - **Loja de Equipamentos e Ferreiro** (entre partidas, com o zeny guardado no navegador): refino da arma de +1 a +10. A partir do +5 o refino pode falhar e a arma volta a +0.
 - **Janela de status:** aparece ao pausar e mostra atributos, cartas, habilidades, equipamento e mascote.
 
+## Monstros comuns
+
+Gosma, Esqueleto, **Lobo Cinzento** (a partir de 1:30, rápido e ágil; as hordas viram matilhas até os orcs chegarem) e **Ent Ancião** (a partir de 3:20, lento e resistente) usam arte desenhada (`sprites/en-*.png`, 8 quadros). Morcego, Cogumelo, Fantasma e Orc ainda usam a arte feita por código. Lobos e Ents aparecem mais nos Campos Verdes; cada um tem carta e um item raro (Capa de Pele de Lobo, Coroa de Folhas).
+
 ## Calendário de chefes
 
 **Mini-chefe** a cada **10 níveis**, alternando **Carniçal** (10, 30, 50...) e **Rainha Magmática** (20, 40, 60...); **chefe** a cada **15 níveis**: **15** Bafome, **30** Minotauro, **45** Lorde Ossário, e o rodízio recomeça (cada volta do mesmo chefe vem muito mais forte).

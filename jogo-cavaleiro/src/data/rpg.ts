@@ -178,6 +178,8 @@ export const CARDS: CardDef[] = [
     monster: 'minotauro', name: 'Carta Minotauro', desc: '+20% de dano corpo a corpo e +3 FOR',
     apply: (g) => { g.mods.kindDmg.melee += 0.2; g.addAttr('for', 3); },
   },
+  { monster: 'lobo', name: 'Carta Lobo Cinzento', desc: '+5% de crítico e +10 de movimento', apply: (g) => { g.mods.crit += 0.05; g.stats.speed += 10; } },
+  { monster: 'arvore', name: 'Carta Ent Ancião', desc: '+30 de vida máxima e +0,5 HP/s', apply: (g) => { g.stats.maxHp += 30; g.hp += 30; g.stats.regen += 0.5; } },
   { monster: 'orc', name: 'Carta Orc', desc: '+15% de dano corpo a corpo', apply: (g) => (g.mods.kindDmg.melee += 0.15) },
   {
     monster: 'cavaleiro-negro', name: 'Carta Cavaleiro Negro', desc: '+2 de armadura e +10% de dano contra Humanoides',
@@ -258,22 +260,22 @@ export const MAPS: MapDef[] = [
   {
     id: 'campo', name: 'Campos Verdes', ground: 'grama', darkness: 0,
     decor: [['deco-tuft', 38], ['deco-flores', 24], ['deco-pedra', 16], ['deco-arbusto', 14], ['deco-cogumelo', 8]],
-    weights: {},
+    weights: { lobo: 1.4, arvore: 1.5 },
   },
   {
     id: 'deserto', name: 'Deserto Escaldante', ground: 'chao-areia', darkness: 0,
     decor: [['deco-pedra', 30], ['deco-cacto', 30], ['deco-ossos', 25], ['deco-tuft', 15]],
-    weights: { gosma: 0.4, cogumelo: 0.2, esqueleto: 2.2, orc: 2, morcego: 0.8 },
+    weights: { gosma: 0.4, cogumelo: 0.2, esqueleto: 2.2, orc: 2, morcego: 0.8, lobo: 1.8, arvore: 0.2 },
   },
   {
     id: 'caverna', name: 'Caverna Sombria', ground: 'chao-caverna', darkness: 0.28,
     decor: [['deco-pedra', 35], ['deco-cristal', 30], ['deco-cogumelo', 25], ['deco-ossos', 10]],
-    weights: { morcego: 2.5, cogumelo: 1.8, fantasma: 1.6, gosma: 0.6 },
+    weights: { morcego: 2.5, cogumelo: 1.8, fantasma: 1.6, gosma: 0.6, lobo: 0.4, arvore: 0.5 },
   },
   {
     id: 'ruinas', name: 'Ruínas Esquecidas', ground: 'chao-ruinas', darkness: 0.1,
     decor: [['deco-coluna', 25], ['deco-pedra', 30], ['deco-ossos', 20], ['deco-tuft', 25]],
-    weights: { esqueleto: 2, fantasma: 2, 'cavaleiro-negro': 2, gosma: 0.6 },
+    weights: { esqueleto: 2, fantasma: 2, 'cavaleiro-negro': 2, gosma: 0.6, lobo: 0.6, arvore: 0.8 },
   },
 ];
 

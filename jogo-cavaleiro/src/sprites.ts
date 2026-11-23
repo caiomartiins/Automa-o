@@ -21,6 +21,10 @@ import impactoUrl from './assets/fx-impacto.webp?inline';
 import fxSombraUrl from './assets/fx-cacador.webp?inline';
 import lichUrl from './assets/lich.webp?inline';
 import aranhaUrl from './assets/aranha.webp?inline';
+import enGosmaUrl from './assets/en-gosma.webp?inline';
+import enEsqueletoUrl from './assets/en-esqueleto.webp?inline';
+import enLoboUrl from './assets/en-lobo.webp?inline';
+import enArvoreUrl from './assets/en-arvore.webp?inline';
 import projSombraUrl from './assets/proj-sombra.webp?inline';
 
 /** Imagens soltas (efeitos e a fonte dos números de dano) */
@@ -88,7 +92,25 @@ const SPRITE_SCALE = 0.72;
 /** Linha dos pés dentro de cada quadro */
 const FEET_Y = 122;
 
+/** Monstros comuns desenhados (8 quadros: f0..f7). Mostrados com escala 0,5 (a arte é 2x). */
+function monster(key: string, url: string, cellW: number, cellH: number, feetY: number, move: number[], rate: number): SheetDef {
+  const f = (i: number) => `f${i}`;
+  return {
+    key, url, cellW, cellH, feetY, scale: 0.5,
+    frames: [0, 1, 2, 3, 4, 5, 6, 7].map(f),
+    anims: [
+      { name: 'move', frames: move.map(f), rate, repeat: -1 },
+      { name: 'attack', frames: [f(5)], rate: 1, repeat: 0 },
+      { name: 'die', frames: [f(6), f(7)], rate: 4, repeat: 0 },
+    ],
+  };
+}
+
 const SHEETS: SheetDef[] = [
+  monster('en-gosma', enGosmaUrl, 136, 104, 98, [0, 2, 3, 4], 6),
+  monster('en-esqueleto', enEsqueletoUrl, 150, 140, 134, [0, 3, 1, 3], 6),
+  monster('en-lobo', enLoboUrl, 170, 112, 106, [2, 3, 4, 3], 9),
+  monster('en-arvore', enArvoreUrl, 160, 150, 144, [0, 2, 1, 3], 5),
   {
     // Rainha Magmática: quadros 480x180 (corpo no centro), pés na linha 172 (efeitos de ataque à direita)
     key: 'en-aranha', url: aranhaUrl, cellW: 480, cellH: 180, feetY: 172, scale: SPRITE_SCALE,

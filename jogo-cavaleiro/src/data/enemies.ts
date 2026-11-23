@@ -40,6 +40,8 @@ export const ENEMIES: EnemyDef[] = [
   { id: 'cogumelo', name: 'Cogumelo Andante', texture: 'en-cogumelo', hp: 18, speed: 62, damage: 8, xp: 2, radius: 12, from: 75, weight: 6, knockback: 0.9, element: 'terra', race: 'planta', size: 'pequeno', lv: 6 },
   { id: 'esqueleto', name: 'Esqueleto', texture: 'en-esqueleto', hp: 30, speed: 72, damage: 10, xp: 2, radius: 12, from: 110, weight: 6, knockback: 0.8, element: 'mortovivo', race: 'mortovivo', size: 'medio', lv: 10 },
   { id: 'fantasma', name: 'Fantasma', texture: 'en-fantasma', hp: 24, speed: 88, damage: 9, xp: 2, radius: 12, from: 140, weight: 5, knockback: 1, element: 'fantasma', race: 'mortovivo', size: 'medio', lv: 12, agile: true },
+  { id: 'lobo', name: 'Lobo Cinzento', texture: 'en-lobo', hp: 26, speed: 118, damage: 11, xp: 2, radius: 13, from: 90, weight: 5, knockback: 0.9, element: 'neutro', race: 'bruto', size: 'medio', lv: 8, agile: true },
+  { id: 'arvore', name: 'Ent Ancião', texture: 'en-arvore', hp: 95, speed: 36, damage: 17, xp: 5, radius: 18, from: 200, weight: 3, knockback: 0.25, scale: 1.05, element: 'terra', race: 'planta', size: 'grande', lv: 16 },
   { id: 'orc', name: 'Orc', texture: 'en-orc', hp: 55, speed: 48, damage: 14, xp: 4, radius: 15, from: 170, weight: 4, knockback: 0.5, element: 'terra', race: 'humanoide', size: 'grande', lv: 14 },
   {
     id: 'cavaleiro-negro', name: 'Cavaleiro Negro', texture: 'en-cavaleiro-negro', hp: 320, speed: 52, damage: 22, xp: 25, radius: 17,
