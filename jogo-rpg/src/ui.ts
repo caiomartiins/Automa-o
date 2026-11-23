@@ -1,12 +1,12 @@
 import { CLASSES, FIRST_CLASSES, JOB_CHANGE_LEVEL, type ClassId } from './data/classes';
 import { bonusText, item, SHOP_STOCK, STAT_LABEL, type ItemDef } from './data/items';
-import { skill, SKILLS } from './data/skills';
-import { baseNeed, cannotLearn, jobNeed, MAX_BASE, STAT_KEYS, statCost, type EquipSlot, type StatKey } from './game/char';
+import { ACTIVE_BY_CLASS, COND_LABEL, CONDS_FOR, skill, SKILLS, type AutoCond } from './data/skills';
+import { baseNeed, cannotLearn, HOTBAR_ITEMS, HOTBAR_SIZE, jobNeed, MAX_BASE, STAT_KEYS, statCost, type EquipSlot, type StatKey } from './game/char';
 import { ELEMENT_NAME } from './game/combat';
 import { itemIcon, skillIcon } from './icons';
 import type { GameScene } from './scene';
 
-type Win = 'status' | 'itens' | 'habilidades' | 'loja' | 'dialogo' | 'menu';
+type Win = 'status' | 'itens' | 'habilidades' | 'loja' | 'dialogo' | 'menu' | 'auto';
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const fmt = (n: number) => Math.floor(n).toLocaleString('pt-BR');
@@ -18,6 +18,7 @@ export class UI {
   s!: GameScene;
   win: Win | null = null;
   invTab: 'consumo' | 'equip' | 'etc' = 'consumo';
+  autoTab: 'auto' | 'barra' = 'auto';
   shopTab: 'comprar' | 'vender' = 'comprar';
   selItem: string | null = null;
   dlg: { name: string; html: string } | null = null;
@@ -65,6 +66,10 @@ export class UI {
       <div class="target panel" data-r="target" hidden><div class="nm"><span data-r="tname"></span><small data-r="tinfo"></small></div><div class="track"><div class="fill" data-r="thp"></div></div></div>
       <div class="log" data-r="log"></div>
       <div class="hotbar panel" data-r="hotbar"></div>
+      <div class="autobox">
+        <button class="autobtn" data-a="auto" data-r="autobtn" title="Caça automática (Z)" aria-pressed="false"><b>AUTO</b><small data-r="autotxt">desligado</small></button>
+        <button class="btn small" data-a="win:auto" title="Gerenciador de habilidades (G)">Ajustes</button>
+      </div>
       <div data-r="winhost"></div>
       <div class="banner" data-r="banner"></div>
       <div class="mapname" data-r="mapbanner"></div>
@@ -80,6 +85,7 @@ export class UI {
       hb.appendChild(b);
     }
     this.hud.addEventListener('click', (e) => this.onClick(e));
+    this.hud.addEventListener('change', (e) => this.onChange(e));
     this.hud.addEventListener('dblclick', (e) => {
       const el = (e.target as HTMLElement).closest<HTMLElement>('[data-item]');
       if (el && this.win === 'itens') this.s.useItem(el.dataset.item!);
@@ -112,7 +118,40 @@ export class UI {
       case 'respawn': this.r.death.hidden = true; s.respawn(); break;
       case 'save': s.save(); this.log('Jogo salvo neste navegador.', 'sys'); this.closeAll(); break;
       case 'npc': this.npcAction(arg, arg2); break;
+      case 'auto': s.toggleAuto(); break;
+      case 'autoskill': {
+        const e = s.char.auto.skills.find((x) => x.id === arg);
+        if (e) e.on = !e.on;
+        this.refresh(true);
+        break;
+      }
+      case 'autoup': s.moveAutoSkill(arg, -1); break;
+      case 'autodown': s.moveAutoSkill(arg, 1); break;
+      case 'autoopt': {
+        const cfg = s.char.auto;
+        if (arg === 'loot') cfg.loot = !cfg.loot;
+        if (arg === 'mvp') cfg.mvp = !cfg.mvp;
+        this.refresh(true);
+        break;
+      }
+      case 'autotab': this.autoTab = arg as UI['autoTab']; this.refresh(true); break;
+      case 'rate': s.char.expRate = Number(arg); s.save(); this.log(`Taxa de experiência: ${arg}x.`, 'sys'); this.refresh(true); break;
     }
+  }
+
+  private onChange(e: Event) {
+    const el = e.target as HTMLSelectElement;
+    const key = el.dataset.c;
+    if (!key) return;
+    const s = this.s, cfg = s.char.auto;
+    const [a, arg] = key.split(':');
+    if (a === 'cond') { const x = cfg.skills.find((k) => k.id === arg); if (x) x.cond = el.value as AutoCond; }
+    else if (a === 'hp') cfg.hpPot = Number(el.value);
+    else if (a === 'sp') cfg.spPot = Number(el.value);
+    else if (a === 'reserve') cfg.spReserve = Number(el.value);
+    else if (a === 'hot') s.setHotbar(Number(arg), el.value);
+    el.blur();
+    this.refresh(true);
   }
 
   typing() {
@@ -146,11 +185,18 @@ export class UI {
     return `<div class="win panel${wide ? ' wide' : ''}" role="dialog" aria-label="${esc(title)}"><div class="tbar">${esc(title)}<button class="x" data-a="close" aria-label="Fechar">×</button></div><div class="content">${body}</div></div>`;
   }
 
-  refresh() {
+  refresh(forceWin = false) {
     if (!this.s || !this.r.hotbar) return;
     this.renderHotbar();
     this.tick(true);
     const host = this.r.winhost;
+    const ab = this.r.autobtn;
+    ab.classList.toggle('on', this.s.auto);
+    ab.setAttribute('aria-pressed', String(this.s.auto));
+    this.r.autotxt.textContent = this.s.auto ? 'ligado' : 'desligado';
+    // não redesenha a janela enquanto uma lista de opções está aberta nela
+    const act = document.activeElement;
+    if (!forceWin && act && act.tagName === 'SELECT' && host.contains(act)) return;
     const scroll = host.querySelector('.content')?.scrollTop ?? 0;
     let html = '';
     switch (this.win) {
@@ -160,6 +206,7 @@ export class UI {
       case 'loja': html = this.frame('Loja da Mercadora Lina', this.shopHtml(), true); break;
       case 'dialogo': html = this.dlg ? this.frame(this.dlg.name, `<div class="dialog">${this.dlg.html}</div>`) : ''; break;
       case 'menu': html = this.frame('Menu', this.menuHtml()); break;
+      case 'auto': html = this.frame('Gerenciador de habilidades', this.autoHtml(), true); break;
     }
     host.innerHTML = html;
     const content = host.querySelector('.content');
@@ -252,7 +299,7 @@ export class UI {
     const msg = c.cls === 'aprendiz'
       ? `<p class="muted">Aprendizes guardam os pontos. Ao mudar de classe no nível de classe ${JOB_CHANGE_LEVEL}, você usa todos eles nas habilidades da classe nova.</p>`
       : '<p class="muted">As habilidades ativas ficam na barra de atalhos (teclas 1 a 8).</p>';
-    return `<div class="pts" style="margin:0 0 4px">Pontos de habilidade: ${c.skillPoints}</div>${msg}${rows}`;
+    return `<div class="row" style="justify-content:space-between;margin:0 0 4px"><span class="pts" style="margin:0">Pontos de habilidade: ${c.skillPoints}</span><button class="btn small" data-a="win:auto">Gerenciar automático e atalhos</button></div>${msg}${rows}`;
   }
 
   private shopHtml() {
@@ -279,11 +326,69 @@ export class UI {
   }
 
   private menuHtml() {
+    const rate = this.s.char.expRate;
+    const rates = [1, 3, 5, 10, 20].map((r) => `<button class="btn${r === rate ? ' on' : ''}" data-a="rate:${r}" aria-pressed="${r === rate}">${r}x</button>`).join('');
     return `<div class="choices">
+      <h3 style="margin:0">Taxa de experiência (teste)</h3>
+      <div class="tabs rates">${rates}</div>
       <button class="btn primary" data-a="save">Salvar agora</button>
       <p class="muted" style="margin:4px 0 0;line-height:1.5">O jogo também salva sozinho a cada 20 segundos, ao trocar de mapa e ao subir de nível.<br>
-      <b>Controles:</b> clique no chão para andar e no monstro para atacar · WASD ou setas também andam · Espaço ataca o monstro mais perto · 1–8 barra de atalhos · C status · I itens · K habilidades · X sentar · Esc fecha janelas.</p>
+      <b>Controles:</b> clique no chão para andar e no monstro para atacar · WASD ou setas também andam · Espaço ataca o monstro mais perto · 1–8 barra de atalhos · Z caça automática · G gerenciador de habilidades · C status · I itens · K habilidades · X sentar · Esc fecha janelas.</p>
     </div>`;
+  }
+
+  private autoHtml() {
+    const s = this.s, c = s.char, cfg = c.auto;
+    const tab = (k: UI['autoTab'], label: string) => `<button class="btn${this.autoTab === k ? ' on' : ''}" data-a="autotab:${k}">${label}</button>`;
+    let body = '';
+    if (this.autoTab === 'auto') {
+      const rows = cfg.skills.map((e, i) => {
+        const sk = skill(e.id), lv = c.skills[e.id] ?? 0;
+        const conds = CONDS_FOR[sk.auto ?? 'alvo'];
+        const sel = conds.length > 1
+          ? `<select data-c="cond:${e.id}" aria-label="Quando usar ${esc(sk.name)}">${conds.map((k) => `<option value="${k}"${k === e.cond ? ' selected' : ''}>${COND_LABEL[k]}</option>`).join('')}</select>`
+          : `<span class="muted">${COND_LABEL[conds[0]]}</span>`;
+        return `<div class="aslot${e.on && lv ? '' : ' off'}">
+          <span class="prio">${i + 1}</span><img src="${skillIcon(sk.id, sk.glyph, sk.color)}" alt="">
+          <div class="nm"><b>${esc(sk.name)}</b><small>${lv ? `Nv ${lv} · SP ${sk.sp?.(lv) ?? 0}` : 'ainda não aprendida'}</small>${sel}</div>
+          <div class="ctl">
+            <button class="btn small${e.on ? ' on' : ''}" data-a="autoskill:${e.id}" aria-pressed="${e.on}">${e.on ? 'Usar' : 'Não usar'}</button>
+            <span class="row"><button class="btn small" data-a="autoup:${e.id}" ${i === 0 ? 'disabled' : ''} aria-label="Subir prioridade">▲</button><button class="btn small" data-a="autodown:${e.id}" ${i === cfg.skills.length - 1 ? 'disabled' : ''} aria-label="Descer prioridade">▼</button></span>
+          </div></div>`;
+      }).join('');
+      const opt = (key: string, cur: number, vals: [number, string][], label: string) =>
+        `<label class="opt"><span>${label}</span><select data-c="${key}">${vals.map(([v, t]) => `<option value="${v}"${v === cur ? ' selected' : ''}>${t}</option>`).join('')}</select></label>`;
+      const tog = (key: string, on: boolean, label: string) =>
+        `<label class="opt"><span>${label}</span><button class="btn small${on ? ' on' : ''}" data-a="autoopt:${key}" aria-pressed="${on}">${on ? 'Sim' : 'Não'}</button></label>`;
+      body = `
+        <div class="autohead">
+          <button class="btn ${s.auto ? '' : 'primary'}" data-a="auto">${s.auto ? 'Desligar caça automática' : 'Ligar caça automática'}</button>
+          <p class="muted">O herói procura o monstro mais perto (primeiro os que estão atacando você), ataca, usa as habilidades abaixo e pega os itens. Andar, clicar no chão ou falar com um NPC desliga. Ele não entra em portais sozinho.</p>
+        </div>
+        <h3>Habilidades, em ordem de prioridade</h3>
+        <div class="alist">${rows}</div>
+        <p class="muted" style="margin:6px 0 0">Magias e flechas que o alvo resiste (por exemplo, fogo numa Gosma de água) são puladas.</p>
+        <h3>Poções e opções</h3>
+        <div class="opts">
+          ${opt('hp', cfg.hpPot, [[0, 'Desligado'], [30, 'Abaixo de 30%'], [50, 'Abaixo de 50%'], [70, 'Abaixo de 70%']], 'Poção de HP')}
+          ${opt('sp', cfg.spPot, [[0, 'Desligado'], [20, 'Abaixo de 20%'], [40, 'Abaixo de 40%']], 'Poção Azul (SP)')}
+          ${opt('reserve', cfg.spReserve, [[0, 'Nada'], [20, '20% do SP'], [40, '40% do SP']], 'Guardar SP para curas')}
+          ${tog('loot', cfg.loot, 'Pegar itens do chão')}
+          ${tog('mvp', cfg.mvp, 'Atacar MVP (Bafome)')}
+        </div>`;
+    } else {
+      const options = [
+        ['', '(vazio)'],
+        ...ACTIVE_BY_CLASS[c.cls].map((id) => [`skill:${id}`, `Habilidade: ${skill(id).name}`]),
+        ...HOTBAR_ITEMS.map((id) => [`item:${id}`, `Item: ${item(id).name}`]),
+      ];
+      const rows = Array.from({ length: HOTBAR_SIZE }, (_, i) => {
+        const cur = c.hotbar[i] ?? '';
+        return `<label class="opt"><span><b>Tecla ${i + 1}</b></span><select data-c="hot:${i}">${options.map(([v, t]) => `<option value="${v}"${v === cur ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select></label>`;
+      }).join('');
+      body = `<p class="muted" style="margin:0 0 6px">Escolha o que fica em cada tecla da barra de atalhos. Ao mudar de classe, a barra volta ao padrão da classe nova.</p><div class="opts">${rows}</div>`;
+    }
+    return `<div class="tabs">${tab('auto', 'Caça automática')}${tab('barra', 'Barra de atalhos')}</div>${body}`;
   }
 
   // ================================================================ NPCs
@@ -366,8 +471,8 @@ export class UI {
     btns.forEach((b, i) => {
       const h = slots[i];
       const img = b.querySelector('img')!, n = b.querySelector<HTMLElement>('.n')!, lv = b.querySelector<HTMLElement>('.lv')!;
-      if (!h) { b.hidden = true; return; }
-      b.hidden = false;
+      b.classList.toggle('empty', !h);
+      if (!h) { img.removeAttribute('src'); n.textContent = ''; lv.textContent = ''; b.title = 'Vazio (escolha em Ajustes)'; return; }
       if (h.kind === 'skill') {
         const sk = skill(h.id), l = s.char.skills[h.id] ?? 0;
         img.src = skillIcon(sk.id, sk.glyph, sk.color);

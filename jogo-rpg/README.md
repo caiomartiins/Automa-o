@@ -1,4 +1,4 @@
-# Terras de Aurora (versão 0.1)
+# Terras de Aurora (versão 0.2)
 
 RPG 2D de navegador no estilo dos MMORPGs clássicos, spin-off da **Ascensão do Cavaleiro** (`../jogo-cavaleiro/`). Usa os mesmos heróis, monstros e o Bafome, agora em mapas ligados por portais, com níveis de base e de classe, atributos, habilidades, inventário e loja.
 
@@ -24,7 +24,16 @@ O `npm run build` também gera `dist/artefato.html`, a mesma página sem as tags
 | Habilidades e itens | teclas 1 a 8 | barra de atalhos |
 | Status / Itens / Habilidades | C / I / K | botões da janela de informações |
 | Sentar (regenera 2x) | X | botão Sentar |
+| Caça automática | Z ou botão AUTO | botão AUTO |
+| Gerenciador de habilidades | G ou botão Ajustes | botão Ajustes |
 | Fechar janela | Esc | × |
+
+## Novidades da 0.2
+
+- **Caça automática (AUTO):** o herói procura o monstro mais perto (primeiro os que estão atacando), ataca, usa as habilidades configuradas, toma poções e pega os itens do chão. Quando não há monstros por perto, passeia pelas áreas de caça. Andar, clicar no chão ou falar com um NPC desliga. Ele não entra em portais sozinho e, por padrão, não ataca o MVP.
+- **Gerenciador de habilidades** (aba Caça automática): liga ou desliga cada habilidade no automático, define a prioridade (▲ ▼) e a condição (sempre, com 2+ ou 3+ inimigos juntos, HP abaixo de 50% ou 30%, quando o efeito acabar). Magias e flechas que o alvo resiste são puladas. Também define a poção de HP, a Poção Azul, o SP guardado para curas, pegar itens e atacar MVP.
+- **Barra de atalhos personalizável** (aba Barra de atalhos): escolhe o que fica em cada tecla de 1 a 8.
+- **Taxa de experiência de teste:** 5x por padrão, com opções de 1x, 3x, 5x, 10x e 20x no Menu. Vale para a exp de base e de classe.
 
 ## O que tem na 0.1
 

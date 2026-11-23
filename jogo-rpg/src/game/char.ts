@@ -1,12 +1,32 @@
 import { CLASSES, type ClassId } from '../data/classes';
 import { item, type Bonus } from '../data/items';
-import { skill } from '../data/skills';
+import { ACTIVE_BY_CLASS, DEFAULT_COND, skill, type AutoCond } from '../data/skills';
 
 export type StatKey = 'str' | 'agi' | 'vit' | 'int' | 'dex' | 'luk';
 export const STAT_KEYS: StatKey[] = ['str', 'agi', 'vit', 'int', 'dex', 'luk'];
 export type EquipSlot = 'arma' | 'armadura' | 'acessorio';
 
 export interface InvEntry { id: string; n: number }
+
+export interface AutoSkill { id: string; on: boolean; cond: AutoCond }
+export interface AutoConfig {
+  /** Ordem = prioridade */
+  skills: AutoSkill[];
+  /** Usa poção de HP abaixo desta % (0 = desligado) */
+  hpPot: number;
+  /** Usa Poção Azul abaixo desta % de SP (0 = desligado) */
+  spPot: number;
+  /** Guarda esta % de SP (só as curas gastam abaixo dela) */
+  spReserve: number;
+  loot: boolean;
+  mvp: boolean;
+}
+
+/** Itens que podem ir para a barra de atalhos e para o automático */
+export const HOTBAR_ITEMS = ['pocao-vermelha', 'pocao-laranja', 'pocao-azul', 'asa-mosca', 'asa-borboleta', 'pocao-branca', 'folha-vital'];
+export const HOTBAR_SIZE = 8;
+/** Taxa de experiência padrão da versão de teste */
+export const DEFAULT_EXP_RATE = 5;
 
 export interface CharData {
   v: 1;
@@ -29,6 +49,11 @@ export interface CharData {
   x: number;
   y: number;
   mvpKills: number;
+  /** Multiplicador de experiência (versão de teste) */
+  expRate: number;
+  /** 'skill:id', 'item:id' ou '' (vazio) */
+  hotbar: string[];
+  auto: AutoConfig;
 }
 
 export const MAX_BASE = 99;
@@ -58,7 +83,39 @@ export function newChar(name: string): CharData {
     inv: [{ id: 'pocao-vermelha', n: 8 }, { id: 'asa-mosca', n: 3 }, { id: 'faca', n: 1 }, { id: 'roupa-aprendiz', n: 1 }],
     equip: { arma: 'faca', armadura: 'roupa-aprendiz' },
     zeny: 500, hp: 9999, sp: 9999, map: 'campos', x: -1, y: -1, mvpKills: 0,
+    expRate: DEFAULT_EXP_RATE, hotbar: defaultHotbar('aprendiz'),
+    auto: { skills: [], hpPot: 50, spPot: 0, spReserve: 0, loot: true, mvp: false },
   };
+}
+
+export function defaultHotbar(cls: ClassId): string[] {
+  const skills = ACTIVE_BY_CLASS[cls].map((id) => `skill:${id}`);
+  const items = HOTBAR_ITEMS.slice(0, HOTBAR_SIZE - skills.length).map((id) => `item:${id}`);
+  return [...skills, ...items];
+}
+
+/** Mantém a lista do automático com as habilidades ativas da classe atual (na ordem do jogador) */
+export function syncAuto(c: CharData) {
+  const ids = ACTIVE_BY_CLASS[c.cls];
+  const kept = c.auto.skills.filter((s) => ids.includes(s.id));
+  for (const id of ids) {
+    if (kept.some((s) => s.id === id)) continue;
+    const kind = skill(id).auto ?? 'alvo';
+    kept.push({ id, on: true, cond: DEFAULT_COND[kind] });
+  }
+  // curas e efeitos primeiro, depois área, depois alvo único
+  const rank = (id: string) => ({ cura: 0, buff: 1, 'area-proprio': 2, 'area-alvo': 2, alvo: 3 })[skill(id).auto ?? 'alvo'];
+  if (c.auto.skills.length === 0) kept.sort((a, b) => rank(a.id) - rank(b.id));
+  c.auto.skills = kept;
+}
+
+/** Completa saves antigos com os campos novos */
+export function normalizeChar(c: CharData) {
+  if (typeof c.expRate !== 'number') c.expRate = DEFAULT_EXP_RATE;
+  if (!Array.isArray(c.hotbar) || c.hotbar.length !== HOTBAR_SIZE) c.hotbar = defaultHotbar(c.cls);
+  if (!c.auto) c.auto = { skills: [], hpPot: 50, spPot: 0, spReserve: 0, loot: true, mvp: false };
+  syncAuto(c);
+  return c;
 }
 
 export interface Buffs {

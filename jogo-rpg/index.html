@@ -163,6 +163,41 @@
       .mapname { position: absolute; left: 50%; top: 12%; transform: translateX(-50%); pointer-events: none !important; text-align: center; color: #fff; font-family: var(--display); font-size: 24px; text-shadow: 0 2px 6px #000; opacity: 0; transition: opacity .6s; }
       .mapname.show { opacity: 1; }
 
+      /* Caça automática */
+      .autobox { position: absolute; right: max(12px, env(safe-area-inset-right, 0px)); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); display: grid; justify-items: center; gap: 4px; }
+      .autobtn { width: 62px; height: 62px; border-radius: 50%; border: 2px solid var(--line); background: radial-gradient(circle at 50% 35%, #fff, var(--panel-2)); color: var(--muted); cursor: pointer; display: grid; place-content: center; gap: 0; box-shadow: 0 2px 10px rgba(5, 10, 30, .35); position: relative; }
+      .autobtn b { font: 800 15px var(--display); letter-spacing: .04em; }
+      .autobtn small { font-size: 9px; font-weight: 800; }
+      .autobtn.on { background: radial-gradient(circle at 50% 35%, #fff3c4, var(--gold)); color: #4a3000; border-color: #b8860b; }
+      .autobtn.on::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; border: 2px solid var(--gold); animation: autopulse 1.4s ease-out infinite; }
+      @keyframes autopulse { from { transform: scale(.9); opacity: 1; } to { transform: scale(1.25); opacity: 0; } }
+      .autobox .btn { background: var(--panel); }
+      .btn.on { background: var(--title-b); color: #fff; border-color: var(--title-b); }
+      .slot.empty { background: #e7edf8; border-style: dashed; }
+      .slot.empty .cd { display: none; }
+      .autohead { display: grid; gap: 4px; margin-bottom: 4px; }
+      .autohead p { margin: 0; line-height: 1.45; }
+      .alist { display: grid; gap: 5px; }
+      .aslot { display: grid; grid-template-columns: 18px 36px 1fr auto; gap: 8px; align-items: center; background: #fff; border: 1px solid var(--panel-2); border-radius: 6px; padding: 5px 7px; }
+      .aslot.off { opacity: .6; }
+      .aslot .prio { font-weight: 800; color: var(--title-b); text-align: center; }
+      .aslot img { width: 36px; height: 36px; }
+      .aslot .nm { display: grid; gap: 2px; min-width: 0; }
+      .aslot .nm small { color: var(--muted); }
+      .aslot .ctl { display: grid; gap: 4px; justify-items: end; }
+      .opts { display: grid; gap: 5px; }
+      .opt { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: #fff; border: 1px solid var(--panel-2); border-radius: 6px; padding: 5px 8px; font-weight: 700; }
+      select { font: 700 12px var(--ui); color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 3px 4px; max-width: 100%; }
+      .rates .btn { min-width: 46px; }
+      @media (max-width: 720px) {
+        .autobox { bottom: calc(66px + env(safe-area-inset-bottom, 0px)); }
+        .autobtn { width: 54px; height: 54px; }
+        .aslot { grid-template-columns: 14px 30px 1fr; }
+        .aslot img { width: 30px; height: 30px; }
+        .aslot .ctl { grid-column: 1 / -1; grid-template-columns: 1fr auto; justify-items: stretch; }
+      }
+      @media (prefers-reduced-motion: reduce) { .autobtn.on::after { animation: none; } }
+
       .death { z-index: 6; position: absolute; inset: 0; background: rgba(40, 0, 0, .45); display: grid; place-items: center; }
       .death .panel { padding: 14px 18px; text-align: center; width: min(320px, calc(100vw - 32px)); }
       .death b { font-family: var(--display); font-size: 20px; display: block; margin-bottom: 6px; }
@@ -185,6 +220,7 @@
         .menu button { font-size: 10px; padding: 4px 0; }
         .mini { width: 112px; }
         .mini .tbar { font-size: 10px; padding: 2px 5px; }
+        .mini .coord { display: none; }
         .target { top: auto; bottom: calc(70px + env(safe-area-inset-bottom, 0px)); width: 200px; }
         .log { bottom: calc(118px + env(safe-area-inset-bottom, 0px)); max-height: 60px; width: 60vw; }
         .log div { font-size: 10.5px; }
@@ -206,8 +242,8 @@
         <div class="sub">Uma aventura nas terras do Cavaleiro</div>
         <h1>Terras de Aurora</h1>
         <div class="panel" id="title-panel"></div>
-        <div class="help">Clique no chão para andar e no monstro para atacar. Teclas 1–8 usam habilidades e itens. C: status · I: itens · K: habilidades · X: sentar.</div>
-        <div class="ver">versão 0.1</div>
+        <div class="help">Clique no chão para andar e no monstro para atacar. Teclas 1–8 usam habilidades e itens. Z: caça automática · G: gerenciador de habilidades · C: status · I: itens · K: habilidades · X: sentar.</div>
+        <div class="ver">versão 0.2 · experiência de teste 5x</div>
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>

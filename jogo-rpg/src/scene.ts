@@ -4,10 +4,10 @@ import { CLASSES, FIRST_CLASSES, JOB_CHANGE_LEVEL, type ClassId } from './data/c
 import { item, type ItemDef } from './data/items';
 import { MAPS, type MapDef, type SpawnDef } from './data/maps';
 import { MONSTERS } from './data/monsters';
-import { skill } from './data/skills';
+import { skill, type SkillDef } from './data/skills';
 import {
-  baseNeed, canEquip, cannotLearn, derive, invAdd, invCount, invRemove, jobNeed, MAX_BASE, pointsForLevel, statCost,
-  type Buffs, type CharData, type Derived, type EquipSlot, type StatKey,
+  baseNeed, canEquip, cannotLearn, defaultHotbar, derive, invAdd, invCount, invRemove, jobNeed, MAX_BASE, normalizeChar, pointsForLevel,
+  statCost, syncAuto, type AutoSkill, type Buffs, type CharData, type Derived, type EquipSlot, type StatKey,
 } from './game/char';
 import { applyDef, elementMod, hitChance, rand, randInt, type Element } from './game/combat';
 import { saveChar } from './game/save';
@@ -17,14 +17,6 @@ import { Monster, type Arena } from './monster';
 import type { UI } from './ui';
 import { TILE, World } from './world';
 
-/** Habilidades ativas que aparecem na barra, por classe */
-export const HOTBAR_SKILLS: Record<ClassId, string[]> = {
-  aprendiz: ['primeiros-socorros'],
-  espadachim: ['golpe-poderoso', 'impacto-explosivo', 'primeiros-socorros'],
-  mago: ['seta-fogo', 'seta-gelo', 'seta-raio', 'bola-fogo', 'primeiros-socorros'],
-  arqueiro: ['disparo-duplo', 'chuva-flechas', 'concentracao', 'primeiros-socorros'],
-};
-const HOTBAR_ITEMS = ['pocao-vermelha', 'pocao-laranja', 'pocao-azul', 'asa-mosca', 'asa-borboleta', 'pocao-branca'];
 export type HotSlot = { kind: 'skill'; id: string } | { kind: 'item'; id: string };
 
 interface Drop { id: string; img: Phaser.GameObjects.Image; x: number; y: number; until: number }
@@ -85,6 +77,11 @@ export class GameScene extends Phaser.Scene implements Arena {
   changing = false;
   portalLock = 0;
   keys!: Record<string, Phaser.Input.Keyboard.Key>;
+  /** caça automática */
+  auto = false;
+  autoThink = 0;
+  autoBlacklist = new Map<number, number>();
+  chaseStuck = 0;
 
   constructor() { super('game'); }
 
@@ -96,6 +93,7 @@ export class GameScene extends Phaser.Scene implements Arena {
   }
 
   create() {
+    normalizeChar(this.char);
     this.recalc();
     if (this.char.hp > this.d.maxHp) this.char.hp = this.d.maxHp;
     if (this.char.sp > this.d.maxSp) this.char.sp = this.d.maxSp;
@@ -122,6 +120,7 @@ export class GameScene extends Phaser.Scene implements Arena {
     if (this.char.x > 0 && this.world.canStand(this.char.x, this.char.y)) this.sprite.setPosition(this.char.x, this.char.y);
     this.ui.attach(this);
     if (this.char.statPoints > 0 && this.char.baseLv === 1) this.ui.open('status');
+    this.ui.log(`Taxa de experiência de teste: ${this.char.expRate}x (mude no Menu).`, 'sys');
   }
 
   fitZoom() {
@@ -272,6 +271,8 @@ export class GameScene extends Phaser.Scene implements Arena {
     else if (k === 'i' || k === 'e') this.ui.toggle('itens');
     else if (k === 'k') this.ui.toggle('habilidades');
     else if (k === 'x') this.toggleSit();
+    else if (k === 'z') this.toggleAuto();
+    else if (k === 'g') this.ui.toggle('auto');
     else if (k === 'escape') { if (!this.ui.closeAll()) this.target = null; }
     else if (k === ' ') { e.preventDefault(); this.targetNearest(); }
   }
@@ -290,12 +291,13 @@ export class GameScene extends Phaser.Scene implements Arena {
     if (best) { this.attackTarget(best); return; }
     for (const n of this.npcs) {
       if (Math.abs(wx - n.x) < 30 && wy > n.y - 90 && wy < n.y + 12) {
-        this.clearActions(); this.pendingNpc = n; this.walkTo(n.x, n.y + 30); return;
+        this.toggleAuto(false); this.clearActions(); this.pendingNpc = n; this.walkTo(n.x, n.y + 30); return;
       }
     }
     for (const d of this.drops) {
       if (Math.hypot(wx - d.x, wy - d.y) < 24) { this.clearActions(); this.pendingDrop = d; this.walkTo(d.x, d.y); return; }
     }
+    this.toggleAuto(false);
     this.clearActions();
     this.walkTo(wx, wy);
     const mark = this.add.image(wx, wy, 'click').setDepth(wy - 900).setTint(0x9ee6ff).setAlpha(0.9);
@@ -356,10 +358,18 @@ export class GameScene extends Phaser.Scene implements Arena {
 
   // ================================================================ barra de atalhos
 
-  hotbar(): HotSlot[] {
-    const skills = HOTBAR_SKILLS[this.char.cls].map((id) => ({ kind: 'skill' as const, id }));
-    const items = HOTBAR_ITEMS.slice(0, 8 - skills.length).map((id) => ({ kind: 'item' as const, id }));
-    return [...skills, ...items];
+  hotbar(): (HotSlot | null)[] {
+    return this.char.hotbar.map((h) => {
+      const [kind, id] = h.split(':');
+      if (kind === 'skill' && id) return { kind: 'skill' as const, id };
+      if (kind === 'item' && id) return { kind: 'item' as const, id };
+      return null;
+    });
+  }
+
+  setHotbar(i: number, value: string) {
+    this.char.hotbar[i] = value;
+    this.ui.refresh();
   }
 
   useHot(i: number) {
@@ -379,6 +389,7 @@ export class GameScene extends Phaser.Scene implements Arena {
     if (this.player.dead) return;
     const sk = skill(id);
     const lv = this.char.skills[id] ?? 0;
+    if (sk.cls !== this.char.cls && sk.cls !== 'aprendiz') return;
     if (!lv) { this.ui.log(`Você ainda não aprendeu ${sk.name}. Abra Habilidades (K).`, 'warn'); return; }
     if (this.cooldownLeft(id) > 0 || this.casting) return;
     const sp = sk.sp?.(lv) ?? 0;
@@ -569,7 +580,7 @@ export class GameScene extends Phaser.Scene implements Arena {
       if (def.boss) this.bossRespawnAt[this.world.def.id] = Date.now() + m.spawn.respawn * 1000;
     }
     // recompensas
-    const mult = m.minion ? 0.5 : 1;
+    const mult = (m.minion ? 0.5 : 1) * this.char.expRate;
     this.gainExp(Math.round(def.baseExp * mult), Math.round(def.jobExp * mult));
     let k = 0;
     for (const [id, chance] of def.drops) {
@@ -711,6 +722,7 @@ export class GameScene extends Phaser.Scene implements Arena {
   playerDie() {
     this.char.hp = 0;
     this.player.dead = true;
+    this.auto = false;
     this.clearActions();
     this.path = null;
     const tex = CLASSES[this.char.cls].texture;
@@ -836,6 +848,9 @@ export class GameScene extends Phaser.Scene implements Arena {
     c.skills[sk] = Math.max(1, c.skills[sk] ?? 0);
     invAdd(c, weapon, 1);
     c.equip.arma = weapon;
+    c.hotbar = defaultHotbar(cls);
+    c.auto.skills = [];
+    syncAuto(c);
     this.setClassLook();
     this.recalc();
     c.hp = this.d.maxHp; c.sp = this.d.maxSp;
@@ -884,6 +899,7 @@ export class GameScene extends Phaser.Scene implements Arena {
     const c = this.char;
     if (this.buffs.conc && this.buffs.conc.until <= this.now) { delete this.buffs.conc; this.ui.log('Concentração acabou.', 'sys'); this.changed(); }
 
+    if (this.auto && !this.player.dead && !this.changing) this.updateAuto(dt);
     if (!this.player.dead && !this.changing) this.updatePlayer(dt);
     this.player.x = this.sprite.x;
     this.player.y = this.sprite.y;
@@ -901,7 +917,11 @@ export class GameScene extends Phaser.Scene implements Arena {
     // espólios
     for (const d of [...this.drops]) {
       const left = d.until - this.now;
-      if (left <= 0) { d.img.destroy(); this.drops.splice(this.drops.indexOf(d), 1); continue; }
+      if (left <= 0) {
+        d.img.destroy(); this.drops.splice(this.drops.indexOf(d), 1);
+        if (this.pendingDrop === d) { this.pendingDrop = null; this.path = null; }
+        continue;
+      }
       d.img.setAlpha(left < 8 ? (Math.sin(this.now * 12) > 0 ? 1 : 0.35) : 1);
     }
     // regeneração
@@ -951,6 +971,7 @@ export class GameScene extends Phaser.Scene implements Arena {
     if (k.W.isDown || k.UP.isDown) ky -= 1;
     if (k.S.isDown || k.DOWN.isDown) ky += 1;
     if ((kx || ky) && !this.ui.typing()) {
+      this.toggleAuto(false);
       this.clearActions(); this.path = null; this.standUp();
       this.movePlayer(kx, ky, dt);
       this.setWalkAnim(true);
@@ -979,9 +1000,20 @@ export class GameScene extends Phaser.Scene implements Arena {
         const ranged = range > 100;
         const canHit = dist <= range && (!ranged || this.world.los(this.sprite.x, this.sprite.y - 20, t.x, t.y - 20, 2));
         if (!canHit) {
+          const bx = this.sprite.x, by = this.sprite.y;
           this.chase(t.x, t.y, dt);
+          if (Math.hypot(this.sprite.x - bx, this.sprite.y - by) < 0.3) {
+            this.chaseStuck += dt;
+            if (this.chaseStuck > 1.2) {
+              // não consegue chegar no alvo: desiste (e o automático evita esse monstro por um tempo)
+              this.chaseStuck = 0;
+              if (this.auto) this.autoBlacklist.set(t.id, this.now + 15);
+              this.target = null; this.pendingSkill = null; this.path = null;
+            }
+          } else this.chaseStuck = 0;
           return;
         }
+        this.chaseStuck = 0;
         this.setWalkAnim(false);
         this.sprite.setFlipX(t.x < this.sprite.x);
         if (this.pendingSkill) {
@@ -1043,7 +1075,7 @@ export class GameScene extends Phaser.Scene implements Arena {
   }
 
   private checkPortals() {
-    if (this.now < this.portalLock) return;
+    if (this.now < this.portalLock || this.auto) return;
     for (const p of this.portals) {
       for (const [x, y] of p.pts) {
         if (Math.hypot(x - this.sprite.x, y - this.sprite.y) < 30) { this.goPortal(p.def); return; }
@@ -1106,6 +1138,148 @@ export class GameScene extends Phaser.Scene implements Arena {
       bars.lineStyle(2, 0xff5a5a, 0.9);
       bars.strokeEllipse(t.x, t.y, t.def.radius * 2.4 + 8, t.def.radius + 6);
     }
+  }
+
+  // ================================================================ caça automática
+
+  toggleAuto(on = !this.auto) {
+    if (on === this.auto) return;
+    if (on && this.player.dead) return;
+    this.auto = on;
+    this.autoBlacklist.clear();
+    if (on) {
+      this.standUp();
+      this.ui.log('Caça automática ligada. Andar ou clicar no chão desliga.', 'sys');
+    } else {
+      this.path = null;
+      this.ui.log('Caça automática desligada.', 'sys');
+    }
+    this.ui.refresh();
+  }
+
+  /** Monstros que estão vindo atrás do jogador */
+  private attackers() {
+    return this.monsters.filter((m) => !m.dead && m.state === 'chase' && Math.hypot(m.x - this.sprite.x, m.y - this.sprite.y) < 420);
+  }
+
+  private countNear(x: number, y: number, r: number) {
+    let n = 0;
+    for (const m of this.monsters) if (!m.dead && Math.hypot(m.x - x, m.y - y) <= r + m.def.radius) n++;
+    return n;
+  }
+
+  /** A habilidade pode ser usada agora pelo automático? */
+  autoReady(e: AutoSkill, target: Monster | null) {
+    const c = this.char, sk: SkillDef = skill(e.id);
+    const lv = c.skills[e.id] ?? 0;
+    if (!e.on || !lv || this.cooldownLeft(e.id) > 0) return false;
+    if (c.sp < (sk.sp?.(lv) ?? 0)) return false;
+    const kind = sk.auto ?? 'alvo';
+    if (kind !== 'cura' && (c.sp / this.d.maxSp) * 100 < c.auto.spReserve) return false;
+    if ((e.id === 'disparo-duplo' || e.id === 'chuva-flechas') && !this.d.ranged) return false;
+    const need = e.cond === 'grupo3' ? 3 : e.cond === 'grupo2' ? 2 : 1;
+    const resisted = (m: Monster) => elementMod(sk.element ?? 'neutro', m.def.element) < 1;
+    switch (kind) {
+      case 'cura': return (c.hp / this.d.maxHp) * 100 < (e.cond === 'hp30' ? 30 : 50);
+      case 'buff': return e.id === 'concentracao' ? !this.buffs.conc : true;
+      case 'area-proprio': return this.countNear(this.sprite.x, this.sprite.y, 130) >= need && !!target;
+      case 'alvo': return !!target && !resisted(target);
+      case 'area-alvo': return !!target && !resisted(target) && this.countNear(target.x, target.y, 100) >= need;
+    }
+  }
+
+  private pickPotion() {
+    const c = this.char, missing = this.d.maxHp - c.hp;
+    const order = missing > 260 ? ['pocao-branca', 'folha-vital', 'pocao-laranja', 'pocao-vermelha']
+      : missing > 90 ? ['pocao-laranja', 'folha-vital', 'pocao-vermelha', 'pocao-branca']
+        : ['pocao-vermelha', 'pocao-laranja', 'folha-vital', 'pocao-branca'];
+    return order.find((id) => invCount(c, id) > 0);
+  }
+
+  private autoPick(): Monster | null {
+    const cfg = this.char.auto;
+    const ok = (m: Monster) => !m.dead && (cfg.mvp || !m.def.boss) && (this.autoBlacklist.get(m.id) ?? 0) < this.now;
+    const near = this.attackers().filter(ok);
+    const pool = near.length ? near : this.monsters.filter(ok);
+    let best: Monster | null = null, bd = 30 * TILE;
+    for (const m of pool) {
+      const d = Math.hypot(m.x - this.sprite.x, m.y - this.sprite.y);
+      if (d < bd) { bd = d; best = m; }
+    }
+    return best;
+  }
+
+  private updateAuto(dt: number) {
+    const c = this.char, cfg = c.auto;
+    // poções (sempre que precisar)
+    if (this.now >= this.itemCdUntil) {
+      if (cfg.hpPot > 0 && (c.hp / this.d.maxHp) * 100 < cfg.hpPot) {
+        const pot = this.pickPotion();
+        if (pot) this.useItem(pot);
+      } else if (cfg.spPot > 0 && (c.sp / this.d.maxSp) * 100 < cfg.spPot && invCount(c, 'pocao-azul') > 0) {
+        this.useItem('pocao-azul');
+      }
+    }
+    this.autoThink -= dt;
+    if (this.autoThink > 0) return;
+    this.autoThink = 0.2;
+    if (this.casting || this.now < this.busyUntil || this.sitting) return;
+
+    let t = this.target && !this.target.dead ? this.target : null;
+    // curas e efeitos em si mesmo
+    for (const e of cfg.skills) {
+      const kind = skill(e.id).auto;
+      if ((kind === 'cura' || kind === 'buff') && this.autoReady(e, t)) { this.useSkill(e.id); return; }
+    }
+    const attackers = this.attackers();
+    // espólios por perto (só quando ninguém está atacando)
+    if (this.pendingDrop) {
+      if (attackers.length) { this.pendingDrop = null; this.path = null; }
+      else return;
+    }
+    if (cfg.loot && !t && !attackers.length) {
+      let best: (typeof this.drops)[number] | null = null, bd = 7 * TILE;
+      for (const d of this.drops) {
+        const dist = Math.hypot(d.x - this.sprite.x, d.y - this.sprite.y);
+        if (dist < bd) { bd = dist; best = d; }
+      }
+      if (best) { this.pendingDrop = best; this.walkTo(best.x, best.y); return; }
+    }
+    // alvo
+    if (!t || (this.autoBlacklist.get(t.id) ?? 0) > this.now || (t.def.boss && !cfg.mvp && !attackers.includes(t))) {
+      t = this.autoPick();
+      this.target = t;
+      this.pendingSkill = null;
+      if (t) this.path = null;
+    }
+    if (!t) {
+      // ninguém por perto: passeia por uma área de monstros
+      if (!this.path || !this.path.length) {
+        const areas = this.world.def.spawns.filter((sp) => !MONSTERS[sp.monster].boss);
+        if (areas.length) {
+          const a = areas[Math.floor(Math.random() * areas.length)];
+          const [x, y] = this.world.randomWalkable(a.rect);
+          this.path = this.world.findPath(this.sprite.x, this.sprite.y, x, y);
+        }
+      }
+      return;
+    }
+    // habilidades de ataque, na ordem de prioridade
+    if (!this.pendingSkill) {
+      for (const e of cfg.skills) {
+        const kind = skill(e.id).auto;
+        if (kind === 'cura' || kind === 'buff') continue;
+        if (this.autoReady(e, t)) { this.useSkill(e.id); return; }
+      }
+    }
+  }
+
+  moveAutoSkill(id: string, dir: -1 | 1) {
+    const list = this.char.auto.skills;
+    const i = list.findIndex((e) => e.id === id), j = i + dir;
+    if (i < 0 || j < 0 || j >= list.length) return;
+    [list[i], list[j]] = [list[j], list[i]];
+    this.ui.refresh(true);
   }
 
   // ---- usado pela interface ----
