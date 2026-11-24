@@ -111,18 +111,27 @@ export class SkillTreeScene extends Phaser.Scene {
 
     const w = Math.min(860 * k, width - 20);
     const pad = 10;
-    const tabH = 28 * k;
-    const headH = 26 * k;
-    const btnH = 36 * k;
+    // em pé: abas e botões maiores (mais fáceis de tocar)
+    const tabH = (portrait ? 34 : 28) * k;
+    const headH = (portrait ? 30 : 26) * k;
+    const btnH = (portrait ? 46 : 36) * k;
     const gap = 8;
     let cardH = 92 * k;
     let detailH = (portrait ? 150 : 104) * k;
     const fixed = 24 * k + 2 + 8 + tabH + 6 + headH + 6 + 8 + 10 + btnH + 12 + 12;
     const total = () => fixed + cardH * 3 + gap * 2 + 12 + detailH;
+    // escala do conteúdo dos cartões (cresce junto com eles no celular em pé)
+    let kc = k;
     if (total() > height) {
       const f = Math.max(0.62, (height - fixed) / (cardH * 3 + gap * 2 + 12 + detailH));
       cardH *= f;
       detailH *= f;
+    } else if (portrait) {
+      // em pé sobra altura: a janela ocupa a tela toda, com cartões maiores e o resto nos detalhes
+      const spare = height - 12 - total();
+      cardH += Math.min((spare * 0.6) / 3, 126 * k - cardH);
+      detailH += height - 12 - total();
+      kc = k * Math.min(1.2, cardH / (92 * k));
     }
     const gridH = cardH * 3 + gap * 2 + 12;
     const h = 24 * k + 2 + 8 + tabH + 6 + headH + 6 + gridH + 8 + detailH + 10 + btnH + 12;
@@ -175,20 +184,21 @@ export class SkillTreeScene extends Phaser.Scene {
       }
     }
     c.add(lines);
-    for (const n of nodes) this.card(c, n, pos(n).x, pos(n).y, cardW, cardH, k);
+    for (const n of nodes) this.card(c, n, pos(n).x, pos(n).y, cardW, cardH, kc);
     y += gridH + 8;
 
     // ---- detalhes da habilidade escolhida
-    this.details(c, treeNode(this.data_.sel), pad, y, w - pad * 2, detailH, k);
+    this.details(c, treeNode(this.data_.sel), pad, y, w - pad * 2, detailH, portrait ? k * 1.12 : k);
     y += detailH + 10;
 
     // ---- botões: Desfazer | Confirmar | Voltar
     const pending = this.pendingTotal() > 0;
     const bw = Math.min(200 * k, (w - pad * 2 - 16) / 3);
     const by = y + btnH / 2;
-    c.add(uiButton(this, w / 2 - bw - 8, by, bw, btnH, 'Desfazer', () => this.undo(), { size: 14 * k, enabled: pending }).c);
-    c.add(uiButton(this, w / 2, by, bw, btnH, pending ? `Confirmar (${this.pendingTotal()})` : 'Confirmar', () => this.confirm(), { size: 14 * k, primary: pending, enabled: pending }).c);
-    c.add(uiButton(this, w / 2 + bw + 8, by, bw, btnH, pending ? 'Confirme antes' : touch ? 'Voltar' : 'Voltar  [Esc]', () => this.close(), { size: 13 * k, enabled: !pending, primary: !pending }).c);
+    const bf = portrait ? 1.15 : 1;
+    c.add(uiButton(this, w / 2 - bw - 8, by, bw, btnH, 'Desfazer', () => this.undo(), { size: 14 * k * bf, enabled: pending }).c);
+    c.add(uiButton(this, w / 2, by, bw, btnH, pending ? `Confirmar (${this.pendingTotal()})` : 'Confirmar', () => this.confirm(), { size: 14 * k * bf, primary: pending, enabled: pending }).c);
+    c.add(uiButton(this, w / 2 + bw + 8, by, bw, btnH, pending ? 'Confirme antes' : touch ? 'Voltar' : 'Voltar  [Esc]', () => this.close(), { size: 13 * k * bf, enabled: !pending, primary: !pending }).c);
 
     const kb = this.input.keyboard!;
     kb.once('keydown-ESC', () => this.close());

@@ -33,6 +33,8 @@ export const xpForLevel = (l: number) => Math.floor(4 + (l - 1) * 3 + Math.pow(l
 const PLAYER_RADIUS = 12;
 const PLAYER_IFRAMES = 500;
 const GRID_CELL = 64;
+/** Maior raio entre os monstros comuns (a busca de vizinhos não precisa do raio dos chefes) */
+const COMMON_MAX_RADIUS = Math.max(...ENEMIES.map((d) => d.radius));
 
 /**
  * Limites de desempenho. No celular começam menores e, durante a partida,
@@ -92,6 +94,8 @@ export class GameScene extends Phaser.Scene implements RpgHost {
   skills = new Map<SkillId, Skill>();
   passives: Record<string, number> = {};
   facing = new Phaser.Math.Vector2(1, 0);
+  /** O jogador está andando neste quadro */
+  isMoving = false;
   elapsed = 0;
   kills = 0;
 
@@ -152,8 +156,10 @@ export class GameScene extends Phaser.Scene implements RpgHost {
 
   /** Uma tela de nível/classe está aberta */
   choosing = false;
-  private over = false;
+  over = false;
   private spawnTimer = 0;
+  /** Monstros da horda esperando para entrar (espalhados por vários quadros) */
+  private hordeQueue: { def: EnemyDef; angle?: number }[] = [];
   private nextWaveAt = 60;
   /** Calendário de chefes: a cada 2 min, alternando mini-chefe e chefe */
   /** Chefes por nível: a cada 4 níveis, alternando mini-chefe e chefe */
@@ -245,6 +251,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     this.choosing = false;
     this.over = false;
     this.spawnTimer = 600;
+    this.hordeQueue = [];
     this.nextWaveAt = 60;
     this.miniDone = this.pendingMini = this.bossDone = this.pendingBoss = 0;
     this.shopVisits = 0;
@@ -357,7 +364,9 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     if (this.frame % 8 === 1) this.updateDecor();
 
     this.collectEnemies();
-    this.bossAIs = this.bossAIs.filter((ai) => ai.update(dt));
+    let alive = 0;
+    for (const ai of this.bossAIs) if (ai.update(dt)) this.bossAIs[alive++] = ai;
+    this.bossAIs.length = alive;
     this.updatePlayer(dt);
     this.updatePet(dt);
     this.skills.forEach((s) => s.update(dt));
@@ -456,7 +465,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     if (this.cursors.down.isDown || this.wasd.S.isDown) m.y += 1;
     if (m.lengthSq() === 0 && this.joyVec.lengthSq() > 0) m.copy(this.joyVec);
 
-    const moving = m.lengthSq() > 0;
+    const moving = (this.isMoving = m.lengthSq() > 0);
     if (moving) {
       m.normalize();
       this.facing.copy(m);
@@ -652,26 +661,41 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     // joystick virtual simples para celular: toque e arraste em qualquer lugar
     this.joyBase = this.add.circle(0, 0, 50, 0xffffff, 0.12).setScrollFactor(0).setDepth(FX_DEPTH + 10).setVisible(false);
     this.joyKnob = this.add.circle(0, 0, 22, 0xffffff, 0.35).setScrollFactor(0).setDepth(FX_DEPTH + 11).setVisible(false);
+    // só o primeiro dedo controla (um segundo toque, num botão por exemplo, não mexe no joystick)
+    let joyId = -1;
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
-      if (!p.wasTouch) return;
+      if (!p.wasTouch || this.joyOrigin) return;
+      joyId = p.id;
       this.joyOrigin = new Phaser.Math.Vector2(p.x, p.y);
       this.joyBase.setPosition(p.x, p.y).setVisible(true);
       this.joyKnob.setPosition(p.x, p.y).setVisible(true);
     });
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
-      if (!this.joyOrigin || !p.isDown) return;
-      const dx = p.x - this.joyOrigin.x;
-      const dy = p.y - this.joyOrigin.y;
-      const d = Math.hypot(dx, dy);
+      if (!this.joyOrigin || !p.isDown || p.id !== joyId) return;
+      let dx = p.x - this.joyOrigin.x;
+      let dy = p.y - this.joyOrigin.y;
+      let d = Math.hypot(dx, dy);
       if (d < 8) {
         this.joyVec.set(0, 0);
+        this.joyKnob.setPosition(p.x, p.y);
         return;
+      }
+      // joystick flutuante: passando do limite, a base vem atrás do dedo (virar é instantâneo)
+      if (d > 60) {
+        this.joyOrigin.x = p.x - (dx / d) * 60;
+        this.joyOrigin.y = p.y - (dy / d) * 60;
+        this.joyBase.setPosition(this.joyOrigin.x, this.joyOrigin.y);
+        dx = p.x - this.joyOrigin.x;
+        dy = p.y - this.joyOrigin.y;
+        d = 60;
       }
       const len = Math.min(d, 50);
       this.joyVec.set(dx / d, dy / d);
       this.joyKnob.setPosition(this.joyOrigin.x + this.joyVec.x * len, this.joyOrigin.y + this.joyVec.y * len);
     });
-    const release = () => {
+    const release = (p: Phaser.Input.Pointer) => {
+      if (p.id !== joyId) return;
+      joyId = -1;
       this.joyOrigin = null;
       this.joyVec.set(0, 0);
       this.joyBase.setVisible(false);
@@ -751,10 +775,12 @@ export class GameScene extends Phaser.Scene implements RpgHost {
 
   /** Empurra o inimigo para longe dos vizinhos para eles não se empilharem */
   private computeSeparation(e: Enemy) {
-    const near = this.grid.query(e.x, e.y, e.def.radius + MAX_ENEMY_RADIUS, this.nearBuf);
+    // busca só no raio dos monstros comuns (o chefe, bem maior, é tratado à parte logo abaixo)
+    const near = this.grid.query(e.x, e.y, e.def.radius + COMMON_MAX_RADIUS, this.nearBuf);
     let sx = 0;
     let sy = 0;
-    for (let j = 0; j < near.length; j++) {
+    let overlaps = 0;
+    for (let j = 0; j < near.length && overlaps < 12; j++) {
       const o = near[j];
       if (o === e) continue;
       const dx = e.x - o.x;
@@ -762,6 +788,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       const min = e.def.radius + o.def.radius;
       const d2 = dx * dx + dy * dy;
       if (d2 >= min * min) continue;
+      overlaps++;
       if (d2 < 0.01) {
         sx += Math.random() - 0.5;
         sy += Math.random() - 0.5;
@@ -771,6 +798,19 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       const push = (min - d) / min;
       sx += (dx / d) * push;
       sy += (dy / d) * push;
+    }
+    // os monstros comuns também se afastam do chefe (que tem raio maior)
+    const b = this.boss;
+    if (b && b !== e && b.active && !e.def.boss && !e.def.miniboss) {
+      const dx = e.x - b.x;
+      const dy = e.y - b.y;
+      const min = e.def.radius + b.def.radius;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < min * min && d2 > 0.01) {
+        const d = Math.sqrt(d2);
+        sx += (dx / d) * ((min - d) / min) * 2;
+        sy += (dy / d) * ((min - d) / min) * 2;
+      }
     }
     // elites quase não são empurrados
     const strength = e.def.elite ? 20 : 140;
@@ -786,6 +826,12 @@ export class GameScene extends Phaser.Scene implements RpgHost {
   private updateSpawner(dt: number) {
     const t = this.elapsed / 1000;
     const fight = this.bossFight;
+    // monstros na fila (hordas e levas): até 8 por quadro, para o jogo não engasgar
+    for (let n = 0; n < 8 && this.hordeQueue.length; n++) {
+      const h = this.hordeQueue.shift()!;
+      const p = this.ringPosition(h.angle ?? this.spawnAngle());
+      this.spawnEnemy(h.def, p.x, p.y);
+    }
     this.spawnTimer -= dt;
     if (this.spawnTimer <= 0) {
       // depois dos 4:00 os monstros vêm em maior número
@@ -797,7 +843,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
         batch = Math.max(1, Math.round(batch * 0.6));
         if (this.enemies.countActive(true) >= this.maxEnemies * 0.35) batch = 0;
       }
-      for (let i = 0; i < batch; i++) this.spawnEnemy(this.pickEnemy(t));
+      for (let i = 0; i < batch; i++) this.hordeQueue.push({ def: this.pickEnemy(t) });
     }
 
     // durante a luta contra o chefe não vêm hordas (a próxima espera a luta acabar)
@@ -809,10 +855,8 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       const common = ENEMIES.filter((d) => !d.elite && t >= d.from);
       const def = common[common.length - 1];
       const count = 24 + Math.floor(t / 30) * 2 + Math.floor(Math.max(0, t - HARD_FROM) / 60) * 8;
-      for (let i = 0; i < count; i++) {
-        const p = this.ringPosition((i / count) * Math.PI * 2);
-        this.spawnEnemy(def, p.x, p.y);
-      }
+      // a horda entra aos poucos (até 8 por quadro) para não engasgar o jogo
+      for (let i = 0; i < count; i++) this.hordeQueue.push({ def, angle: (i / count) * Math.PI * 2 });
       const elite = ENEMIES.find((d) => d.elite)!;
       if (t >= 300) this.spawnEnemy(elite);
       {
@@ -910,6 +954,15 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     return pool[0];
   }
 
+  /**
+   * Direção em que um monstro nasce: metade das vezes à frente de quem está andando
+   * (o jogador não fica fugindo para um campo vazio), senão em qualquer direção.
+   */
+  private spawnAngle() {
+    if (this.isMoving && Math.random() < 0.5) return Math.atan2(this.facing.y, this.facing.x) + (Math.random() - 0.5) * 1.8;
+    return Math.random() * Math.PI * 2;
+  }
+
   /** Ponto logo fora da borda da tela, na direção `angle` a partir do jogador */
   private ringPosition(angle?: number) {
     const cam = this.cameras.main;
@@ -927,7 +980,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
 
   private spawnEnemy(def: EnemyDef, x?: number, y?: number, force = false): Enemy | null {
     if (!force && this.enemies.countActive(true) >= this.maxEnemies) return null;
-    if (x === undefined || y === undefined) ({ x, y } = this.ringPosition());
+    if (x === undefined || y === undefined) ({ x, y } = this.ringPosition(this.spawnAngle()));
     let e = this.enemies.get(x, y) as Enemy | null;
     if (!e && force) {
       // chefe com o grupo cheio: reaproveita o primeiro inimigo comum
@@ -1122,6 +1175,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       this.rollRare(def.id, x, y);
       this.gainJob(15);
       this.events.emit('toast', `${def.name} derrotada!`.replace('Carniçal derrotada', 'Carniçal derrotado'), '#9aff8a');
+      this.time.delayedCall(700, () => this.magnetAllXp());
       return;
     }
     if (def.boss) {
@@ -1144,6 +1198,9 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       this.rollRare(def.id, x, y);
       this.gainJob(50);
       this.events.emit('announce', `${def.name} foi derrotado!`);
+      // vitória: as gemas do mapa todo vêm até o jogador e os monstros perto recuam
+      this.time.delayedCall(900, () => this.magnetAllXp());
+      this.grantInvuln(1500);
       return;
     }
     this.gainJob(def.elite ? 5 : 1);
@@ -1680,6 +1737,11 @@ export class GameScene extends Phaser.Scene implements RpgHost {
         this.damageEnemy(target, (atk.damage + this.level * 1.5) * this.stats.might, 40, s.x, s.y);
       }
     }
+  }
+
+  /** Puxa todas as gemas de experiência do mapa até o jogador (depois de derrotar um chefe) */
+  magnetAllXp() {
+    for (const p of this.pickups.getChildren() as Pickup[]) if (p.active && p.kind === 'xp') p.magnetized = true;
   }
 
   private updatePickups(dt: number) {

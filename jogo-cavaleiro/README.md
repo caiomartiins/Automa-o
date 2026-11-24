@@ -97,11 +97,13 @@ Gosma, Esqueleto, **Lobo Cinzento** (a partir de 1:30, rápido e ágil; as horda
 
 **Mini-chefe** a cada **10 níveis**, alternando **Carniçal** (10, 30, 50...) e **Rainha Magmática** (20, 40, 60...); **chefe** a cada **15 níveis**: **15** Bafome, **30** Minotauro, **45** Lorde Ossário, e o rodízio recomeça (cada volta do mesmo chefe vem muito mais forte).
 
-**Rainha Magmática** (`src/aranha.ts`): aranha de lava com Cuspe de Fogo, Pisada de Magma (deixa poça que queima), Teia (prende e deixa lento), Jato Ácido (envenena) e Salto (marca o chão e cai em cima); fúria com metade da vida. Solta Presa de Magma, Capa de Seda Rubra e a carta dela.
+**Rainha Magmática** (`src/aranha.ts`): aranha de lava com Cuspe de Fogo, Pisada de Magma (deixa poça que queima), Teia (prende e deixa lento), Jato Ácido (envenena), Salto (marca o chão e cai em cima) e **Chuva de Magma** (bolas de magma caem nas marcas e deixam chamas no chão); fúria com metade da vida, quando chama a **Ninhada** (4 filhotes rápidos). Solta Presa de Magma, Capa de Seda Rubra e a carta dela.
+
+**Avisos dos ataques:** todo golpe de chefe marca o chão antes de cair. O contorno mostra a área (círculo, faixa ou leque) e o preenchimento cresce até a borda: **quando enche, o golpe cai** (pisca mais rápido perto do impacto). A barra de vida do chefe tem uma marca nos 50%: abaixo dela ele entra em **FÚRIA**. Ao derrotar um chefe ou mini-chefe, todas as gemas do mapa vêm até o jogador.
 
 **Durante a luta contra um chefe**: ao surgir, ele espanta 70% dos monstros comuns (menos os colados no jogador); enquanto estiver vivo vêm cerca de um terço dos monstros (no máximo 35% do limite na tela) e nenhuma horda, mas cada monstro tem vida ×2 e dano ×1,5.
 
-**Lorde Ossário** (`src/lich.ts`), o chefe mais forte (15.000 de vida, só a partir do nível 45): Esfera da Alma (esferas verdes que perseguem), Ceifa Sombria (golpe giratório de perto), Explosão Profana (ondas de choque que se espalham), Passo Fantasma + Raio Necrótico (some, reaparece perto e dispara um raio em linha). Com metade da vida: fúria, invoca fantasmas e esqueletos e faz cair uma Chuva de Caveiras. Solta a Coroa Ossária, o Manto das Almas, a carta dele e a arma mítica Foice das Almas (brilho verde).
+**Lorde Ossário** (`src/lich.ts`), o chefe mais forte (15.000 de vida, só a partir do nível 45): Esfera da Alma (esferas verdes que perseguem), Ceifa Sombria (golpe giratório de perto), Explosão Profana (ondas de choque que se espalham), Passo Fantasma + Raio Necrótico (some, reaparece perto e dispara um raio em linha) e **Prisão de Ossos** (um círculo de ossos sobe em volta do jogador com uma brecha e o centro explode: saia pela brecha antes do centro encher). Com metade da vida: fúria, invoca fantasmas e esqueletos e faz cair uma Chuva de Caveiras. Solta a Coroa Ossária, o Manto das Almas, a carta dele e a arma mítica Foice das Almas (brilho verde).
 
 ## Inimigos e chefes
 Gosma, Morcego, Cogumelo Andante, Esqueleto, Fantasma, Orc e Cavaleiro Negro (elite) aparecem conforme o tempo passa. A cada minuto vem uma horda.
@@ -117,11 +119,13 @@ Gosma, Morcego, Cogumelo Andante, Esqueleto, Fantasma, Orc e Cavaleiro Negro (el
 - **Rugido Demoníaco:** 3 esferas sombrias voam na direção do jogador.
 - **Gêiser das Trevas:** marcas no chão (uma embaixo do jogador) e, logo depois, sobem espinhos que amaldiçoam (deixam mais lento).
 - **Investida das Sombras:** uma faixa no chão avisa, e ele atravessa a tela em alta velocidade.
+- **Espiral Infernal:** gira no lugar soltando braços de esferas em espiral (2 braços; 3 na fúria): passe entre eles.
 - **Fúria (com metade da vida):** fica vermelho e mais rápido, ataca com mais frequência, as esferas passam a perseguir o jogador e ele invoca servos (5 esqueletos e um Cavaleiro Negro) a cada 14 segundos.
 
 **Carniçal** (mini-chefe zumbi, sprite próprio, IA em `src/miniboss.ts`):
 - **Garras Pútridas:** de perto, ele para, ataca com as garras e envenena.
 - **Investida Faminta:** de média distância, dispara na direção do jogador.
+- **Vômito Pútrido:** leque de vômito à frente que envenena e deixa uma poça tóxica no chão por 4 s.
 
 Ao ser derrotado, solta gemas, zeny e tem 35% de chance de soltar a Carta Carniçal.
 
@@ -129,9 +133,24 @@ Ao ser derrotado, solta gemas, zeny e tem 35% de chance de soltar a Carta Carni�
 - **Golpe Horizontal:** de perto, gira a maça em volta dele.
 - **Golpe Vertical:** marca o chão, salta até lá e esmaga (onda de choque e lentidão).
 - **Investida de Touro:** uma faixa no chão avisa e ele corre em linha reta.
-- **Fúria (com metade da vida):** fica mais rápido e passa a **bloquear com o escudo**, recebendo 80% menos dano por 2,5 s.
+- **Fenda Sísmica:** soca o chão e abre rachaduras em leque na direção do jogador (3 faixas; 5 na fúria).
+- **Fúria (com metade da vida):** fica mais rápido, emenda **três investidas seguidas** (mirando de novo a cada uma) e passa a **bloquear com o escudo**, recebendo 80% menos dano por 2,5 s.
 
 **Números de dano** (fonte própria em `src/assets/dmgfont.webp`): brancos nos golpes normais, laranja na fraqueza, cinza na resistência, vermelhos no dano recebido e verdes na cura. O crítico aparece amarelo, maior, com estrela de impacto e o selo "Crit". A esquiva mostra "Miss".
+
+## Desempenho no celular
+
+- **Atlas de texturas** (`src/atlas.ts`): no carregamento, monstros, cenário, itens e efeitos são copiados para uma folha grande. No celular o Phaser desenha uma textura por vez, então isso derrubou as chamadas de desenho de ~290 para ~36 por quadro.
+- **Limite de 60 quadros** em telas de 120 Hz (mesma imagem, metade do trabalho, menos calor e bateria).
+- HUD atualizado 5 vezes por segundo (na hora quando o jogador leva dano) e o relógio uma vez por segundo: textos são caros de redesenhar.
+- Monstros, hordas e levas entram aos poucos (até 8 por quadro); efeitos e objetos de controle são reaproveitados (sem lixo de memória a cada golpe).
+
+## Jogabilidade
+
+- **Pausa automática** ao sair do app ou trocar de aba: o jogo volta pausado, sem morrer cercado.
+- **Joystick flutuante**: passando do limite, a base acompanha o dedo (virar é instantâneo); só o primeiro dedo controla, então um toque em botão não mexe no movimento.
+- Metade dos monstros nasce à frente de quem está andando (o caminho não fica vazio).
+- Menus em pé (escolha de classe, árvore de habilidades, fim de jogo) ocupam a tela toda, com letras e botões maiores.
 
 ## Estrutura
 
@@ -143,7 +162,9 @@ src/
   scenes/      ← Game (jogo), UI (HUD), LevelUp, Menu/GameOver
   art.ts       ← arte dos personagens, itens e cenário (desenhada por código)
   projectiles.ts ← flechas e bolas de fogo
-  fx.ts        ← efeitos visuais reaproveitados
+  fx.ts        ← efeitos visuais reaproveitados e avisos dos ataques dos chefes
+  hazards.ts   ← áreas perigosas no chão (poças, chamas, ossos)
+  atlas.ts     ← atlas de texturas montado no carregamento
 ```
 
 - **Nova classe ou linhagem**: adicione em `src/data/classes.ts`. Se ela tiver uma habilidade nova, crie a habilidade em `src/skills/` e registre em `src/skills/index.ts` e `src/data/skills.ts`.

@@ -67,6 +67,12 @@ export const ARANHA: EnemyDef = {
   from: 0, weight: 0, knockback: 0.05, scale: 1.5, miniboss: true,
   element: 'fogo', race: 'inseto', size: 'grande', lv: 22
 };
+/** Filhote da Rainha Magmática (a Ninhada): pequeno e rápido, só aparece com ela */
+export const FILHOTE: EnemyDef = {
+  id: 'filhote', name: 'Filhote de Magma', texture: 'en-aranha', hp: 60, speed: 120, damage: 12, xp: 3, radius: 10,
+  from: 0, weight: 0, knockback: 1, scale: 0.36, tint: 0xffa070,
+  element: 'fogo', race: 'inseto', size: 'pequeno', lv: 18, agile: true
+};
 /** Minotauro: segundo chefe */
 export const MINOTAURO: EnemyDef = {
   id: 'minotauro', name: 'Minotauro Brutal', texture: 'en-minotauro', hp: 4800, speed: 86, damage: 40, xp: 240, radius: 32,

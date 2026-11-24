@@ -4,6 +4,7 @@ import type { Enemy } from './objects/Enemy';
 import type { BossPower } from './boss';
 import { ENEMIES } from './data/enemies';
 import { FX_DEPTH } from './fx';
+import { Hazards } from './hazards';
 
 interface Orb {
   img: Phaser.GameObjects.Image;
@@ -24,8 +25,8 @@ interface Wave {
 
 /** Recargas (ms), danos e quantidades por fase */
 const PHASES = [
-  { orb: 3000, sweep: 2200, nova: 5200, blink: 6200, rain: 0, orbs: 2, waves: 3, spots: 0, orbDmg: 54, sweepDmg: 64, waveDmg: 58, beamDmg: 75, rainDmg: 56, speed: 1.1 },
-  { orb: 2200, sweep: 1700, nova: 3800, blink: 4300, rain: 4600, orbs: 4, waves: 4, spots: 12, orbDmg: 64, sweepDmg: 76, waveDmg: 68, beamDmg: 88, rainDmg: 66, speed: 1.4 },
+  { orb: 3000, sweep: 2200, nova: 5200, blink: 6200, rain: 0, cage: 11000, gap: 2, orbs: 2, waves: 3, spots: 0, orbDmg: 54, sweepDmg: 64, waveDmg: 58, beamDmg: 75, rainDmg: 56, cageDmg: 84, wallDmg: 40, speed: 1.1 },
+  { orb: 2200, sweep: 1700, nova: 3800, blink: 4300, rain: 4600, cage: 8000, gap: 1, orbs: 4, waves: 4, spots: 12, orbDmg: 64, sweepDmg: 76, waveDmg: 68, beamDmg: 88, rainDmg: 66, cageDmg: 98, wallDmg: 48, speed: 1.4 },
 ];
 
 const GREEN = 0x6aff9a;
@@ -39,6 +40,8 @@ const VIOLET = 0x8a3ad0;
  *  - Explosão Profana: soca o chão e solta ondas de choque que se espalham
  *    (fique entre as ondas ou longe delas)
  *  - Passo Fantasma: some numa nuvem, reaparece perto do jogador e dispara o Raio Necrótico em linha
+ *  - Prisão de Ossos: ossos sobem em círculo em volta do jogador e o centro explode
+ *    (saia pela brecha antes do centro encher)
  * Com metade da vida entra em FÚRIA: mais rápido, mais esferas, invoca fantasmas e
  * faz cair uma Chuva de Caveiras em volta do jogador.
  */
@@ -48,11 +51,13 @@ export class LichAI {
   private nextNova = 4000;
   private nextBlink = 6000;
   private nextRain = 0;
+  private nextCage = 9000;
   private nextSummon = 0;
   private busyUntil = 0;
   private phase = 0;
   private orbs: Orb[] = [];
   private waves: Wave[] = [];
+  private hazards: Hazards;
   private shadow: Phaser.GameObjects.Image;
 
   constructor(private g: GameScene, private e: Enemy, private pw: BossPower = { dmg: 1, cd: 1, enraged: false }) {
@@ -61,6 +66,12 @@ export class LichAI {
     this.nextOrb += now;
     this.nextNova += now;
     this.nextBlink += now;
+    this.nextCage += now;
+    this.hazards = new Hazards(g);
+  }
+
+  private get alive() {
+    return this.e.active && this.e.def.id === 'lich';
   }
 
   private get P() {
@@ -71,8 +82,10 @@ export class LichAI {
   update(dt: number): boolean {
     this.updateOrbs(dt);
     this.updateWaves(dt);
+    this.hazards.update();
     const { g, e } = this;
     if (!e.active || e.def.id !== 'lich') {
+      this.hazards.clear();
       if (!this.orbs.length && !this.waves.length) {
         this.shadow.destroy();
         return false;
@@ -99,6 +112,7 @@ export class LichAI {
     const d = Phaser.Math.Distance.Between(e.x, e.y, p.x, p.y);
     if (d < 190 && now >= this.nextSweep) this.sweep();
     else if (d < 420 && now >= this.nextNova) this.nova();
+    else if (d < 600 && now >= this.nextCage) this.cage();
     else if (this.phase && d < 700 && now >= this.nextRain) this.skullRain();
     else if (d < 650 && now >= this.nextOrb) this.soulOrb();
     else if (now >= this.nextBlink) this.blink();
@@ -170,9 +184,9 @@ export class LichAI {
     this.busy(800, 'en-lich-sweep');
     const r = this.phase ? 250 : 220;
     const warn = this.phase ? 420 : 520;
-    g.fx.ring(e.x, e.y, r, 1, warn, VIOLET, 0.25);
+    g.fx.warnCircle(e.x, e.y, r, warn, VIOLET);
     g.time.delayedCall(warn, () => {
-      if (!e.active) return;
+      if (!this.alive) return;
       for (let k = 0; k < 3; k++) g.fx.slash(e.x, e.y, (k / 3) * Math.PI * 2 + g.elapsed / 300, r, 0xa04ad0);
       g.cameras.main.shake(160, 0.008);
       if (Phaser.Math.Distance.Between(e.x, e.y, g.player.x, g.player.y) < r + 12) g.hurtPlayer(this.P.sweepDmg * this.pw.dmg, true);
@@ -215,9 +229,9 @@ export class LichAI {
       const ang = Math.atan2(p.y - e.y, p.x - e.x);
       const len = 640;
       const width = this.phase ? 70 : 56;
-      g.fx.lance(e.x, e.y, ang, len, width, 0x4a1a6a);
+      g.fx.warnLine(e.x, e.y, ang, len, width, 650, VIOLET);
       g.time.delayedCall(650, () => {
-        if (!e.active) return;
+        if (!this.alive) return;
         g.fx.lance(e.x, e.y, ang, len, width * 1.4, GREEN);
         g.cameras.main.shake(180, 0.008);
         // distância do jogador até a linha do raio
@@ -244,7 +258,7 @@ export class LichAI {
     }
     const r = 58;
     const warn = 900;
-    for (const s of spots) g.fx.ring(s.x, s.y, r, 1, warn, GREEN, 0.3);
+    for (const s of spots) g.fx.warnCircle(s.x, s.y, r, warn + 260, GREEN);
     let hit = false;
     spots.forEach((s, i) => {
       g.time.delayedCall(warn + i * 40, () => {
@@ -257,6 +271,49 @@ export class LichAI {
           }
         });
       });
+    });
+  }
+
+  /** Prisão de Ossos: círculo de ossos com uma brecha e explosão no centro */
+  private cage() {
+    const { g } = this;
+    const P = this.P;
+    this.nextCage = g.elapsed + P.cage * this.pw.cd;
+    this.busy(1100, 'en-lich-raise');
+    this.face();
+    const cx = g.player.x;
+    const cy = g.player.y;
+    const R = 175;
+    const n = 14;
+    const gapAt = Math.floor(Math.random() * n);
+    const wallWarn = 750;
+    const boom = 1900;
+    const spots: { x: number; y: number }[] = [];
+    for (let k = 0; k < n; k++) {
+      if ((k - gapAt + n) % n < P.gap) continue;
+      const a = (k / n) * Math.PI * 2;
+      spots.push({ x: cx + Math.cos(a) * R, y: cy + Math.sin(a) * R });
+    }
+    const BONE = 0xe8dcc0;
+    for (const s of spots) g.fx.warnCircle(s.x, s.y, 30, wallWarn, BONE);
+    g.fx.warnCircle(cx, cy, R - 35, boom, GREEN);
+    g.time.delayedCall(wallWarn, () => {
+      if (!this.alive) return;
+      g.cameras.main.shake(140, 0.006);
+      for (const s of spots) {
+        const img = g.add.image(s.x, s.y + 16, 'fx-geiser').setOrigin(0.5, 1).setDepth(s.y + 16).setTint(BONE).setScale(0.5, 0.05);
+        g.tweens.add({ targets: img, scaleY: 0.5, duration: 120, ease: 'Back.Out' });
+        this.hazards.add({ x: s.x, y: s.y, r: 30, until: g.elapsed + boom - wallWarn + 900, dmg: P.wallDmg * this.pw.dmg, every: 700, img });
+      }
+    });
+    g.time.delayedCall(boom, () => {
+      if (!this.alive) return;
+      g.cameras.main.shake(260, 0.014);
+      g.fx.ring(cx, cy, 40, 4, 420, GREEN, 0.6);
+      g.fx.ring(cx, cy, R * 0.5, 1.9, 360, 0xffffff, 0.35);
+      if (Phaser.Math.Distance.Between(cx, cy, g.player.x, g.player.y) < R - 25) {
+        if (g.hurtPlayer(P.cageDmg * this.pw.dmg, true)) g.afflictPlayer('maldicao', 3000);
+      }
     });
   }
 

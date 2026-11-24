@@ -49,6 +49,12 @@ export function createFxTextures(scene: Phaser.Scene) {
     g.strokeCircle(64, 64, 52);
   });
 
+  // quadrado branco 16 x 16 (faixas de aviso dos ataques em linha)
+  make(scene, 'fx-quad', 16, 16, (g) => {
+    g.fillStyle(0xffffff);
+    g.fillRect(0, 0, 16, 16);
+  });
+
   // sombra oval no chão (para sprites sem sombra desenhada)
   make(scene, 'fx-sombra', 44, 14, (g) => {
     for (let i = 6; i >= 1; i--) {

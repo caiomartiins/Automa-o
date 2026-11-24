@@ -55,7 +55,14 @@ export class LevelUpScene extends Phaser.Scene {
     if (winH > maxH && portrait) {
       cardH = (maxH - titleH - 10 - subH - pad - confirmH - gap * (options.length - 1)) / options.length;
       winH = maxH;
+    } else if (portrait) {
+      // celular em pé com altura sobrando: cartões maiores, ocupando a tela
+      const fixedH = winH - cardsH;
+      cardH = Math.min((withIcons ? 200 : 130) * s, (maxH - fixedH - gap * (options.length - 1)) / options.length);
+      winH = fixedH + options.length * cardH + gap * (options.length - 1);
     }
+    // cartões grandes (em pé): letras e personagens maiores
+    const big = portrait && cardH > (withIcons ? 165 : 110) * s;
     const totalH = winH + 12 + statusH;
     const y0 = Math.max(10, (height - totalH) / 2);
 
@@ -79,17 +86,17 @@ export class LevelUpScene extends Phaser.Scene {
       if (opt.icon) {
         const k = heroScale(opt.icon) / 0.5;
         if (portrait) {
-          card.add(this.add.sprite(70 * s, cardH / 2, opt.icon, 'idle0').setScale(Math.min(0.95, cardH / 190) * k).play(`${opt.icon}-idle`));
-          card.add(wtext(this, 140 * s, 14, opt.title, 19 * s, col, true));
-          card.add(wtext(this, 140 * s, 14 + 28 * s, opt.desc, 13 * s, WIN.text).setWordWrapWidth(cardW - 150 * s));
+          card.add(this.add.sprite(70 * s, cardH / 2, opt.icon, 'idle0').setScale(Math.min(big ? 1.2 : 0.95, cardH / 190) * k).play(`${opt.icon}-idle`));
+          card.add(wtext(this, 140 * s, 14, opt.title, (big ? 22 : 19) * s, col, true));
+          card.add(wtext(this, 140 * s, 14 + (big ? 34 : 28) * s, opt.desc, (big ? 14.5 : 13) * s, WIN.text).setWordWrapWidth(cardW - 150 * s));
         } else {
           card.add(this.add.sprite(cardW / 2, 95, opt.icon, 'idle0').setScale(0.95 * k).play(`${opt.icon}-idle`));
           card.add(wtext(this, cardW / 2, 190, opt.title, 20 * s, col, true).setOrigin(0.5));
           card.add(wtext(this, cardW / 2, 210, opt.desc, 13 * s, WIN.text).setOrigin(0.5, 0).setAlign('center').setWordWrapWidth(cardW - 30));
         }
       } else if (portrait) {
-        card.add(wtext(this, 16, 12, opt.title, 16 * s, col, true));
-        card.add(wtext(this, 16, 12 + 24 * s, opt.desc, 13 * s, WIN.text).setWordWrapWidth(cardW - 30));
+        card.add(wtext(this, 16, 12, opt.title, (big ? 18 : 16) * s, col, true));
+        card.add(wtext(this, 16, 12 + (big ? 28 : 24) * s, opt.desc, (big ? 14.5 : 13) * s, WIN.text).setWordWrapWidth(cardW - 30));
       } else {
         card.add(wtext(this, cardW / 2, cardH * 0.28, opt.title, 17 * s, col, true).setOrigin(0.5));
         card.add(wtext(this, cardW / 2, cardH * 0.5, opt.desc, 13 * s, WIN.text).setOrigin(0.5).setAlign('center').setWordWrapWidth(cardW - 30));

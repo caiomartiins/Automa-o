@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import type { GameScene } from './scenes/GameScene';
 import type { Enemy } from './objects/Enemy';
 import { FX_DEPTH } from './fx';
+import { FILHOTE } from './data/enemies';
+import { Hazards } from './hazards';
 
 interface Shot {
   img: Phaser.GameObjects.Image;
@@ -31,7 +33,9 @@ const ACID = 0x8ad04a;
  *  - Teia: dispara teia em linha; quem é pego fica preso e lento
  *  - Jato Ácido: jato em linha que envenena
  *  - Salto: marca o chão onde o jogador está e cai em cima
- * Com metade da vida entra em FÚRIA: olhos acesos, mais rápida e mais ataques.
+ *  - Chuva de Magma: bolas de magma caem em volta do jogador e deixam chamas no chão
+ * Com metade da vida entra em FÚRIA: olhos acesos, mais rápida, mais ataques e
+ * chama a Ninhada (filhotes rápidos).
  */
 export class SpiderAI {
   private nextSpit = 1200;
@@ -39,7 +43,10 @@ export class SpiderAI {
   private nextWeb = 3500;
   private nextAcid = 5500;
   private nextJump = 4500;
+  private nextRain = 7000;
+  private nextBrood = 0;
   private busyUntil = 0;
+  private hazards: Hazards;
   private rage = false;
   private shots: Shot[] = [];
   private pools: Pool[] = [];
@@ -53,6 +60,12 @@ export class SpiderAI {
     this.nextWeb += now;
     this.nextAcid += now;
     this.nextJump += now;
+    this.nextRain += now;
+    this.hazards = new Hazards(g);
+  }
+
+  private get alive() {
+    return this.e.active && this.e.def.id === 'aranha';
   }
 
   private get k() {
@@ -62,8 +75,10 @@ export class SpiderAI {
   update(dt: number): boolean {
     this.updateShots(dt);
     this.updatePools();
+    this.hazards.update();
     const { g, e } = this;
     if (!e.active || e.def.id !== 'aranha') {
+      this.hazards.clear();
       if (!this.shots.length && !this.pools.length) {
         this.shadow.destroy();
         return false;
@@ -105,6 +120,8 @@ export class SpiderAI {
     const d = Phaser.Math.Distance.Between(e.x, e.y, p.x, p.y);
     if (d < 150 && now >= this.nextStomp) this.stomp();
     else if (d > 200 && d < 520 && now >= this.nextJump) this.leap();
+    else if (this.rage && now >= this.nextBrood) this.brood();
+    else if (d < 600 && now >= this.nextRain) this.magmaRain();
     else if (d < 460 && now >= this.nextWeb) this.web();
     else if (d < 420 && now >= this.nextAcid) this.acid();
     else if (d < 600 && now >= this.nextSpit) this.spit();
@@ -123,6 +140,7 @@ export class SpiderAI {
   private enrage() {
     const { g, e } = this;
     this.rage = true;
+    this.nextBrood = g.elapsed + 1200;
     e.def = { ...e.def, tint: 0xffb0a0 };
     e.restoreTint(g.elapsed);
     g.cameras.main.shake(400, 0.008);
@@ -157,13 +175,13 @@ export class SpiderAI {
     const x = e.x + (e.flipX ? -40 : 40);
     const y = e.y + 30;
     const r = this.rage ? 120 : 100;
-    g.fx.ring(x, y, r, 1, 500, FIRE, 0.3);
+    g.fx.warnCircle(x, y, r, 500, FIRE);
     g.time.delayedCall(500, () => {
-      if (!e.active) return;
+      if (!this.alive) return;
       g.cameras.main.shake(140, 0.007);
       g.fx.ring(x, y, r * 0.4, 2.4, 300, 0xffb040, 0.6);
       if (Phaser.Math.Distance.Between(x, y, g.player.x, g.player.y) < r + 10) g.hurtPlayer(e.damage * 1.3, true);
-      const img = g.add.image(x, y, 'fx-ring').setTint(0xc8380a).setAlpha(0.45).setScale(r / 16, (r * 0.6) / 16).setDepth(-1e5);
+      const img = g.add.image(x, y, 'fx-ring').setTint(0xc8380a).setAlpha(0.45).setScale(r / 16, (r * 0.6) / 16).setDepth(-1e6 + 2);
       this.pools.push({ x, y, r, until: g.elapsed + (this.rage ? 5000 : 3500), nextTick: g.elapsed + 400, img });
     });
   }
@@ -176,9 +194,9 @@ export class SpiderAI {
     this.face();
     const a = Math.atan2(g.player.y - e.y, g.player.x - e.x);
     const len = 460;
-    g.fx.lance(e.x, e.y, a, len, 60, 0xe8d8c8);
+    g.fx.warnLine(e.x, e.y, a, len, 80, 550, 0xe8d8c8);
     g.time.delayedCall(550, () => {
-      if (!e.active) return;
+      if (!this.alive) return;
       g.fx.lance(e.x, e.y, a, len, 80, 0xffffff);
       if (this.onLine(a, len, 40)) {
         if (g.hurtPlayer(e.damage * 0.6, true)) g.afflictPlayer('teia', this.rage ? 3000 : 2200);
@@ -194,9 +212,9 @@ export class SpiderAI {
     this.face();
     const a = Math.atan2(g.player.y - e.y, g.player.x - e.x);
     const len = 380;
-    g.fx.lance(e.x, e.y, a, len, 70, 0x4a6a1a);
+    g.fx.warnLine(e.x, e.y, a, len, 90, 500, ACID);
     g.time.delayedCall(500, () => {
-      if (!e.active) return;
+      if (!this.alive) return;
       g.fx.lance(e.x, e.y, a, len, 90, ACID);
       if (this.onLine(a, len, 45) && g.hurtPlayer(e.damage * 0.9, true)) g.afflictPlayer('veneno', 3500);
     });
@@ -209,13 +227,60 @@ export class SpiderAI {
     this.busy(500, 'en-aranha-crouch');
     const tx = g.player.x;
     const ty = g.player.y;
-    g.fx.ring(tx, ty, 90, 1, 950, FIRE, 0.3);
+    g.fx.warnCircle(tx, ty, 90, 950, FIRE);
     g.time.delayedCall(450, () => {
       if (!e.active) return;
       this.face();
       e.play('en-aranha-step');
       this.jump = { x0: e.x, y0: e.y, x1: tx, y1: ty, t0: g.elapsed, dur: 500 };
     });
+  }
+
+  /** Ninhada: filhotes rápidos saem de baixo dela (só na fúria) */
+  private brood() {
+    const { g, e } = this;
+    this.nextBrood = g.elapsed + 13000 * this.cd;
+    this.busy(700, 'en-aranha-crouch');
+    g.fx.ring(e.x, e.y + 20, 30, 4, 500, FIRE, 0.45);
+    g.events.emit('toast', 'A Rainha chamou a ninhada!', '#ffb070');
+    g.time.delayedCall(350, () => {
+      if (!this.alive) return;
+      for (let k = 0; k < 4; k++) {
+        const a = (k / 4) * Math.PI * 2 + Math.random() * 0.5;
+        g.spawnMinion(FILHOTE, e.x + Math.cos(a) * 70, e.y + 20 + Math.sin(a) * 50);
+      }
+    });
+  }
+
+  /** Chuva de Magma: bolas de magma caem nas marcas e deixam chamas por um instante */
+  private magmaRain() {
+    const { g, e } = this;
+    this.nextRain = g.elapsed + 8500 * this.k;
+    this.busy(800, 'en-aranha-spit');
+    this.face();
+    const p = g.player;
+    const n = this.rage ? 8 : 5;
+    const spots = [{ x: p.x, y: p.y }];
+    for (let k = 1; k < n; k++) {
+      const a = Math.random() * Math.PI * 2;
+      const rr = 70 + Math.random() * 170;
+      spots.push({ x: p.x + Math.cos(a) * rr, y: p.y + Math.sin(a) * rr });
+    }
+    const r = 58;
+    const warn = 950;
+    spots.forEach((s, i) => {
+      const delay = i * 70;
+      g.time.delayedCall(delay, () => g.fx.warnCircle(s.x, s.y, r, warn, FIRE));
+      g.time.delayedCall(delay + warn - 280, () => g.fx.fall(s.x, s.y, 'proj-fogo', 280, 2.2));
+      g.time.delayedCall(delay + warn, () => {
+        if (!this.alive) return;
+        g.fx.ring(s.x, s.y, r * 0.4, 2.6, 320, 0xffb040, 0.6);
+        if (Phaser.Math.Distance.Between(s.x, s.y, g.player.x, g.player.y) < r + 8) g.hurtPlayer(e.damage * 1.1, true);
+        const img = g.add.image(s.x, s.y, 'fx-ring').setTint(0xff5a1a).setAlpha(0.45).setScale((r * 0.8) / 16, (r * 0.48) / 16).setDepth(-1e6 + 2);
+        this.hazards.add({ x: s.x, y: s.y, r: r * 0.8, flat: 0.6, until: g.elapsed + 1800, dmg: e.damage * 0.3, every: 500, img, delay: 250 });
+      });
+    });
+    g.time.delayedCall(warn, () => this.alive && g.cameras.main.shake(160, 0.006));
   }
 
   /** O jogador está na faixa (linha a partir da aranha)? */

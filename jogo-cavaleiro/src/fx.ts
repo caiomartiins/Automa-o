@@ -1,9 +1,11 @@
 import Phaser from 'phaser';
 
 export const FX_DEPTH = 1_000_000;
+/** Avisos de ataque ficam no chão: abaixo dos personagens, acima do piso e das poças */
+const WARN_DEPTH = -1e6 + 10;
 
 type Obj = Phaser.GameObjects.Image | Phaser.GameObjects.BitmapText | Phaser.GameObjects.Graphics;
-type Kind = 'fade' | 'lance' | 'ring' | 'number' | 'crit' | 'float' | 'miss' | 'pop' | 'fall' | 'balloon' | 'anim';
+type Kind = 'fade' | 'lance' | 'ring' | 'number' | 'crit' | 'float' | 'miss' | 'pop' | 'fall' | 'balloon' | 'anim' | 'warn' | 'warnfill' | 'warnbar';
 
 interface Item {
   obj: Obj;
@@ -45,6 +47,8 @@ export interface AnimOpts {
  */
 export class Fx {
   private items: Item[] = [];
+  /** Itens de controle já usados, prontos para reaproveitar (evita lixo a cada golpe) */
+  private free: Item[] = [];
   private pools = new Map<string, Obj[]>();
   private numbers = 0;
   private misses = 0;
@@ -71,8 +75,24 @@ export class Fx {
     return { img, pool };
   }
 
-  private push(obj: Obj, kind: Kind, life: number, pool: Obj[], extra: Partial<Item> = {}) {
-    this.items.push({ obj, kind, life, pool, age: 0, alpha: 1, s0: 1, s1: 1, y0: 0, ...extra });
+  private push(obj: Obj, kind: Kind, life: number, pool: Obj[], extra?: Partial<Item>) {
+    const it = this.free.pop() ?? ({} as Item);
+    it.obj = obj;
+    it.kind = kind;
+    it.life = life;
+    it.pool = pool;
+    it.age = 0;
+    it.alpha = 1;
+    it.s0 = 1;
+    it.s1 = 1;
+    it.y0 = 0;
+    it.frames = undefined;
+    it.x0 = undefined;
+    it.x1 = undefined;
+    it.y1 = undefined;
+    it.hold = undefined;
+    if (extra) Object.assign(it, extra);
+    this.items.push(it);
   }
 
   /** Arco do golpe de espada (textura com raio 100) */
@@ -97,6 +117,56 @@ export class Fx {
     const s0 = radius / 16;
     img.setPosition(x, y).setScale(s0).setTint(color).setAlpha(alpha);
     this.push(img, 'ring', life, pool, { s0, s1: s0 * grow, alpha });
+  }
+
+  /*
+   * Avisos dos ataques dos chefes: o contorno mostra a área e o preenchimento cresce
+   * até a borda. Quando enche, o golpe cai (o jogador lê o tempo exato para sair).
+   */
+
+  /** Aviso de área redonda no chão */
+  warnCircle(x: number, y: number, r: number, ms: number, color: number) {
+    // sombra escura por baixo: dá contraste em qualquer piso
+    const d = this.image('fx-ring');
+    d.img.setPosition(x, y).setScale(r / 16).setTint(0x000000).setDepth(WARN_DEPTH - 1);
+    this.push(d.img, 'warn', ms, d.pool, { alpha: 0.22 });
+    const a = this.image('fx-anel');
+    a.img.setPosition(x, y).setScale(r / 60).setTint(color).setDepth(WARN_DEPTH);
+    this.push(a.img, 'warn', ms, a.pool, { alpha: 1 });
+    const f = this.image('fx-ring');
+    f.img.setPosition(x, y).setScale(0).setTint(color).setDepth(WARN_DEPTH + 1);
+    this.push(f.img, 'warnfill', ms, f.pool, { s1: r / 16, alpha: 0.5 });
+  }
+
+  /** Aviso de ataque em linha (investidas, raios, jatos), a partir de (x, y) */
+  warnLine(x: number, y: number, angle: number, len: number, width: number, ms: number, color: number) {
+    const sx = len / 16;
+    const b = this.image('fx-quad', 0);
+    b.img.setPosition(x, y).setRotation(angle).setScale(sx, width / 16).setTint(0x000000).setDepth(WARN_DEPTH);
+    this.push(b.img, 'warn', ms, b.pool, { alpha: 0.25 });
+    const f = this.image('fx-quad', 0);
+    f.img.setPosition(x, y).setRotation(angle).setScale(0, width / 16).setTint(color).setDepth(WARN_DEPTH + 1);
+    this.push(f.img, 'warnbar', ms, f.pool, { s1: sx, alpha: 0.55 });
+    const nx = (-Math.sin(angle) * width) / 2;
+    const ny = (Math.cos(angle) * width) / 2;
+    for (const k of [-1, 1]) {
+      const e = this.image('fx-quad', 0);
+      e.img.setPosition(x + nx * k, y + ny * k).setRotation(angle).setScale(sx, 4 / 16).setTint(color).setDepth(WARN_DEPTH + 2);
+      this.push(e.img, 'warn', ms, e.pool, { alpha: 1 });
+    }
+  }
+
+  /** Aviso de golpe em leque (115°) apontando para `angle` */
+  warnCone(x: number, y: number, angle: number, r: number, ms: number, color: number) {
+    const d = this.image('fx-slash');
+    d.img.setPosition(x, y).setRotation(angle).setScale(r / 100).setTint(0x000000).setDepth(WARN_DEPTH - 1);
+    this.push(d.img, 'warn', ms, d.pool, { alpha: 0.45 });
+    const b = this.image('fx-slash');
+    b.img.setPosition(x, y).setRotation(angle).setScale(r / 100).setTint(color).setDepth(WARN_DEPTH);
+    this.push(b.img, 'warn', ms, b.pool, { alpha: 0.6 });
+    const f = this.image('fx-slash');
+    f.img.setPosition(x, y).setRotation(angle).setScale(0).setTint(color).setDepth(WARN_DEPTH + 1);
+    this.push(f.img, 'warnfill', ms, f.pool, { s1: r / 100, alpha: 0.85 });
   }
 
   /** Raio em zigue-zague passando pelos pontos (corrente de raios) */
@@ -207,6 +277,7 @@ export class Fx {
           this.anims--;
           (it.obj as Phaser.GameObjects.Image).setFlipX(false).setOrigin(0.5);
         }
+        this.free.push(it);
         items[i] = items[items.length - 1];
         items.pop();
         continue;
@@ -267,6 +338,18 @@ export class Fx {
         case 'pop':
           o.setScale(it.s0 * (1 + 0.35 * k));
           o.setAlpha(it.alpha * (1 - k));
+          break;
+        case 'warn':
+          // pisca cada vez mais rápido perto do impacto
+          o.setAlpha(it.alpha * (0.7 + 0.3 * Math.sin(it.age / (k > 0.7 ? 35 : 70))));
+          break;
+        case 'warnfill':
+          o.setScale(it.s1 * k);
+          o.setAlpha(it.alpha * (0.6 + 0.4 * k));
+          break;
+        case 'warnbar':
+          o.scaleX = it.s1 * k;
+          o.setAlpha(it.alpha * (0.6 + 0.4 * k));
           break;
       }
     }

@@ -156,6 +156,14 @@ export class UIScene extends Phaser.Scene {
     if (this.scene.isActive('Status')) this.pauseBtn.setText('▶');
     const onClosed = () => this.pauseBtn.setText('II');
     this.game_.events.on('status-closed', onClosed);
+    // saiu do app / trocou de aba: o jogo volta pausado (sem morrer cercado ao retornar)
+    const onHidden = () => {
+      if (!document.hidden || this.game_.over) return;
+      if (!this.scene.isActive('Game') || this.scene.isPaused('Game')) return;
+      this.togglePause();
+    };
+    document.addEventListener('visibilitychange', onHidden);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => document.removeEventListener('visibilitychange', onHidden));
     onResize(this, () => this.scene.restart());
     this.input.keyboard?.on('keydown-P', () => this.togglePause());
     this.input.keyboard?.on('keydown-ESC', () => this.togglePause());
@@ -203,9 +211,20 @@ export class UIScene extends Phaser.Scene {
 
   // ---------------------------------------------------------------- atualização do HUD
 
-  update() {
+  /** Tempo desde a última atualização do HUD (os textos só mudam 10 vezes por segundo) */
+  private hudTimer = 0;
+  private lastHp = 0;
+
+  update(_time: number, delta: number) {
     const g = this.game_;
     if (!g.stats) return;
+    // redesenhar textos custa caro (cada mudança reenvia a textura para a placa de vídeo):
+    // o HUD é atualizado a cada 200 ms, ou na hora quando o jogador perde vida
+    this.hudTimer += delta;
+    const hurt = g.hp < this.lastHp - 0.5;
+    if (this.hudTimer < 200 && !hurt) return;
+    this.hudTimer = 0;
+    this.lastHp = g.hp;
     const k = this.k;
 
     const jobNeed = jobForLevel(g.jobLevel);
@@ -229,11 +248,11 @@ export class UIScene extends Phaser.Scene {
       this.zenyText.setText(`${g.zenyRun} z`);
     }
 
+    // relógio, ameaça e abates: uma vez por segundo (os abates mudam a todo instante)
     const s = Math.floor(g.elapsed / 1000);
-    const time = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}   •   Ameaça ${threatLevel(s)}   •   Abates ${g.kills}`;
-    if (time !== this.last.time) {
-      this.last.time = time;
-      this.timeBar.title.setText(time);
+    if (String(s) !== this.last.time) {
+      this.last.time = String(s);
+      this.timeBar.title.setText(`${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}   •   Ameaça ${threatLevel(s)}   •   Abates ${g.kills}`);
     }
 
     let skills = '';
@@ -284,9 +303,17 @@ export class UIScene extends Phaser.Scene {
     this.bossWin.c.setVisible(alive);
     if (!alive) return;
     const k = this.k;
-    this.bossWin.title.setText(`${boss!.def.name}   ${Math.ceil(pct * 100)}%`);
+    // todos os chefes (menos o Carniçal) entram em fúria com metade da vida
+    const rage = boss!.def.id !== 'zumbi';
+    const fury = rage && pct <= 0.5;
+    this.bossWin.title.setText(`${boss!.def.name}   ${Math.ceil(pct * 100)}%${fury ? '   • FÚRIA' : ''}`);
     this.bossBar.clear();
-    uiBar(this.bossBar, 10, this.bossWin.top + 4 * k, this.bossWin.w - 20, 14 * k, pct, 0xe0442e, 0x4a1c22);
+    const bx = 10;
+    const by = this.bossWin.top + 4 * k;
+    const bw = this.bossWin.w - 20;
+    const bh = 14 * k;
+    uiBar(this.bossBar, bx, by, bw, bh, pct, fury ? 0xff2a1a : 0xe0442e, 0x4a1c22);
+    if (rage) this.bossBar.fillStyle(0xffe08a, 0.95).fillRect(bx + bw / 2 - 1, by - 2 * k, 2, bh + 4 * k);
   }
 
 }

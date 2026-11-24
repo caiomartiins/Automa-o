@@ -1,13 +1,14 @@
 import Phaser from 'phaser';
 import { createFxTextures } from '../textures';
 import { createArt } from '../art';
+import { packAtlas } from '../atlas';
 import { heroScale, preloadSprites, setupSprites } from '../sprites';
 import { CLASSES, LINES, PROFESSION_LEVEL } from '../data/classes';
 import { SKILLS } from '../data/skills';
 import { MAPS } from '../data/rpg';
 import { loadSave, writeSave } from '../save';
 import type { RunResult } from './GameScene';
-import { darken, dim, headline, isTouch, onResize, uiButton, uiPanel, uiScale, uiWindow, WIN, wtext } from '../ui';
+import { darken, dim, headline, isPortrait, isTouch, onResize, uiButton, uiPanel, uiScale, uiWindow, WIN, wtext } from '../ui';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -22,6 +23,8 @@ export class BootScene extends Phaser.Scene {
     setupSprites(this);
     createArt(this);
     createFxTextures(this);
+    // junta as texturas pequenas numa folha só (menos chamadas de desenho no celular)
+    packAtlas(this);
     this.scene.start('Menu');
   }
 }
@@ -185,7 +188,9 @@ export class GameOverScene extends Phaser.Scene {
     this.add.tileSprite(0, 0, width, height, 'grama').setOrigin(0);
     dim(this, 0.7);
 
-    const w = Math.min(520 * s, width - 30);
+    // em pé: janela na largura toda, linhas e botões maiores (mais fáceis de ler e tocar)
+    const portrait = isPortrait(this);
+    const w = portrait ? width - 24 : Math.min(520 * s, width - 30);
     const rows: [string, string][] = [
       ['Tempo sobrevivido', `${Math.floor(r.time / 60000)}m ${String(Math.floor(r.time / 1000) % 60).padStart(2, '0')}s`],
       ['Nível alcançado', `${r.level}`],
@@ -195,8 +200,15 @@ export class GameOverScene extends Phaser.Scene {
       ['Zeny ganhos', `${r.zeny} z`],
       ['Zeny guardado', `${r.zenyTotal} z`],
     ];
-    const rowH = 26 * s;
-    const h = 24 * s + 16 + rows.length * rowH + 20 + 50 * s;
+    const rowH = (portrait ? 36 : 26) * s;
+    const fs = (portrait ? 17 : 14) * s;
+    const btnH = (portrait ? 48 : 34) * s;
+    // em pé os botões ficam um embaixo do outro, na largura toda
+    const btnArea = portrait ? btnH * 2 + 14 + 24 : 50 * s;
+    const h = 24 * s + 16 + rows.length * rowH + 20 + btnArea;
+    if (portrait) {
+      headline(this, width / 2, (height - h) / 2 - 60 * s, 'FIM DE JOGO', 34 * s, '#ffd27a').setOrigin(0.5);
+    }
     const win = uiWindow(this, (width - w) / 2, (height - h) / 2, w, h, 'Você caiu em batalha', s);
     const pad = 14;
     const py = win.top + 10;
@@ -204,8 +216,8 @@ export class GameOverScene extends Phaser.Scene {
     rows.forEach(([k, v], i) => {
       const y = py + 4 + i * rowH;
       if (i % 2) win.c.add(this.add.rectangle(pad + 1, y, w - pad * 2 - 2, rowH, WIN.rowAlt).setOrigin(0));
-      win.c.add(wtext(this, pad + 12, y + rowH / 2, k, 14 * s, WIN.label).setOrigin(0, 0.5));
-      win.c.add(wtext(this, w - pad - 12, y + rowH / 2, v, 14 * s, WIN.text, true).setOrigin(1, 0.5));
+      win.c.add(wtext(this, pad + 12, y + rowH / 2, k, fs, WIN.label).setOrigin(0, 0.5));
+      win.c.add(wtext(this, w - pad - 12, y + rowH / 2, v, fs, WIN.text, true).setOrigin(1, 0.5));
     });
 
     let gone = false;
@@ -215,8 +227,11 @@ export class GameOverScene extends Phaser.Scene {
       this.scene.start(target);
     };
     const by = h - 28 * s;
-    const again = uiButton(this, w / 2 + 90 * s, by, 160 * s, 34 * s, touch ? 'Jogar de novo' : 'Jogar de novo [Espaço]', () => go('Game'), { size: 13 * s, primary: true, enabled: false });
-    const menu = uiButton(this, w / 2 - 90 * s, by, 160 * s, 34 * s, touch ? 'Menu' : 'Menu [M]', () => go('Menu'), { size: 13 * s, enabled: false });
+    const bw = portrait ? w - pad * 2 : 160 * s;
+    const ay = portrait ? h - 12 - btnH * 1.5 - 14 : by;
+    const my = portrait ? h - 12 - btnH / 2 : by;
+    const again = uiButton(this, portrait ? w / 2 : w / 2 + 90 * s, ay, bw, btnH, touch ? 'Jogar de novo' : 'Jogar de novo [Espaço]', () => go('Game'), { size: (portrait ? 17 : 13) * s, primary: true, enabled: false });
+    const menu = uiButton(this, portrait ? w / 2 : w / 2 - 90 * s, my, bw, btnH, touch ? 'Menu' : 'Menu [M]', () => go('Menu'), { size: (portrait ? 16 : 13) * s, enabled: false });
     win.c.add([menu.c, again.c]);
 
     // pequena espera para o jogador não reiniciar sem querer

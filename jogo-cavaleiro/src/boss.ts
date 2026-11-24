@@ -18,12 +18,14 @@ interface Orb {
   life: number;
   /** Esferas da 2ª fase perseguem o jogador por um tempo */
   homing: number;
+  /** Dano próprio (as da espiral ferem menos) */
+  dmg?: number;
 }
 
 /** Tempos de recarga (ms) e quantidades por fase */
 const PHASES = [
-  { slash: 2400, roar: 4000, geyser: 5800, dash: 7800, orbs: 5, spots: 5, slashDmg: 36, orbDmg: 22, geyserDmg: 29, dashDmg: 32, speed: 1 },
-  { slash: 1800, roar: 2900, geyser: 4300, dash: 5200, orbs: 7, spots: 8, slashDmg: 44, orbDmg: 27, geyserDmg: 36, dashDmg: 40, speed: 1.25 },
+  { slash: 2400, roar: 4000, geyser: 5800, dash: 7800, spiral: 9500, arms: 2, shots: 10, orbs: 5, spots: 5, slashDmg: 36, orbDmg: 22, geyserDmg: 29, dashDmg: 32, speed: 1 },
+  { slash: 1800, roar: 2900, geyser: 4300, dash: 5200, spiral: 7000, arms: 3, shots: 14, orbs: 7, spots: 8, slashDmg: 44, orbDmg: 27, geyserDmg: 36, dashDmg: 40, speed: 1.25 },
 ];
 
 /**
@@ -33,6 +35,7 @@ const PHASES = [
  *  - Rugido Demoníaco: leque de esferas sombrias
  *  - Gêiser das Trevas: espinhos sobem do chão em volta do jogador (amaldiçoam)
  *  - Investida das Sombras: avança muito rápido em linha reta
+ *  - Espiral Infernal: gira no lugar soltando braços de esferas (passe entre eles)
  * Com metade da vida entra em FÚRIA: fica vermelho, mais rápido, ataca mais
  * e invoca servos (esqueletos e o Cavaleiro Negro).
  */
@@ -41,6 +44,7 @@ export class BafomeAI {
   private nextRoar = 1500;
   private nextGeyser = 3500;
   private nextDash = 5500;
+  private nextSpiral = 8000;
   private nextSummon = 0;
   private busyUntil = 0;
   private phase = 0;
@@ -55,6 +59,11 @@ export class BafomeAI {
     this.nextRoar += now;
     this.nextGeyser += now;
     this.nextDash += now;
+    this.nextSpiral += now;
+  }
+
+  private get alive() {
+    return this.e.active && this.e.def.id === 'bafome';
   }
 
   private get P() {
@@ -110,6 +119,7 @@ export class BafomeAI {
     const d = Phaser.Math.Distance.Between(e.x, e.y, p.x, p.y);
     if (d < 170 && now >= this.nextSlash) this.slash();
     else if (d > 220 && d < 650 && now >= this.nextDash) this.startDash();
+    else if (d < 520 && now >= this.nextSpiral) this.spiral();
     else if (d < 600 && now >= this.nextRoar) this.roar();
     else if (d < 750 && now >= this.nextGeyser) this.geyser();
     return true;
@@ -152,9 +162,9 @@ export class BafomeAI {
     this.busy(700, 'en-bafome-slash');
     const r = this.phase ? 200 : 175;
     const warn = this.phase ? 380 : 450;
-    g.fx.ring(e.x, e.y, r, 1, warn, this.phase ? 0xff3a3a : 0x9a2ab0, 0.25);
+    g.fx.warnCircle(e.x, e.y, r, warn, this.phase ? 0xff3a3a : 0x9a2ab0);
     g.time.delayedCall(warn, () => {
-      if (!e.active) return;
+      if (!this.alive) return;
       const a = Math.atan2(g.player.y - e.y, g.player.x - e.x);
       e.setFlipX(Math.cos(a) < 0);
       g.fx.slash(e.x, e.y, a, r, 0x7a2a9a);
@@ -197,7 +207,7 @@ export class BafomeAI {
     }
     const r = 56;
     const warn = this.phase ? 700 : 850;
-    for (const s of spots) g.fx.ring(s.x, s.y, r, 1, warn, 0x6a1a7a, 0.4);
+    for (const s of spots) g.fx.warnCircle(s.x, s.y, r, warn, this.phase ? 0xc82a4a : 0x8a2ab0);
     g.time.delayedCall(warn, () => {
       let hit = false;
       for (const s of spots) {
@@ -221,11 +231,45 @@ export class BafomeAI {
     const a = Math.atan2(g.player.y - e.y, g.player.x - e.x);
     e.setFlipX(Math.cos(a) < 0);
     const len = 520;
-    g.fx.lance(e.x, e.y + 20, a, len, 90, this.phase ? 0xff3a3a : 0x6a1a7a);
+    g.fx.warnLine(e.x, e.y + 20, a, len, 90, 650, this.phase ? 0xff3a3a : 0x8a2ab0);
     g.time.delayedCall(650, () => {
-      if (!e.active) return;
+      if (!this.alive) return;
       const speed = 900;
       this.dash = { vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, until: g.elapsed + (len / speed) * 1000, hit: false };
+    });
+  }
+
+  /** Espiral Infernal: braços de esferas girando a partir dele */
+  private spiral() {
+    const { g, e } = this;
+    const P = this.P;
+    this.nextSpiral = g.elapsed + P.spiral * this.pw.cd;
+    const warn = 650;
+    const every = 110;
+    this.busy(warn + P.shots * every + 250, 'en-bafome-roar');
+    const color = this.phase ? 0xff3a3a : 0x9a2ab0;
+    g.fx.warnCircle(e.x, e.y + 20, 120, warn, color);
+    const base = Math.random() * Math.PI * 2;
+    const dir = Math.random() < 0.5 ? 1 : -1;
+    const speed = this.phase ? 230 : 200;
+    let k = 0;
+    g.time.delayedCall(warn, () => {
+      if (!this.alive) return;
+      g.cameras.main.shake(160, 0.005);
+      g.time.addEvent({
+        delay: every,
+        repeat: P.shots - 1,
+        callback: () => {
+          if (!this.alive) return;
+          for (let arm = 0; arm < P.arms; arm++) {
+            const a = base + dir * k * 0.34 + (arm / P.arms) * Math.PI * 2;
+            const img = g.add.image(e.x + Math.cos(a) * 40, e.y + Math.sin(a) * 40 - 10, 'fx-orbe').setDepth(FX_DEPTH - 2).setScale(0.42);
+            if (this.phase) img.setTint(0xff8a8a);
+            this.orbs.push({ img, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, life: 3200, homing: 0, dmg: P.orbDmg * 0.8 });
+          }
+          k++;
+        },
+      });
     });
   }
 
@@ -249,7 +293,7 @@ export class BafomeAI {
       o.img.y += o.vy * s;
       o.img.rotation += s * 4;
       const hit = Phaser.Math.Distance.Between(o.img.x, o.img.y, p.x, p.y) < 30;
-      if (hit) this.g.hurtPlayer(this.P.orbDmg * this.pw.dmg);
+      if (hit) this.g.hurtPlayer((o.dmg ?? this.P.orbDmg) * this.pw.dmg);
       if (hit || o.life <= 0) {
         o.img.destroy();
         this.orbs.splice(i, 1);
