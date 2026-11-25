@@ -118,7 +118,7 @@ Gosma, Morcego, Cogumelo Andante, Esqueleto, Fantasma, Orc e Cavaleiro Negro (el
 
 **Progressão de força:** a cada minuto ("Ameaça" no HUD), os monstros ganham +45% de vida, +20% de dano e +5% de velocidade. **A partir do nível 8 do jogador, os monstros comuns ficam bem mais fortes a cada nível:** +30% de vida, +12% de dano e +2% de velocidade por nível. Depois dos 4:00 eles também vêm em maior número. Chefes e mini-chefes crescem na metade do ritmo do tempo. Itens de cura são raros.
 
-**Chefes por nível:** a cada 4 níveis, alternando mini-chefe e chefe: nível 4 Carniçal, 8 Bafome, 12 Carniçal, 16 Minotauro, 20 Carniçal, 24 Bafome... **Da 2ª vez em diante, o mesmo chefe volta muito mais forte:** 2,5x a vida, +60% de dano, ataques 30% mais seguidos e já em fúria, para testar a esquiva. Se um chefe ainda estiver vivo, o próximo espera.
+**Chefes por nível:** a cada 4 níveis, alternando mini-chefe e chefe: nível 4 Carniçal, 8 Bafome, 12 Carniçal, 16 Minotauro, 20 Carniçal, 24 Bafome... **Cada vez que o mesmo chefe (ou mini-chefe) nasce de novo, ele dobra vida, dano e velocidade:** 2ª vez x2, 3ª x4, 4ª x8... (a velocidade para em x4 para ainda dar para fugir). Os chefes também voltam já em fúria e com ataques mais seguidos. Se um chefe ainda estiver vivo, o próximo espera.
 
 **Loja na partida:** a cada 10 níveis a loja abre depois da janela de Status. O zeny da partida vai para a conta e o que você comprar vale na hora.
 

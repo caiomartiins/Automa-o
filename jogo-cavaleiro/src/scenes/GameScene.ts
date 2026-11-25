@@ -882,6 +882,20 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     }
   }
 
+  /**
+   * Cada vez que o mesmo chefe nasce de novo, dobra vida, dano e velocidade
+   * (2ª vez x2, 3ª x4, 4ª x8...). A velocidade para em x4 para continuar dando para fugir dele.
+   */
+  private powerUpBoss(e: Enemy, round: number) {
+    if (round <= 0) return;
+    const m = 2 ** round;
+    e.hp = e.maxHp = Math.ceil(e.maxHp * m);
+    e.damage = Math.round(e.damage * m);
+    // as IAs leem a velocidade da ficha do chefe a cada quadro: a cópia já vem acelerada
+    e.def = { ...e.def, speed: e.def.speed * Math.min(m, 4) };
+    e.speed = e.def.speed;
+  }
+
   /** Quantas vezes esse chefe já apareceu (cada volta fica mais forte) */
   private nextRound(id: string) {
     const r = this.bossRound[id] ?? 0;
@@ -895,13 +909,12 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     const p = this.ringPosition();
     const e = this.spawnEnemy(def, p.x, p.y, true);
     if (!e) return;
-    e.hp = e.maxHp = Math.ceil(e.maxHp * (1 + round * 0.8));
-    e.damage = Math.round(e.damage * (1 + round * 0.4));
+    this.powerUpBoss(e, round);
     this.bossAIs.push(id === 'aranha' ? new SpiderAI(this, e, round ? 0.75 : 1) : new ZombieAI(this, e, round ? 0.7 : 1));
     if (!this.boss || !this.boss.active) this.boss = e;
     this.cameras.main.shake(250, 0.005);
     const name = id === 'aranha' ? 'A Rainha Magmática saiu do ninho!' : 'Um Carniçal faminto surgiu!';
-    this.events.emit('announce', round ? `${def.name} voltou mais forte! (${round + 1}ª vez)` : name);
+    this.events.emit('announce', round ? `${def.name} voltou ${2 ** round}x mais forte! (${round + 1}ª vez)` : name);
   }
 
   private spawnBoss(id: 'bafome' | 'minotauro' | 'lich') {
@@ -911,8 +924,8 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     const e = this.spawnEnemy(def, p.x, p.y, true);
     if (!e) return;
     // da 2ª vez em diante: muito mais forte, já em fúria, ataques mais fortes e seguidos
-    e.hp = e.maxHp = Math.ceil(e.maxHp * (1 + round * 1.5));
-    const power = { dmg: 1 + round * 0.6, cd: Math.max(0.5, 1 - round * 0.3), enraged: round > 0 };
+    this.powerUpBoss(e, round);
+    const power = { dmg: 2 ** round, cd: Math.max(0.5, 1 - round * 0.3), enraged: round > 0 };
     this.boss = e;
     this.clearForBoss();
     this.bossAIs.push(id === 'bafome' ? new BafomeAI(this, e, power) : id === 'minotauro' ? new MinotaurAI(this, e, power) : new LichAI(this, e, power));
@@ -920,7 +933,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     const flash = { bafome: [80, 0, 90], minotauro: [120, 60, 20], lich: [30, 140, 70] }[id];
     this.cameras.main.flash(300, flash[0], flash[1], flash[2]);
     const name = { bafome: 'O BAFOME DESPERTOU!', minotauro: 'O MINOTAURO BRUTAL CHEGOU!', lich: 'O LORDE OSSÁRIO ERGUEU-SE DAS SOMBRAS!' }[id];
-    this.events.emit('announce', round ? `${name}\nVOLTOU MUITO MAIS FORTE! Desvie dos ataques!` : name);
+    this.events.emit('announce', round ? `${name}\nVOLTOU ${2 ** round}x MAIS FORTE! Desvie dos ataques!` : name);
   }
 
   /** O chefe chegou: 70% dos monstros comuns fogem (sem drop), menos os colados no jogador */
