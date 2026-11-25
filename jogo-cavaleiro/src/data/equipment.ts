@@ -123,6 +123,18 @@ export const EQUIPMENT: EquipDef[] = [
   { id: 'anel-celeste', name: 'Anel Celestial', slot: 'acessorio', price: 8000, epic: true, icon: 'eq-anel', tint: 0x9ae0ff, stats: { attrs: { for: 4, agi: 4, vit: 4, int: 4, des: 4, sor: 4 } } },
   { id: 'amuleto-vida', name: 'Amuleto da Vida Eterna', slot: 'acessorio', price: 4500, epic: true, icon: 'eq-colar', tint: 0x9aff8a, stats: { hp: 60, regen: 1, attrs: { vit: 4 } } },
 
+  // ---- conjunto do Arquimago (loja, épico): magia forte, junto com o Cajado Astral
+  { id: 'chapeu-arquimago', name: 'Chapéu do Arquimago', slot: 'cabeca', price: 4500, epic: true, icon: 'eq-chapeu', tint: 0x6a5ad8, stats: { def: 2, matk: 0.15, attrs: { int: 2 } } },
+  { id: 'vestes-arquimago', name: 'Vestes do Arquimago', slot: 'corpo', price: 5000, epic: true, icon: 'eq-manto', tint: 0x5a4ac8, stats: { def: 4, hp: 30, matk: 0.18, regen: 0.5 } },
+  { id: 'tomo-arquimago', name: 'Tomo do Arquimago', slot: 'escudo', price: 4800, epic: true, icon: 'eq-livro', tint: 0x7a6aff, stats: { matk: 0.14, aspd: 0.08, attrs: { int: 2 } } },
+
+  // ---- conjunto do Abismo: só cai dos chefes e mini-chefes (o set mágico mais forte do jogo)
+  { id: 'coroa-abismo', name: 'Coroa do Abismo', slot: 'cabeca', price: 0, drop: { monster: 'bafome', chance: 0.2 }, icon: 'eq-tiara', tint: 0x8a3aff, stats: { def: 3, matk: 0.2, attrs: { int: 3 } } },
+  { id: 'orbe-abismo', name: 'Orbe do Abismo', slot: 'escudo', price: 0, drop: { monster: 'minotauro', chance: 0.2 }, icon: 'eq-livro', tint: 0x6a2ad0, stats: { matk: 0.18, aspd: 0.1, attrs: { int: 3 } } },
+  { id: 'vestes-abismo', name: 'Vestes do Abismo', slot: 'corpo', price: 0, drop: { monster: 'lich', chance: 0.2 }, icon: 'eq-manto', tint: 0x3a1a6a, stats: { def: 6, hp: 50, matk: 0.22 } },
+  { id: 'sapatilhas-abismo', name: 'Sapatilhas do Abismo', slot: 'calcado', price: 0, drop: { monster: 'aranha', chance: 0.15 }, icon: 'eq-bota', tint: 0x5a2a9a, stats: { speed: 25, flee: 0.04, matk: 0.1 } },
+  { id: 'selo-abismo', name: 'Selo do Abismo', slot: 'acessorio', price: 0, drop: { monster: 'zumbi', chance: 0.15 }, icon: 'eq-anel', tint: 0x9a4aff, stats: { matk: 0.12, attrs: { int: 4 } } },
+
   // ---- raros: só caem dos monstros (chance multiplicada pela Sorte)
   { id: 'foice-bafome', name: 'Foice do Bafome', slot: 'arma', price: 0, drop: { monster: 'bafome', chance: 0.35 }, icon: 'eq-espada', tint: 0x9a3a4a, stats: { atk: 0.38, crit: 0.05, attrs: { for: 2 } } },
   { id: 'manto-infernal', name: 'Manto Infernal', slot: 'capa', price: 0, drop: { monster: 'bafome', chance: 0.35 }, icon: 'eq-capa', tint: 0x5a1a2a, stats: { def: 3, atk: 0.1, matk: 0.1 } },
@@ -173,6 +185,8 @@ export const SETS: SetDef[] = [
   { id: 'real', name: 'Realeza', items: ['coroa', 'anel-rei', 'capa-valquiria'], bonus: { attrs: { for: 3, agi: 3, vit: 3, int: 3, des: 3, sor: 3 } } },
   { id: 'celeste', name: 'Celestial', items: ['elmo-celeste', 'armadura-celeste', 'manto-estelar'], bonus: { atk: 0.12, matk: 0.12, hp: 60 } },
   { id: 'seda', name: 'Seda Rubra', items: ['seda-rainha', 'botas-seda', 'presa-magma'], bonus: { speed: 20, flee: 0.05, crit: 0.04 } },
+  { id: 'arquimago', name: 'Arquimago', items: ['chapeu-arquimago', 'vestes-arquimago', 'tomo-arquimago', 'cajado-astral'], bonus: { matk: 0.25, aspd: 0.1, attrs: { int: 5 } } },
+  { id: 'abismo', name: 'Soberano do Abismo', items: ['coroa-abismo', 'vestes-abismo', 'orbe-abismo', 'sapatilhas-abismo', 'selo-abismo'], bonus: { matk: 0.4, aspd: 0.15, crit: 0.05, hp: 60, attrs: { int: 8 } } },
   { id: 'guardiao', name: 'Guardião do Labirinto', items: ['escudo-minotauro', 'botas-brutas', 'machado-minotauro'], bonus: { def: 5, hp: 60, atk: 0.1 } },
 ];
 

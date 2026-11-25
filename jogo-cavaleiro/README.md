@@ -70,6 +70,12 @@ Todas as habilidades vão até o nível 5. Ativas corpo a corpo usam FOR, à dis
 - **Conjuntos** (9): Andarilho, Caçador, Sábio, Guardião de Ferro, Pacto Demoníaco, Realeza, Celestial (épicos), Seda Rubra (Rainha Magmática) e Guardião do Labirinto (Minotauro).
 - **Coleção** (aba na loja): bônus permanentes ao juntar 10, 20, 30, 40, 55, 70 e todos os itens, mesmo sem equipar.
 
+**Conjuntos mágicos:**
+- **Arquimago** (loja, épico): Chapéu, Vestes e Tomo do Arquimago + Cajado Astral → Matq +25%, Vel. ataque +10%, INT +5.
+- **Soberano do Abismo** (só drop de chefes, o mais forte): Coroa (Bafome), Orbe (Minotauro), Vestes (Lorde Ossário), Sapatilhas (Rainha Magmática) e Selo (Carniçal) do Abismo → Matq +40%, Vel. ataque +15%, Crít +5%, Vida +60, INT +8.
+
+O **Meteoro** (Bruxo) pede só Bola de Fogo nv 3, para caber no limite de 4 ativas.
+
 ## Sistemas de RPG (`src/data/rpg.ts`)
 
   - FOR, DES e INT aumentam o dano corpo a corpo, à distância e mágico.

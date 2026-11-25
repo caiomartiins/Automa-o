@@ -109,7 +109,8 @@ export const TREE: TreeNode[] = [
   },
   { id: 'nevasca', cls: 'bruxo', col: 2, row: 0, req: [{ id: 'congelar', lv: 2 }] },
   { id: 'trovao', cls: 'bruxo', col: 0, row: 1, req: [{ id: 'raio', lv: 3 }, { id: 'tempestade', lv: 3 }] },
-  { id: 'meteoro', cls: 'bruxo', col: 1, row: 1, req: [{ id: 'tempestade', lv: 2 }, { id: 'parede', lv: 1 }] },
+  // só pede a Bola de Fogo: com 2 requisitos ativos o Meteoro seria a 5ª ativa (limite é 4)
+  { id: 'meteoro', cls: 'bruxo', col: 1, row: 1, req: [{ id: 'fogo', lv: 3 }] },
   { id: 'pantano', cls: 'bruxo', col: 2, row: 1, req: [{ id: 'nevasca', lv: 1 }] },
 
   // ================= Professor
