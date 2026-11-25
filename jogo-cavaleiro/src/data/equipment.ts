@@ -128,6 +128,12 @@ export const EQUIPMENT: EquipDef[] = [
   { id: 'vestes-arquimago', name: 'Vestes do Arquimago', slot: 'corpo', price: 5000, epic: true, icon: 'eq-manto', tint: 0x5a4ac8, stats: { def: 4, hp: 30, matk: 0.18, regen: 0.5 } },
   { id: 'tomo-arquimago', name: 'Tomo do Arquimago', slot: 'escudo', price: 4800, epic: true, icon: 'eq-livro', tint: 0x7a6aff, stats: { matk: 0.14, aspd: 0.08, attrs: { int: 2 } } },
 
+  // ---- conjunto do Bastião Sagrado (loja, épico): VIT, vida e defesa; o Atq extra fortalece as habilidades pela VIT do Paladino
+  { id: 'elmo-bastiao', name: 'Elmo do Bastião', slot: 'cabeca', price: 4500, epic: true, icon: 'eq-elmo', tint: 0xffe08a, stats: { def: 4, hp: 30, attrs: { vit: 3 } } },
+  { id: 'couraca-bastiao', name: 'Couraça do Bastião', slot: 'corpo', price: 5200, epic: true, icon: 'eq-armadura', tint: 0xffe9a0, stats: { def: 8, hp: 60, atk: 0.1, attrs: { vit: 2 } } },
+  { id: 'escudo-bastiao', name: 'Escudo do Bastião', slot: 'escudo', price: 5000, epic: true, icon: 'eq-escudo', tint: 0xffd04a, stats: { def: 7, hp: 40, atk: 0.12 } },
+  { id: 'grevas-bastiao', name: 'Grevas do Bastião', slot: 'calcado', price: 4200, epic: true, icon: 'eq-bota', tint: 0xe8c870, stats: { speed: 15, def: 3, attrs: { vit: 3 } } },
+
   // ---- conjunto do Abismo: só cai dos chefes e mini-chefes (o set mágico mais forte do jogo)
   { id: 'coroa-abismo', name: 'Coroa do Abismo', slot: 'cabeca', price: 0, drop: { monster: 'bafome', chance: 0.2 }, icon: 'eq-tiara', tint: 0x8a3aff, stats: { def: 3, matk: 0.2, attrs: { int: 3 } } },
   { id: 'orbe-abismo', name: 'Orbe do Abismo', slot: 'escudo', price: 0, drop: { monster: 'minotauro', chance: 0.2 }, icon: 'eq-livro', tint: 0x6a2ad0, stats: { matk: 0.18, aspd: 0.1, attrs: { int: 3 } } },
@@ -186,6 +192,7 @@ export const SETS: SetDef[] = [
   { id: 'celeste', name: 'Celestial', items: ['elmo-celeste', 'armadura-celeste', 'manto-estelar'], bonus: { atk: 0.12, matk: 0.12, hp: 60 } },
   { id: 'seda', name: 'Seda Rubra', items: ['seda-rainha', 'botas-seda', 'presa-magma'], bonus: { speed: 20, flee: 0.05, crit: 0.04 } },
   { id: 'arquimago', name: 'Arquimago', items: ['chapeu-arquimago', 'vestes-arquimago', 'tomo-arquimago', 'cajado-astral'], bonus: { matk: 0.25, aspd: 0.1, attrs: { int: 5 } } },
+  { id: 'bastiao', name: 'Bastião Sagrado', items: ['elmo-bastiao', 'couraca-bastiao', 'escudo-bastiao', 'grevas-bastiao'], bonus: { atk: 0.25, def: 6, hp: 100, regen: 1, attrs: { vit: 8 } } },
   { id: 'abismo', name: 'Soberano do Abismo', items: ['coroa-abismo', 'vestes-abismo', 'orbe-abismo', 'sapatilhas-abismo', 'selo-abismo'], bonus: { matk: 0.4, aspd: 0.15, crit: 0.05, hp: 60, attrs: { int: 8 } } },
   { id: 'guardiao', name: 'Guardião do Labirinto', items: ['escudo-minotauro', 'botas-brutas', 'machado-minotauro'], bonus: { def: 5, hp: 60, atk: 0.1 } },
 ];

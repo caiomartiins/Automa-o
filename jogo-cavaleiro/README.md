@@ -74,6 +74,8 @@ Todas as habilidades vão até o nível 5. Ativas corpo a corpo usam FOR, à dis
 - **Arquimago** (loja, épico): Chapéu, Vestes e Tomo do Arquimago + Cajado Astral → Matq +25%, Vel. ataque +10%, INT +5.
 - **Soberano do Abismo** (só drop de chefes, o mais forte): Coroa (Bafome), Orbe (Minotauro), Vestes (Lorde Ossário), Sapatilhas (Rainha Magmática) e Selo (Carniçal) do Abismo → Matq +40%, Vel. ataque +15%, Crít +5%, Vida +60, INT +8.
 
+- **Bastião Sagrado** (loja, épico, para builds de VIT): Elmo, Couraça, Escudo e Grevas do Bastião → Atq +25%, Def +6, Vida +100, Regen +1/s, VIT +8 (com as peças, VIT +16 no total). O Atq vale para as habilidades pela VIT do Paladino.
+
 O **Meteoro** (Bruxo) pede só Bola de Fogo nv 3, para caber no limite de 4 ativas.
 
 ## Sistemas de RPG (`src/data/rpg.ts`)
