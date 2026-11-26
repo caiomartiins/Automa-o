@@ -32,6 +32,9 @@ O Golpe de Espada do Aprendiz continua com todos. Cada habilidade vai até o ní
 ## Sprites desenhados à mão
 Todos os heróis usam sprites recortados das imagens enviadas. A fonte em PNG fica em `sprites/` e o jogo usa as versões WebP de `src/assets/`, registradas em `src/sprites.ts`. Os monstros ainda usam a arte gerada em `src/art.ts`.
 
+
+**Magos (rework):** Mago, Bruxo e Professor em alta resolução (quadros 320x256), com animação de conjurar. As magias usam efeitos desenhados: Bola de Fogo, Lança de Gelo, Relâmpago (raio do céu), explosão (Bola de Fogo e Meteoro), Meteoro, Nevasca (círculo de gelo no chão) e Espinhos de Terra.
+
 ## Evolução do personagem (regras no estilo do RPG clássico)
 
 - **Começo da partida:** todos os atributos em 1 e **48 pontos** para distribuir (abre a janela de Status).

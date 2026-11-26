@@ -94,7 +94,8 @@ export class ThunderBoltSkill extends Skill {
 
 /** Raio vertical do céu até (x, y) */
 function skyBolt(g: GameScene, x: number, y: number, color = 0xd8f0ff) {
-  g.fx.bolt([{ x: x + Phaser.Math.Between(-30, 30), y: y - 260 }, { x: x + Phaser.Math.Between(-12, 12), y: y - 120 }, { x, y }], color);
+  // raio desenhado caindo do céu, com a base (faíscas) no alvo
+  g.fx.splash('fx-raio', x + Phaser.Math.Between(-4, 4), y + 14, 1.25, 260, { originY: 1 });
   g.fx.ring(x, y, 10, 2.4, 200, color, 0.6);
 }
 
@@ -309,7 +310,7 @@ export class StormGustSkill extends Skill {
       if (now < s.next) continue;
       s.next = now + 300;
       const r = this.radius;
-      this.g.fx.ring(s.x, s.y, r * 0.4, 2.5, 320, 0xd8f4ff, 0.35);
+      this.g.fx.splash('fx-gelo-chao', s.x, s.y, (r * 2) / 124, 420, { grow: true, depth: -1e6 + 3, alpha: 0.9 });
       for (let k = 0; k < 3; k++) {
         const a = Math.random() * Math.PI * 2;
         const d = Math.random() * r * 0.8;
@@ -391,8 +392,8 @@ export class EarthSpikeSkill extends Skill {
     this.timer = this.cooldown;
     for (const t of targets) {
       const { x, y } = t;
-      const img = this.g.add.image(x, y + 10, 'fx-geiser').setOrigin(0.5, 1).setScale(0.45, 0.1).setTint(0xd8b070).setDepth(FX_DEPTH - 2);
-      this.g.tweens.add({ targets: img, scaleY: 0.5, duration: 90, yoyo: true, hold: 140, onComplete: () => img.destroy() });
+      const img = this.g.add.image(x, y + 12, 'fx-espinhos').setOrigin(0.5, 1).setScale(0.95, 0.15).setDepth(y + 12);
+      this.g.tweens.add({ targets: img, scaleY: 0.95, duration: 90, yoyo: true, hold: 160, onComplete: () => img.destroy() });
       this.g.explode(x, y, this.radius, this.damage, 120, 0xc8a050, this.id);
     }
   }

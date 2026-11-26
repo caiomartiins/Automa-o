@@ -1045,7 +1045,9 @@ export class GameScene extends Phaser.Scene implements RpgHost {
 
   /** Explosão em área: fere todos os inimigos no raio (bola de fogo, meteoro) */
   explode(x: number, y: number, radius: number, damage: number, knockback: number, color: number, src?: SkillId) {
-    this.fx.ring(x, y, radius * 0.35, 2.8, 260, color, 0.55);
+    // magias de fogo: explosão desenhada; o resto: onda colorida
+    if (src === 'fogo' || src === 'meteoro') this.fx.splash('fx-explosao', x, y, (radius * 2.1) / 93, 320, { grow: true });
+    else this.fx.ring(x, y, radius * 0.35, 2.8, 260, color, 0.55);
     this.burst(x, y, 6);
     const hits = this.queryEnemies(x, y, radius, this.nearBuf).slice();
     for (const e of hits) {

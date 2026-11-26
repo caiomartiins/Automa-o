@@ -26,11 +26,21 @@ import enEsqueletoUrl from './assets/en-esqueleto.webp?inline';
 import enLoboUrl from './assets/en-lobo.webp?inline';
 import enArvoreUrl from './assets/en-arvore.webp?inline';
 import projSombraUrl from './assets/proj-sombra.webp?inline';
+import projFogoUrl from './assets/proj-fogo.webp?inline';
+import projGeloUrl from './assets/proj-gelo.webp?inline';
+import fxMeteoroUrl from './assets/fx-meteoro.webp?inline';
+import fxExplosaoUrl from './assets/fx-explosao.webp?inline';
+import fxRaioUrl from './assets/fx-raio.webp?inline';
+import fxGeloChaoUrl from './assets/fx-gelo-chao.webp?inline';
+import fxEspinhosUrl from './assets/fx-espinhos.webp?inline';
 
 /** Imagens soltas (efeitos e a fonte dos números de dano) */
 const IMAGES: [string, string][] = [
   ['dmgfont', dmgFontUrl], ['fx-miss', missUrl], ['fx-crit', critUrl], ['fx-impacto', impactoUrl],
   ['fx-cacador', fxSombraUrl], ['proj-sombra', projSombraUrl],
+  // efeitos das magias (Mago, Bruxo e Professor)
+  ['proj-fogo', projFogoUrl], ['proj-gelo', projGeloUrl], ['fx-meteoro', fxMeteoroUrl], ['fx-explosao', fxExplosaoUrl],
+  ['fx-raio', fxRaioUrl], ['fx-gelo-chao', fxGeloChaoUrl], ['fx-espinhos', fxEspinhosUrl],
 ];
 
 /** Folhas de efeitos: quadros quadrados lado a lado, na ordem dos nomes */
@@ -183,9 +193,9 @@ const SHEETS: SheetDef[] = [
   hero('hero-espadachim', espadachimUrl, 2, 4, 2, 2),
   hero('hero-cavaleiro', cavaleiroUrl, 2, 3, 1, 2, true, 2),
   hero('hero-paladino', paladinoUrl, 2, 4, 1, 2, true, 2),
-  hero('hero-mago', magoUrl, 2, 4, 1, 2, false),
-  hero('hero-bruxo', bruxoUrl, 2, 4, 3, 3),
-  hero('hero-professor', professorUrl, 2, 3, 2, 2),
+  hero('hero-mago', magoUrl, 2, 4, 2, 2, false, 2),
+  hero('hero-bruxo', bruxoUrl, 2, 4, 2, 2, true, 2),
+  hero('hero-professor', professorUrl, 2, 4, 3, 2, false, 2),
   hero('hero-arqueiro', arqueiroUrl, 2, 4, 1, 2, true, 1.5),
   hero('hero-atirador', atiradorUrl, 3, 3, 1, 1),
   hero('hero-cacador-sombras', cacadorSombrasUrl, 2, 3, 1, 2, false, 1.5),

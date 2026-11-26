@@ -169,6 +169,16 @@ export class Fx {
     this.push(f.img, 'warnfill', ms, f.pool, { s1: r / 100, alpha: 0.85 });
   }
 
+  /**
+   * Imagem de efeito que aparece e some (explosão, raio, gelo no chão).
+   * `grow` = cresce um pouco enquanto some; `depth` padrão: acima dos personagens.
+   */
+  splash(key: string, x: number, y: number, scale: number, life: number, o: { grow?: boolean; depth?: number; alpha?: number; originY?: number } = {}) {
+    const { img, pool } = this.image(key);
+    img.setOrigin(0.5, o.originY ?? 0.5).setPosition(x, y).setScale(scale).setDepth(o.depth ?? FX_DEPTH - 3);
+    this.push(img, o.grow ? 'pop' : 'fade', life, pool, { s0: scale, alpha: o.alpha ?? 1 });
+  }
+
   /** Raio em zigue-zague passando pelos pontos (corrente de raios) */
   bolt(points: { x: number; y: number }[], color = 0x9fe6ff) {
     if (points.length < 2) return;
