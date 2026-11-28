@@ -11,8 +11,8 @@ import { Skill } from './Skill';
 export class MagnumSkill extends Skill {
   readonly id = 'explosao' as const;
   private timer = 600;
-  get damage() { return (30 + 10 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (2700 - 60 * (this.level - 1)) / this.g.atkHaste; }
+  get damage() { return (42 + 12 * (this.level - 1)) * this.g.stats.might; }
+  get cooldown() { return (2400 - 60 * (this.level - 1)) / this.g.atkHaste; }
   get radius() { return (85 + 10 * this.level + (this.level >= 5 ? 20 : 0) + (this.level >= 10 ? 25 : 0)) * this.g.stats.area; }
 
   update(dt: number) {

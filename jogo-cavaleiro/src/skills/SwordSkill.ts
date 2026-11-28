@@ -5,11 +5,12 @@ import { Skill } from './Skill';
 export class SwordSkill extends Skill {
   readonly id = 'espada' as const;
   private timer = 300;
-  private readonly arc = Phaser.Math.DegToRad(115);
+  /** Abertura do golpe: 115°, 160° a partir do Nv 8 */
+  private get arc() { return Phaser.Math.DegToRad(this.level >= 8 ? 160 : 115); }
 
-  get damage() { return (15 + 5 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (950 - 80 * (this.level - 1)) / this.g.atkHaste; }
-  get range() { return (78 + 10 * (this.level - 1)) * this.g.stats.area; }
+  get damage() { return (18 + 6 * (this.level - 1)) * this.g.stats.might; }
+  get cooldown() { return (950 - 45 * (this.level - 1)) / this.g.atkHaste; }
+  get range() { return (78 + 7 * (this.level - 1)) * this.g.stats.area; }
 
   update(dt: number) {
     this.timer -= dt;
@@ -24,6 +25,8 @@ export class SwordSkill extends Skill {
     }
     this.swing(angle);
     if (this.level >= 5) this.swing(angle + Math.PI);
+    // Nv 10: golpe duplo
+    if (this.level >= 10) this.g.time.delayedCall(120, () => { this.swing(angle); this.swing(angle + Math.PI); });
   }
 
   private swing(angle: number, arc = this.arc) {

@@ -40,8 +40,8 @@ export const CLASSES: Record<ClassId, ClassDef> = {
   // ---- Espadachim → Cavaleiro ou Paladino
   espadachim: {
     id: 'espadachim', name: 'Espadachim', texture: 'hero-espadachim', minLevel: PROFESSION_LEVEL,
-    description: 'Espada e escudo. Ganha o Escudo Giratório e a árvore de habilidades (Impacto Explosivo, Fúria...). +30 Vida, +2 Armadura.',
-    statBonus: { maxHp: 30, armor: 2 }, grantsSkill: 'escudo', choices: ['cavaleiro', 'paladino'],
+    description: 'Espada e escudo. Escolhe sua 1ª técnica (Golpe Fulminante, Escudo Giratório, Impacto Explosivo ou Provocar). +30 Vida, +2 Armadura.',
+    statBonus: { maxHp: 30, armor: 2 }, choices: ['cavaleiro', 'paladino'],
   },
   cavaleiro: {
     id: 'cavaleiro', name: 'Cavaleiro', texture: 'hero-cavaleiro', minLevel: SECOND_CLASS_LEVEL,

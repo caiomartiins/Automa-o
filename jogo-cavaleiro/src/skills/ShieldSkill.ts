@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { FX_DEPTH, Skill } from './Skill';
 import type { GameScene } from '../scenes/GameScene';
 
-const COUNT_BY_LEVEL = [1, 2, 2, 3, 4];
+const COUNT_BY_LEVEL = [1, 2, 2, 3, 3, 4, 4, 5, 5, 6];
 
 /** Escudos que orbitam o herói (habilidade do Guarda). */
 export class ShieldSkill extends Skill {
@@ -15,9 +15,9 @@ export class ShieldSkill extends Skill {
     this.syncShields();
   }
 
-  get damage() { return (8 + 4 * (this.level - 1)) * this.g.stats.might; }
-  get radius() { return (80 + 6 * (this.level - 1)) * this.g.stats.area; }
-  get spin() { return 3 + 0.35 * (this.level - 1); }
+  get damage() { return (12 + 5 * (this.level - 1)) * this.g.stats.might; }
+  get radius() { return (80 + 5 * (this.level - 1)) * this.g.stats.area; }
+  get spin() { return 3 + 0.25 * (this.level - 1); }
 
   protected onLevelChanged() {
     this.syncShields();

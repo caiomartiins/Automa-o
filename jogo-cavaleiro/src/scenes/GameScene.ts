@@ -106,6 +106,8 @@ export class GameScene extends Phaser.Scene implements RpgHost {
   attrPoints = 0;
   /** Cartas de nível esperando escolha (uma por nível ganho) */
   pendingCards = 0;
+  /** Escolha da 1ª técnica do Espadachim esperando */
+  pendingTechnique = false;
   /** Bônus de atributo vindos de equipamento e cartas (não custam pontos) */
   bonusAttrs: Attrs = { for: 0, agi: 0, vit: 0, int: 0, des: 0, sor: 0 };
   /** Soma dos efeitos do equipamento usado nesta partida */
@@ -300,6 +302,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     // sem pontos para distribuir: atributos vêm das cartas ao upar
     this.attrPoints = 0;
     this.pendingCards = 0;
+    this.pendingTechnique = false;
     this.cards = [];
     this.items = { asa: 0, pena: 0 };
     this.zenyRun = 0;
@@ -1137,6 +1140,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
         // Matq varia entre o mínimo e o máximo da INT
         const attrBonus = sk.kind === 'magic'
           ? Phaser.Math.Between(...this.matk()) / ATTR_FX.atkDiv
+          : sk.id === 'escudo' ? Math.max(this.vitAtk() / ATTR_FX.atkDiv, this.attrDamage('melee'))
           : sk.stat === 'vit' ? this.vitAtk() / ATTR_FX.atkDiv : this.attrDamage(sk.kind);
         mult *= 1 + attrBonus + this.mods.kindDmg[sk.kind];
         elemMult = elementMult(sk.element, e.def.element);
@@ -1939,6 +1943,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
   nextScreen() {
     const choice = this.classChoice();
     if (choice) this.scene.launch('LevelUp', choice);
+    else if (this.pendingTechnique) this.scene.launch('LevelUp', this.techniqueChoice());
     else if (this.pendingCards > 0) this.scene.launch('LevelUp', this.cardChoice());
     else this.afterScreens();
   }
@@ -2107,6 +2112,25 @@ export class GameScene extends Phaser.Scene implements RpgHost {
   chooseProfession(id: ClassId) {
     this.line = lineOf(id);
     this.promote(id);
+    // Espadachim: em vez de ganhar o Escudo de graça, escolhe a 1ª técnica (escolha de build)
+    if (id === 'espadachim') this.pendingTechnique = true;
+  }
+
+  /** Escolha da 1ª técnica do Espadachim: as ativas da classe ainda não aprendidas */
+  techniqueChoice(): LevelUpData {
+    const ids = TREE.filter((n) => n.cls === this.classId && !n.passive && this.nodeLevel(n.id) === 0).map((n) => n.id);
+    const options: Upgrade[] = ids.map((id) => {
+      const n = treeNode(id);
+      return {
+        id: `tec-${id}`, title: nodeName(n), desc: SKILLS[id as SkillId].levelDesc[0], color: nodeColor(n),
+        apply: (g: GameScene) => g.learnCard(id),
+      };
+    });
+    return {
+      level: this.level, promotion: null, options,
+      choiceTitle: 'ESCOLHA SUA TÉCNICA',
+      choiceSubtitle: 'O Espadachim começa com uma técnica à sua escolha (as outras aparecem nas cartas)',
+    };
   }
 
   addSkill(id: SkillId) {

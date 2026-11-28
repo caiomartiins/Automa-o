@@ -54,6 +54,8 @@ Todos os heróis usam sprites recortados das imagens enviadas. A fonte em PNG fi
 
 ## Árvores de habilidades (`src/data/skilltree.ts`)
 
+**Espadachim (rebalanceado):** não ganha mais o Escudo Giratório de graça; ao virar Espadachim você **escolhe a 1ª técnica** (Golpe Fulminante, Escudo Giratório, Impacto Explosivo ou Provocar). Golpe de Espada e Escudo Giratório agora vão até o nível 10 (Golpe de Espada: arco mais largo no nv 8 e golpe duplo no nv 10; Escudo: até 6 escudos e dano pelo maior entre FOR e VIT). Impacto Explosivo ficou mais forte no começo (42 de dano, recarga 2,4 s).
+
 **Espadachim (até 10 níveis):** Golpe de Espada e Escudo Giratório (de graça), Aumentar Recuperação de HP (regen dobrada parado, poções curam +10%/nv), Perícia com Espada (+dano corpo a corpo e +4%/nv no Golpe de Espada), Perícia com Espada de Duas Mãos (+5%/nv no Golpe Fulminante e no Impacto do Titã), Golpe Fulminante (golpe forte; onda de choque no nv 4/7/10, atordoa a partir do nv 6), Impacto Explosivo (explosão de fogo que deixa os golpes com fogo por 5 s), Provocar (monstros em volta recebem +6% a +33% de dano e batem 10% mais forte; não pega chefes nem mortos-vivos) e Vigor (-2%/nv de dano recebido e +4%/nv de resistência a estados).
 
 **Cavaleiro (lança e espadão, até 10 níveis):** Perícia com Lança (passiva, +4%/nv no dano de lança, +25% a mais montado), Perfurar (1/2/3 golpes conforme o tamanho; nv 4 atravessa, nv 10 +1 golpe), Estocada (linha que empurra e atordoa; 3 direções no nv 6, 4 no nv 10), Lança Bumerangue (5 nv, arremesso de longe; atravessa no nv 3, 2 lanças no nv 5), Montaria (+25% movimento, -12% vel. de ataque), Perícia em Montaria (recupera a vel. de ataque, +dano em médios), Brandir Lança (leque que empurra; 200° no nv 6, gira para trás no nv 10), Contra-Ataque (bloqueia o golpe e revida com crítico), Rapidez com Duas Mãos (vel. de ataque, HIT e crítico) e Impacto do Titã (dois golpes em área no alvo; área cresce a cada nível).
@@ -156,6 +158,10 @@ Ao ser derrotado, solta gemas, zeny e tem 35% de chance de soltar a Carta Carni�
 - **Fúria (com metade da vida):** fica mais rápido, emenda **três investidas seguidas** (mirando de novo a cada uma) e passa a **bloquear com o escudo**, recebendo 80% menos dano por 2,5 s.
 
 **Números de dano** (fonte própria em `src/assets/dmgfont.webp`): brancos nos golpes normais, laranja na fraqueza, cinza na resistência, vermelhos no dano recebido e verdes na cura. O crítico aparece amarelo, maior, com estrela de impacto e o selo "Crit". A esquiva mostra "Miss".
+
+## Padrão dos personagens
+
+Todos os heróis seguem o mesmo padrão (ver `sprites/LEIAME.md`): quadro 320x256, mesma altura na tela, pés na mesma linha, contorno escuro de 2 px e o mesmo conjunto de animações. Guiado pelos skills `aas-game-art`, `aas-2d-games` e `aas-game-design` (sickn33/agentic-awesome-skills) em `.claude/skills`.
 
 ## Visual e sensação de jogo
 

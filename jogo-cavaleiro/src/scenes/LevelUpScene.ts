@@ -95,10 +95,12 @@ export class LevelUpScene extends Phaser.Scene {
           card.add(wtext(this, cardW / 2, 210, opt.desc, 13 * s, WIN.text).setOrigin(0.5, 0).setAlign('center').setWordWrapWidth(cardW - 30));
         }
       } else if (portrait) {
-        card.add(wtext(this, 16, 12, opt.title, (big ? 18 : 16) * s, col, true));
-        card.add(wtext(this, 16, 12 + (big ? 28 : 24) * s, opt.desc, (big ? 14.5 : 13) * s, WIN.text).setWordWrapWidth(cardW - 30));
+        // título longo quebra a linha (a descrição vem logo abaixo dele)
+        const tt = wtext(this, 16, 12, opt.title, (big ? 18 : 16) * s, col, true).setWordWrapWidth(cardW - 30);
+        card.add(tt);
+        card.add(wtext(this, 16, 12 + tt.height + 4 * s, opt.desc, (big ? 14.5 : 13) * s, WIN.text).setWordWrapWidth(cardW - 30));
       } else {
-        card.add(wtext(this, cardW / 2, cardH * 0.28, opt.title, 17 * s, col, true).setOrigin(0.5));
+        card.add(wtext(this, cardW / 2, cardH * 0.28, opt.title, 17 * s, col, true).setOrigin(0.5).setAlign('center').setWordWrapWidth(cardW - 24));
         card.add(wtext(this, cardW / 2, cardH * 0.5, opt.desc, 13 * s, WIN.text).setOrigin(0.5).setAlign('center').setWordWrapWidth(cardW - 30));
       }
       card.add(wtext(this, cardW - 8, cardH - 6, touch ? 'tocar para marcar' : `[${i + 1}]`, 11 * s, WIN.muted).setOrigin(1, 1));
@@ -143,7 +145,8 @@ export class LevelUpScene extends Phaser.Scene {
     opt.apply(game);
 
     // carta de nível usada; depois: mais cartas, escolha de classe, loja ou volta ao jogo
-    if (!opt.id.startsWith('classe-')) game.pendingCards = Math.max(0, game.pendingCards - 1);
+    if (opt.id.startsWith('tec-')) game.pendingTechnique = false;
+    else if (!opt.id.startsWith('classe-')) game.pendingCards = Math.max(0, game.pendingCards - 1);
     this.scene.stop();
     game.nextScreen();
   }
