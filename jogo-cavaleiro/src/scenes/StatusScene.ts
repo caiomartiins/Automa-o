@@ -102,8 +102,6 @@ export class StatusScene extends Phaser.Scene {
     if (pending) {
       buttons.push({ label: 'Desfazer', fn: () => this.undo() });
       buttons.push({ label: 'Confirmar', fn: () => this.confirm(), primary: true });
-    } else if (g.usesTree()) {
-      buttons.push({ label: g.skillPoints > 0 ? `Habilidades (${g.skillPoints})` : 'Habilidades', fn: () => this.openTree(), primary: g.skillPoints > 0 });
     }
     buttons.push({ label, fn: () => this.close(), primary: !pending, enabled: !pending });
     const bw = Math.min(220 * k, (w - pad * 2 - 8 * (buttons.length - 1)) / buttons.length);
@@ -197,7 +195,7 @@ export class StatusScene extends Phaser.Scene {
     bar.fillStyle(0xd6e3f5).fillRect(x + 1, y + 1, w - 2, headH - 2);
     c.add(bar);
     c.add(wtext(this, x + 8, y + headH / 2, '▲  Status', 14 * k, '#1c2a46', true).setOrigin(0, 0.5));
-    c.add(wtext(this, x + w - 8, y + headH / 2, `Pontos de status: ${g.attrPoints}`, 14 * k, g.attrPoints > 0 ? WIN.accent : WIN.label, true).setOrigin(1, 0.5));
+    c.add(wtext(this, x + w - 8, y + headH / 2, 'Atributos sobem nas cartas ao upar', 12 * k, WIN.label, true).setOrigin(1, 0.5));
     const top = y + headH;
     c.add(uiPanel(this, x, top, w, h - headH));
 
@@ -216,21 +214,13 @@ export class StatusScene extends Phaser.Scene {
       c.add(wtext(this, vx, ry, String(g.attrs[a]), 19 * k, pend ? WIN.accent : WIN.text, true).setOrigin(1, 0.5));
       const bonus = g.bonusAttrs[a];
       if (bonus) c.add(wtext(this, vx + 4, ry, `+${bonus}`, 13 * k, WIN.good, true).setOrigin(0, 0.5));
-      const cost = g.attrCostOf(a);
-      const can = g.attrPoints >= cost && g.attrs[a] < 99;
-      const b0x = x + attrW - 12 - btnW * 2.5 - 16 + btnW * 0.1;
-      c.add(wtext(this, b0x - btnW * 0.4 - 8, ry, pend ? `(+${pend})  custo ${cost}` : `custo ${cost}`, 12 * k, pend ? WIN.accent : can ? WIN.label : WIN.muted).setOrigin(1, 0.5));
-      const b1x = x + attrW - 12 - btnW * 1.5 - 8;
-      const b5x = x + attrW - 12 - btnW / 2;
-      c.add(uiButton(this, b0x, ry, btnW * 0.8, btnH, '−', () => {
-        if (g.unspendAttr(a)) this.scene.restart(this.data_);
-      }, { size: 18 * k, enabled: pend > 0 }).c);
-      c.add(uiButton(this, b1x, ry, btnW, btnH, '+1', () => {
-        if (g.spendAttr(a)) this.scene.restart(this.data_);
-      }, { size: 16 * k, enabled: can, primary: can }).c);
-      c.add(uiButton(this, b5x, ry, btnW, btnH, '+5', () => {
-        if (g.spendAttrMany(a, 5)) this.scene.restart(this.data_);
-      }, { size: 16 * k, enabled: can }).c);
+      // barra do atributo (0 a 99): os pontos agora vêm das cartas ao upar
+      const bx = x + attrW * 0.42;
+      const bw = attrW - (bx - x) - 14;
+      const bar = this.add.graphics();
+      bar.fillStyle(0xdfe6f0).fillRect(bx, ry - 6 * k, bw, 12 * k);
+      bar.fillStyle(ATTRS[a].color).fillRect(bx, ry - 6 * k, (bw * Math.min(99, g.attr(a))) / 99, 12 * k);
+      c.add(bar);
     });
 
     // ---- valores calculados

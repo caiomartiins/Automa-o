@@ -119,7 +119,7 @@ export class LevelUpScene extends Phaser.Scene {
     c.add(this.confirmBtn.c);
 
     const kb = this.input.keyboard!;
-    ['ONE', 'TWO', 'THREE'].forEach((k, i) => kb.on(`keydown-${k}`, () => this.select(i)));
+    ['ONE', 'TWO', 'THREE', 'FOUR'].forEach((k, i) => kb.on(`keydown-${k}`, () => this.select(i)));
     kb.on('keydown-ENTER', () => this.picked >= 0 && this.choose(this.picked));
     onResize(this, () => this.scene.restart(this.data_));
   }
@@ -142,8 +142,9 @@ export class LevelUpScene extends Phaser.Scene {
     const game = this.scene.get('Game') as GameScene;
     opt.apply(game);
 
-    // depois da escolha de classe: loja (se for a vez) ou volta ao jogo; os pontos ficam no botão do HUD
+    // carta de nível usada; depois: mais cartas, escolha de classe, loja ou volta ao jogo
+    if (!opt.id.startsWith('classe-')) game.pendingCards = Math.max(0, game.pendingCards - 1);
     this.scene.stop();
-    game.afterScreens();
+    game.nextScreen();
   }
 }

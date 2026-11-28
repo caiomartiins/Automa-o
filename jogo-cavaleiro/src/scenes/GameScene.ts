@@ -15,13 +15,13 @@ import type { Upgrade } from '../data/upgrades';
 import { EQUIPMENT, RARE_DUPLICATE_ZENY, activeSets, collectionBonuses, equipById, type EquipDef, type EquipStats } from '../data/equipment';
 import type { Skill } from '../skills/Skill';
 import { createSkill } from '../skills';
-import { MAX_ACTIVE, MAX_PASSIVE, POINT_CAP_FIRST, POINT_CAP_SECOND, TREE, TREE_CLASSES, TREE_PARENT, nodeMax, treeNode, type PassiveId, type TreeId } from '../data/skilltree';
+import { MAX_ACTIVE, MAX_PASSIVE, POINT_CAP_FIRST, POINT_CAP_SECOND, TREE, TREE_CLASSES, TREE_PARENT, nodeColor, nodeMax, nodeName, treeNode, type PassiveId, type TreeId } from '../data/skilltree';
 import { isTouch, onResize } from '../ui';
 import { SpatialGrid } from '../spatialGrid';
 import { Fx, FX_DEPTH } from '../fx';
 import { Projectiles } from '../projectiles';
 import {
-  ATTR_FX, ATTR_IDS, DROPS, attrCost, matkRange, statPointsForLevel, statusAtk, MAPS, PETS, REFINE_DMG, STATUS, cardOf, elementMult, emptyMods,
+  ATTRS, ATTR_FX, ATTR_IDS, DROPS, attrCost, matkRange, statusAtk, MAPS, PETS, REFINE_DMG, STATUS, cardOf, elementMult, emptyMods,
   type Attr, type Attrs, type Element as Elem, type MapDef, type Mods, type PetDef, type RpgHost, type StatusId,
 } from '../data/rpg';
 import { loadSave, writeSave } from '../save';
@@ -104,6 +104,8 @@ export class GameScene extends Phaser.Scene implements RpgHost {
   attrs: Attrs = { for: 1, agi: 1, vit: 1, int: 1, des: 1, sor: 1 };
   /** Pontos de atributo ainda não distribuídos */
   attrPoints = 0;
+  /** Cartas de nível esperando escolha (uma por nível ganho) */
+  pendingCards = 0;
   /** Bônus de atributo vindos de equipamento e cartas (não custam pontos) */
   bonusAttrs: Attrs = { for: 0, agi: 0, vit: 0, int: 0, des: 0, sor: 0 };
   /** Soma dos efeitos do equipamento usado nesta partida */
@@ -278,7 +280,9 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     this.decorPool = [];
     this.mods = emptyMods();
     this.attrs = { for: 1, agi: 1, vit: 1, int: 1, des: 1, sor: 1 };
-    this.attrPoints = ATTR_FX.startPoints;
+    // sem pontos para distribuir: atributos vêm das cartas ao upar
+    this.attrPoints = 0;
+    this.pendingCards = 0;
     this.cards = [];
     this.items = { asa: 0, pena: 0 };
     this.zenyRun = 0;
@@ -352,7 +356,8 @@ export class GameScene extends Phaser.Scene implements RpgHost {
 
     this.scene.launch('UI');
     // começo da partida: distribuir os 48 pontos iniciais
-    this.time.delayedCall(60, () => this.openLevelScreens('start'));
+    // todos os atributos começam em 5 (antes vinham dos pontos iniciais)
+    for (const a of ATTR_IDS) this.raiseAttr(a, 4);
   }
 
   update(_time: number, delta: number) {
@@ -1797,9 +1802,8 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       this.level++;
       this.hp += this.stats.maxHp - hpBefore;
       this.xpNext = xpForLevel(this.level);
-      const pts = statPointsForLevel(this.level);
-      this.attrPoints += pts;
-      gained += pts;
+      this.pendingCards++;
+      gained++;
       // cada nível de base também vale meio nível de classe (mais pontos de habilidade)
       this.gainJob(Math.ceil(jobForLevel(this.jobLevel) / 2));
     }
@@ -1824,22 +1828,132 @@ export class GameScene extends Phaser.Scene implements RpgHost {
    * Os pontos de status e de habilidade ficam esperando no botão do HUD.
    * No começo da partida abre a janela de Status para os pontos iniciais.
    */
-  openLevelScreens(reason: 'levelup' | 'start' = 'levelup') {
+  openLevelScreens() {
     if (this.choosing) return;
-    const choice = this.classChoice();
-    if (reason === 'levelup' && !choice && !this.pendingShop) return;
+    if (!this.classChoice() && !this.pendingCards && !this.pendingShop) return;
     this.choosing = true;
     this.scene.pause();
+    this.nextScreen();
+  }
+
+  /** Próxima tela da fila: escolha de classe, cartas de nível, loja ou volta ao jogo */
+  nextScreen() {
+    const choice = this.classChoice();
     if (choice) this.scene.launch('LevelUp', choice);
-    else if (reason === 'start') this.scene.launch('Status', { reason });
+    else if (this.pendingCards > 0) this.scene.launch('LevelUp', this.cardChoice());
     else this.afterScreens();
   }
 
-  /** Tem pontos de status ou de habilidade esperando para serem distribuídos */
+  /** Os pontos agora vêm das cartas: nada fica esperando no HUD */
   pendingPoints() {
-    // só conta os pontos de status se der para subir algum atributo (o custo cresce a cada 10)
-    const cheapest = Math.min(...ATTR_IDS.filter((x) => this.attrs[x] < 99).map((x) => this.attrCostOf(x)));
-    return { attr: this.attrPoints >= cheapest ? this.attrPoints : 0, skill: this.usesTree() ? this.skillPoints : 0 };
+    return { attr: 0, skill: 0 };
+  }
+
+  // ---------------------------------------------------------------- cartas ao upar
+
+  /** Quanto uma carta de atributo dá (cresce com o nível) */
+  attrCardValue() {
+    return this.level < 15 ? 3 : this.level < 30 ? 4 : 5;
+  }
+
+  /** Sobe o atributo base (cartas e início da partida), até 99 */
+  raiseAttr(a: Attr, n: number) {
+    const k = Math.min(n, 99 - this.attrs[a]);
+    if (k <= 0) return;
+    this.changeAttr(() => {
+      this.attrs[a] += k;
+      this.attrEffects(a, k);
+    });
+    this.commitAttrs();
+  }
+
+  /** Peso de cada atributo nas cartas, pela classe (os principais aparecem mais) */
+  private attrWeights(): Record<Attr, number> {
+    const w: Record<Attr, number> = { for: 1, agi: 1, vit: 1, int: 1, des: 1, sor: 1 };
+    const line = this.line;
+    if (this.classId === 'paladino') Object.assign(w, { vit: 5, for: 2, int: 0.3, des: 0.6 });
+    else if (line === 'espadachim') Object.assign(w, { for: 4, vit: 3, agi: 2, int: 0.3, des: 0.8 });
+    else if (line === 'mago') Object.assign(w, { int: 5, des: 2, vit: 1.2, for: 0.3, agi: 0.6 });
+    else if (line === 'arqueiro') Object.assign(w, { des: 5, agi: 3, sor: 1.5, for: 0.5, int: 0.3 });
+    for (const a of ATTR_IDS) if (this.attrs[a] >= 99) w[a] = 0;
+    return w;
+  }
+
+  /** Habilidades e passivas que podem aparecer nas cartas agora */
+  private skillCards(): { id: TreeId; w: number }[] {
+    if (!this.usesTree()) return [];
+    const lv = (x: TreeId) => this.nodeLevel(x);
+    const slots = this.slotCount(lv);
+    const out: { id: TreeId; w: number }[] = [];
+    for (const n of TREE) {
+      if (!this.canUseTab(n.cls)) continue;
+      const cur = lv(n.id);
+      if (cur >= nodeMax(n)) continue;
+      if (cur === 0 && (n.passive ? slots.passive >= MAX_PASSIVE : slots.active >= MAX_ACTIVE)) continue;
+      // subir o que já tem aparece mais; da 2ª classe também
+      out.push({ id: n.id, w: (cur > 0 ? 2.2 : 1) * (n.cls === this.classId ? 1.3 : 1) });
+    }
+    return out;
+  }
+
+  /** Sorteio com pesos, sem repetir */
+  private pickWeighted<T>(list: { v: T; w: number }[], n: number): T[] {
+    const pool = list.filter((x) => x.w > 0);
+    const out: T[] = [];
+    while (out.length < n && pool.length) {
+      let r = Math.random() * pool.reduce((s, x) => s + x.w, 0);
+      let i = 0;
+      while (i < pool.length - 1 && (r -= pool[i].w) > 0) i++;
+      out.push(pool[i].v);
+      pool.splice(i, 1);
+    }
+    return out;
+  }
+
+  /** Cartas do nível: até 3 habilidades/passivas + atributos (4 cartas) */
+  cardChoice(): LevelUpData {
+    const skills = this.pickWeighted(this.skillCards().map((c) => ({ v: c.id, w: c.w })), 3);
+    const attrs = this.pickWeighted(ATTR_IDS.map((a) => ({ v: a, w: this.attrWeights()[a] })), 4 - skills.length);
+    const options: Upgrade[] = [];
+    for (const id of skills) {
+      const n = treeNode(id);
+      const cur = this.nodeLevel(id);
+      const max = nodeMax(n);
+      const desc = n.passive
+        ? `${cur === 0 ? n.passive.desc + '\n' : ''}Nv ${cur + 1}: ${n.passive.per(cur + 1)}`
+        : SKILLS[id as SkillId].levelDesc[cur];
+      options.push({
+        id: `hab-${id}`,
+        title: `${cur === 0 ? 'NOVA: ' : ''}${nodeName(n)}  ${cur === 0 ? (n.passive ? '(passiva)' : '(ativa)') : `Nv ${cur + 1}/${max}`}`,
+        desc, color: nodeColor(n),
+        apply: (g: GameScene) => g.learnCard(id),
+      });
+    }
+    const v = this.attrCardValue();
+    for (const a of attrs) {
+      options.push({
+        id: `attr-${a}`, title: `+${v} ${ATTRS[a].short}  (${ATTRS[a].name}: ${this.attrs[a]} → ${Math.min(99, this.attrs[a] + v)})`,
+        desc: ATTRS[a].desc, color: ATTRS[a].color,
+        apply: (g: GameScene) => g.raiseAttr(a, v),
+      });
+    }
+    const slots = this.slotCount((x) => this.nodeLevel(x));
+    return {
+      level: this.level, promotion: null, options,
+      choiceTitle: `NÍVEL ${this.level}!  Escolha uma melhoria`,
+      choiceSubtitle: this.usesTree()
+        ? `Ativas ${slots.active}/${MAX_ACTIVE}   Passivas ${slots.passive}/${MAX_PASSIVE}${this.pendingCards > 1 ? `   •   mais ${this.pendingCards - 1} escolha(s)` : ''}`
+        : `Até o nível 5 o Aprendiz só melhora atributos${this.pendingCards > 1 ? `   •   mais ${this.pendingCards - 1} escolha(s)` : ''}`,
+    };
+  }
+
+  /** Aprende ou sobe 1 nível de uma habilidade/passiva escolhida na carta (sem requisitos) */
+  learnCard(id: TreeId) {
+    const n = treeNode(id);
+    if (this.nodeLevel(id) >= nodeMax(n)) return;
+    this.paidLv[id] = (this.paidLv[id] ?? 0) + 1;
+    if (n.passive) this.addPassive(id as PassiveId);
+    else this.addSkill(id as SkillId);
   }
 
   /**
@@ -1921,9 +2035,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     if (TREE_PARENT[id]) {
       // 2ª classe: a árvore nova é liberada; as habilidades vêm dos pontos (sem habilidade grátis)
       // 1 ponto na hora, para já poder aprender algo da árvore nova
-      this.classPoints = 1;
-      this.skillPoints += 1;
-      this.events.emit('toast', `Árvore de ${def.name} liberada! Abra Habilidades na janela de Status.`, '#9fc3ff');
+      this.events.emit('toast', `Habilidades de ${def.name} agora aparecem nas cartas ao upar!`, '#9fc3ff');
     } else if (def.grantsSkill) {
       // 1ª classe: o Golpe de Espada do Aprendiz só continua para o Espadachim
       if (lineOf(id) !== 'espadachim' && this.skills.has('espada')) {

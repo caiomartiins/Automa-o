@@ -8,12 +8,12 @@ import { SKILLS, type SkillId } from './skills';
  * passivas dão bônus permanentes.
  *
  * Regras de build:
- * - no máximo 4 habilidades ATIVAS e 4 PASSIVAS aprendidas;
+ * - no máximo 5 habilidades ATIVAS e 5 PASSIVAS aprendidas (escolhidas nas cartas ao upar);
  * - 1ª classe dá até 12 pontos e a 2ª classe até 18 (30 no total). Deixar as 8
  *   habilidades no nível 5 custaria 40, então é preciso escolher onde investir.
  */
-export const MAX_ACTIVE = 4;
-export const MAX_PASSIVE = 4;
+export const MAX_ACTIVE = 5;
+export const MAX_PASSIVE = 5;
 export const POINT_CAP_FIRST = 12;
 export const POINT_CAP_SECOND = 18;
 
