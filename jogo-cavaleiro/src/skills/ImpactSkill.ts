@@ -6,7 +6,7 @@ export class ImpactSkill extends Skill {
   private timer = 500;
 
   get damage() { return (45 + 20 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (this.level >= 5 ? 1900 : 2500) / this.g.stats.haste; }
+  get cooldown() { return (this.level >= 5 ? 1900 : 2500) / this.g.atkHaste; }
   get radius() { return (100 + 12 * (this.level - 1)) * this.g.stats.area; }
 
   update(dt: number) {

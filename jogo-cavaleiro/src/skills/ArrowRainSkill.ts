@@ -8,7 +8,7 @@ export class ArrowRainSkill extends Skill {
   private zones: { x: number; y: number; ticks: number; next: number }[] = [];
 
   get damage() { return (9 + 3 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return 2600 / this.g.stats.haste; }
+  get cooldown() { return 2600 / this.g.atkHaste; }
   get radius() { return (this.level >= 2 ? 95 : 80) * this.g.stats.area; }
   get zonesPerCast() { return this.level >= 5 ? 3 : this.level >= 3 ? 2 : 1; }
   get ticks() { return this.level >= 4 ? 8 : 6; }

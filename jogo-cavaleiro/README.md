@@ -37,6 +37,8 @@ Todos os heróis usam sprites recortados das imagens enviadas. A fonte em PNG fi
 
 ## Evolução do personagem (regras no estilo do RPG clássico)
 
+**Velocidade:** AGI acelera os ataques físicos (+1,2% por ponto; DES +0,2%) e DES acelera a conjuração das magias (+1% por ponto; AGI +0,2%). A janela de Status mostra "Vel. ataque" e "Conjuração". Habilidades no nível máximo não aparecem mais nas cartas.
+
 **Cartas ao upar (sistema atual):** a cada nível o jogo pausa e mostra 4 cartas; você escolhe 1. As cartas são habilidades novas, níveis de habilidades que você já tem, passivas e atributos (+3 até o nível 14, +4 até o 29, +5 depois; os atributos principais da classe aparecem mais). Limite da build: **5 habilidades ativas e 5 passivas**. As habilidades vêm da classe atual (a 1ª classe continua valendo depois da 2ª), sem requisitos. Todos os atributos começam em 5; não há mais pontos para distribuir nem árvore para abrir (as regras abaixo de pontos e árvore ficam só como referência).
 
 - **Começo da partida:** todos os atributos em 1 e **48 pontos** para distribuir (abre a janela de Status).

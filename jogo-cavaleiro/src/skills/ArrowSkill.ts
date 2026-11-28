@@ -6,7 +6,7 @@ export class ArrowSkill extends Skill {
   private timer = 250;
 
   get damage() { return (11 + 4 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return 720 / this.g.stats.haste; }
+  get cooldown() { return 720 / this.g.atkHaste; }
   get count() { return [1, 2, 2, 3, 4][this.level - 1]; }
   get pierce() { return this.level >= 5 ? 3 : this.level >= 3 ? 2 : 1; }
 

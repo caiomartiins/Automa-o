@@ -14,7 +14,7 @@ export class IceBoltSkill extends Skill {
   readonly id = 'gelo' as const;
   private timer = 400;
   get damage() { return (10 + 3 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (this.level >= 5 ? 1050 : 1250) / this.g.stats.haste; }
+  get cooldown() { return (this.level >= 5 ? 1050 : 1250) / this.g.castHaste; }
   get count() { return this.level + 1; }
   trigger() { this.timer = 0; }
 
@@ -43,7 +43,7 @@ export class SoulSkill extends Skill {
   readonly id = 'alma' as const;
   private timer = 500;
   get damage() { return (15 + 5 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (this.level >= 5 ? 1150 : 1400) / this.g.stats.haste; }
+  get cooldown() { return (this.level >= 5 ? 1150 : 1400) / this.g.castHaste; }
   get count() { return [2, 3, 3, 4, 5][this.level - 1]; }
   get pierce() { return this.level >= 3 ? 3 : 2; }
 
@@ -71,7 +71,7 @@ export class ThunderBoltSkill extends Skill {
   readonly id = 'relampago' as const;
   private timer = 600;
   get damage() { return (20 + 7 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (this.level >= 3 ? 1300 : 1550) / this.g.stats.haste; }
+  get cooldown() { return (this.level >= 3 ? 1300 : 1550) / this.g.castHaste; }
   get count() { return [1, 2, 2, 3, 4][this.level - 1]; }
   trigger() { this.timer = 0; }
 
@@ -105,7 +105,7 @@ export class ThunderstormSkill extends Skill {
   private timer = 900;
   private pending: { x: number; y: number; at: number }[] = [];
   get damage() { return (14 + 5 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (this.level >= 4 ? 2500 : 2900) / this.g.stats.haste; }
+  get cooldown() { return (this.level >= 4 ? 2500 : 2900) / this.g.castHaste; }
   get count() { return [4, 5, 6, 7, 9][this.level - 1]; }
   get radius() { return (75 + 8 * this.level) * this.g.stats.area; }
 
@@ -142,7 +142,7 @@ export class FrostDiverSkill extends Skill {
   readonly id = 'congelar' as const;
   private timer = 800;
   get damage() { return (34 + 10 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (this.level >= 4 ? 1900 : 2300) / this.g.stats.haste; }
+  get cooldown() { return (this.level >= 4 ? 1900 : 2300) / this.g.castHaste; }
   get pierce() { return 2 + this.level; }
 
   update(dt: number) {
@@ -221,7 +221,7 @@ export class FireWallSkill extends ZoneSkill {
   protected tick = 400;
   protected knockback = 170;
   protected zoneDamage() { return (6 + 2 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (this.level >= 4 ? 3800 : 4600) / this.g.stats.haste; }
+  get cooldown() { return (this.level >= 4 ? 3800 : 4600) / this.g.castHaste; }
   get segments() { return 3 + Math.min(this.level, 4); }
   get duration() { return 2800 + 300 * this.level; }
 
@@ -260,7 +260,7 @@ export class QuagmireSkill extends ZoneSkill {
   protected tick = 450;
   protected knockback = 0;
   protected zoneDamage() { return (5 + 2 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (this.level >= 4 ? 5200 : 6200) / this.g.stats.haste; }
+  get cooldown() { return (this.level >= 4 ? 5200 : 6200) / this.g.castHaste; }
   get radius() { return (90 + 12 * this.level) * this.g.stats.area; }
   get duration() { return 4000 + 500 * this.level; }
 
@@ -299,7 +299,7 @@ export class StormGustSkill extends Skill {
   private timer = 1000;
   private storms: { x: number; y: number; hits: number; next: number }[] = [];
   get damage() { return (14 + 5 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (this.level >= 4 ? 3600 : 4200) / this.g.stats.haste; }
+  get cooldown() { return (this.level >= 4 ? 3600 : 4200) / this.g.castHaste; }
   get radius() { return (100 + 10 * this.level) * this.g.stats.area; }
   get hits() { return 4 + (this.level >= 3 ? 1 : 0) + (this.level >= 5 ? 1 : 0); }
 
@@ -339,7 +339,7 @@ export class LordSkill extends Skill {
   private waves = 0;
   private nextWave = 0;
   get damage() { return (22 + 7 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (this.level >= 4 ? 5600 : 6400) / this.g.stats.haste; }
+  get cooldown() { return (this.level >= 4 ? 5600 : 6400) / this.g.castHaste; }
   get radius() { return (170 + 15 * this.level) * this.g.stats.area; }
   get waveCount() { return 3 + (this.level >= 3 ? 1 : 0) + (this.level >= 5 ? 1 : 0); }
 
@@ -376,7 +376,7 @@ export class EarthSpikeSkill extends Skill {
   readonly id = 'espinhos' as const;
   private timer = 500;
   get damage() { return (22 + 8 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (this.level >= 5 ? 1400 : 1700) / this.g.stats.haste; }
+  get cooldown() { return (this.level >= 5 ? 1400 : 1700) / this.g.castHaste; }
   get count() { return [2, 3, 3, 4, 5][this.level - 1]; }
   get radius() { return (this.level >= 3 ? 44 : 36) * this.g.stats.area; }
 

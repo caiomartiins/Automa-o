@@ -10,7 +10,7 @@ export class MeteorSkill extends Skill {
   private pending: { x: number; y: number; at: number }[] = [];
 
   get damage() { return (60 + 25 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (this.level >= 5 ? 2600 : 3200) / this.g.stats.haste; }
+  get cooldown() { return (this.level >= 5 ? 2600 : 3200) / this.g.castHaste; }
   get count() { return [1, 2, 2, 3, 5][this.level - 1]; }
   get radius() { return (this.level >= 3 ? 105 : 85) * this.g.stats.area; }
 

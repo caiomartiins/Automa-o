@@ -8,7 +8,7 @@ export class SwordSkill extends Skill {
   private readonly arc = Phaser.Math.DegToRad(115);
 
   get damage() { return (15 + 5 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (950 - 80 * (this.level - 1)) / this.g.stats.haste; }
+  get cooldown() { return (950 - 80 * (this.level - 1)) / this.g.atkHaste; }
   get range() { return (78 + 10 * (this.level - 1)) * this.g.stats.area; }
 
   update(dt: number) {

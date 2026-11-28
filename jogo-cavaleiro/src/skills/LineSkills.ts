@@ -12,7 +12,7 @@ export class MagnumSkill extends Skill {
   readonly id = 'explosao' as const;
   private timer = 600;
   get damage() { return (30 + 10 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (2700 - 60 * (this.level - 1)) / this.g.stats.haste; }
+  get cooldown() { return (2700 - 60 * (this.level - 1)) / this.g.atkHaste; }
   get radius() { return (85 + 10 * this.level + (this.level >= 5 ? 20 : 0) + (this.level >= 10 ? 25 : 0)) * this.g.stats.area; }
 
   update(dt: number) {
@@ -38,7 +38,7 @@ export class ShieldBoomerangSkill extends Skill {
   readonly id = 'bumerangue' as const;
   private timer = 500;
   get damage() { return (36 + 12 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return 1300 / this.g.stats.haste; }
+  get cooldown() { return 1300 / this.g.atkHaste; }
   get count() { return [1, 1, 2, 2, 3][this.level - 1]; }
   get pierce() { return 3 + (this.level >= 2 ? 1 : 0) + (this.level >= 4 ? 1 : 0); }
 
@@ -66,7 +66,7 @@ export class GrandCrossSkill extends Skill {
   readonly id = 'cruz' as const;
   private timer = 800;
   get damage() { return (35 + 12 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (this.level >= 4 ? 2200 : 2700) / this.g.stats.haste; }
+  get cooldown() { return (this.level >= 4 ? 2200 : 2700) / this.g.atkHaste; }
   get length() { return (140 + 15 * this.level) * this.g.stats.area; }
 
   update(dt: number) {
@@ -109,7 +109,7 @@ export class DoubleStrafeSkill extends Skill {
   readonly id = 'duplo' as const;
   private timer = 400;
   get damage() { return (28 + 9 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (this.level >= 4 ? 1250 : 1550) / this.g.stats.haste; }
+  get cooldown() { return (this.level >= 4 ? 1250 : 1550) / this.g.atkHaste; }
   get targets() { return 1 + (this.level >= 3 ? 1 : 0) + (this.level >= 5 ? 1 : 0); }
 
   update(dt: number) {
@@ -140,7 +140,7 @@ export class ArrowShowerSkill extends Skill {
   readonly id = 'rajada' as const;
   private timer = 700;
   get damage() { return (20 + 7 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (this.level >= 4 ? 1900 : 2300) / this.g.stats.haste; }
+  get cooldown() { return (this.level >= 4 ? 1900 : 2300) / this.g.atkHaste; }
   get radius() { return (70 + 8 * this.level) * this.g.stats.area; }
   get areas() { return this.level >= 5 ? 3 : this.level >= 3 ? 2 : 1; }
 
@@ -175,7 +175,7 @@ export class TrapSkill extends Skill {
   private timer = 600;
   private traps: { img: Phaser.GameObjects.Image; until: number }[] = [];
   get damage() { return (40 + 14 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (this.level >= 4 ? 1400 : 1800) / this.g.stats.haste; }
+  get cooldown() { return (this.level >= 4 ? 1400 : 1800) / this.g.atkHaste; }
   get maxTraps() { return 1 + this.level; }
   get radius() { return (70 + (this.level >= 3 ? 12 : 0) + (this.level >= 5 ? 14 : 0)) * this.g.stats.area; }
 
@@ -220,7 +220,7 @@ export class FalconSkill extends Skill {
   readonly id = 'falcao' as const;
   private timer = 800;
   get damage() { return (22 + 8 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (this.level >= 3 ? 1700 : 2100) / this.g.stats.haste; }
+  get cooldown() { return (this.level >= 3 ? 1700 : 2100) / this.g.atkHaste; }
   get dives() { return [2, 3, 3, 4, 5][this.level - 1]; }
 
   update(dt: number) {
@@ -255,7 +255,7 @@ export class ExplosiveArrowSkill extends Skill {
   readonly id = 'explosiva' as const;
   private timer = 500;
   get damage() { return (22 + 7 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (this.level >= 4 ? 1400 : 1700) / this.g.stats.haste; }
+  get cooldown() { return (this.level >= 4 ? 1400 : 1700) / this.g.atkHaste; }
   get count() { return [1, 1, 2, 2, 3][this.level - 1]; }
   get blast() { return (48 + 6 * this.level) * this.g.stats.area; }
 
@@ -286,7 +286,7 @@ export class HeroicChargeSkill extends Skill {
   readonly id = 'investida' as const;
   private timer = 600;
   get damage() { return (60 + 18 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (this.level >= 3 ? 1700 : 2100) / this.g.stats.haste; }
+  get cooldown() { return (this.level >= 3 ? 1700 : 2100) / this.g.atkHaste; }
   get dist() { return (130 + (this.level >= 2 ? 25 : 0) + (this.level >= 4 ? 25 : 0)) * this.g.stats.area; }
 
   update(dt: number) {
@@ -334,7 +334,7 @@ export class XSlashSkill extends Skill {
   private timer = 400;
   private readonly arc = Phaser.Math.DegToRad(120);
   get damage() { return (24 + 10 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (this.level >= 3 ? 1250 : 1550) / this.g.stats.haste; }
+  get cooldown() { return (this.level >= 3 ? 1250 : 1550) / this.g.atkHaste; }
   get range() { return (105 + (this.level >= 2 ? 15 : 0) + (this.level >= 4 ? 15 : 0)) * this.g.stats.area; }
 
   update(dt: number) {
@@ -377,7 +377,7 @@ export class WhirlwindSkill extends Skill {
   readonly id = 'turbilhao' as const;
   private timer = 900;
   get damage() { return (15 + 5 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (this.level >= 4 ? 3600 : 4200) / this.g.stats.haste; }
+  get cooldown() { return (this.level >= 4 ? 3600 : 4200) / this.g.atkHaste; }
   get radius() { return (105 + 8 * this.level) * this.g.stats.area; }
   get spins() { return 3 + (this.level >= 3 ? 1 : 0) + (this.level >= 5 ? 2 : 0); }
 

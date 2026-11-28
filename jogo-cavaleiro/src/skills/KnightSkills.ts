@@ -11,7 +11,7 @@ export class PierceSkill extends Skill {
   readonly id = 'perfurar' as const;
   private timer = 400;
   get damage() { return (24 + 9 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (1000 - 35 * (this.level - 1)) / this.g.stats.haste; }
+  get cooldown() { return (1000 - 35 * (this.level - 1)) / this.g.atkHaste; }
   get range() { return (150 + 8 * this.level) * this.g.stats.area; }
   /** Nv 4+: a lança atravessa e fere quem estiver atrás; Nv 7+: faixa mais larga */
   get width() { return (this.level >= 7 ? 44 : this.level >= 4 ? 30 : 0) * this.g.stats.area; }
@@ -57,7 +57,7 @@ export class SpearStabSkill extends Skill {
   readonly id = 'estocada' as const;
   private timer = 600;
   get damage() { return (45 + 14 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (1800 - 60 * (this.level - 1)) / this.g.stats.haste; }
+  get cooldown() { return (1800 - 60 * (this.level - 1)) / this.g.atkHaste; }
   get length() { return (150 + 15 * this.level) * this.g.stats.area; }
   get width() { return (40 + 3 * this.level) * this.g.stats.area; }
 
@@ -99,7 +99,7 @@ export class SpearBoomerangSkill extends Skill {
   readonly id = 'lancabum' as const;
   private timer = 500;
   get damage() { return (70 + 30 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (1700 - 100 * (this.level - 1)) / this.g.stats.haste; }
+  get cooldown() { return (1700 - 100 * (this.level - 1)) / this.g.atkHaste; }
   get range() { return (480 + 40 * this.level) * this.g.stats.area; }
   get pierce() { return 1 + (this.level >= 3 ? 1 : 0) + (this.level >= 5 ? 1 : 0); }
 
@@ -131,7 +131,7 @@ export class BrandishSkill extends Skill {
   readonly id = 'brandir' as const;
   private timer = 700;
   get damage() { return (40 + 12 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (2300 - 70 * (this.level - 1)) / this.g.stats.haste; }
+  get cooldown() { return (2300 - 70 * (this.level - 1)) / this.g.atkHaste; }
   get range() { return (120 + 10 * this.level) * this.g.stats.area; }
   /** Abertura do leque: 150°, 200° no Nv 6+ */
   get arc() { return Phaser.Math.DegToRad(this.level >= 6 ? 200 : 150); }
@@ -177,7 +177,7 @@ export class TitanImpactSkill extends Skill {
   readonly id = 'titan' as const;
   private timer = 800;
   get damage() { return (55 + 16 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (2600 - 80 * (this.level - 1)) / this.g.stats.haste; }
+  get cooldown() { return (2600 - 80 * (this.level - 1)) / this.g.atkHaste; }
   get radius() { return (70 + 8 * this.level) * this.g.stats.area; }
 
   update(dt: number) {
@@ -209,7 +209,7 @@ export class BashSkill extends Skill {
   readonly id = 'fulminante' as const;
   private timer = 300;
   get damage() { return (50 + 15 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (1300 - 40 * (this.level - 1)) / this.g.stats.haste; }
+  get cooldown() { return (1300 - 40 * (this.level - 1)) / this.g.atkHaste; }
   /** Nv 4+: onda de choque em volta do alvo; cresce no Nv 7 e 10 */
   get splash() { return (this.level >= 10 ? 95 : this.level >= 7 ? 75 : this.level >= 4 ? 55 : 0) * this.g.stats.area; }
 
@@ -236,7 +236,7 @@ export class BashSkill extends Skill {
 export class ProvokeSkill extends Skill {
   readonly id = 'provocar' as const;
   private timer = 800;
-  get cooldown() { return (6000 - 200 * (this.level - 1)) / this.g.stats.haste; }
+  get cooldown() { return (6000 - 200 * (this.level - 1)) / this.g.atkHaste; }
   get radius() { return (140 + 14 * this.level) * this.g.stats.area; }
   /** Dano extra que os provocados recebem */
   get defDown() { return 0.06 + 0.03 * (this.level - 1); }

@@ -1490,8 +1490,6 @@ export class GameScene extends Phaser.Scene implements RpgHost {
 
   /** Efeitos fixos que mudam quando um atributo muda */
   private attrEffects(a: Attr, n: number) {
-    if (a === 'agi') this.stats.haste += ATTR_FX.agiAspd * n;
-    if (a === 'des') this.stats.haste += ATTR_FX.dexAspd * n;
     if (a === 'vit') this.stats.regen += ATTR_FX.vitRegen * n;
   }
 
@@ -1586,6 +1584,16 @@ export class GameScene extends Phaser.Scene implements RpgHost {
   }
 
   // ---------------------------------------------------------------- árvore de habilidades
+
+  /** Velocidade dos ataques físicos: AGI (forte) e DES (leve) */
+  get atkHaste() {
+    return this.stats.haste * (1 + this.attr('agi') * ATTR_FX.agiAspd + this.attr('des') * ATTR_FX.dexAspd);
+  }
+
+  /** Velocidade de conjuração (magias): DES (forte) e AGI (leve) */
+  get castHaste() {
+    return this.stats.haste * (1 + this.attr('des') * ATTR_FX.dexCast + this.attr('agi') * ATTR_FX.agiCast);
+  }
 
   /** Impacto Explosivo: os golpes ficam com fogo (+bonus de dano) por `ms` */
   fireBuff(bonus: number, ms: number) {

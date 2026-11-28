@@ -6,7 +6,7 @@ export class LanceSkill extends Skill {
   private timer = 400;
 
   get damage() { return (30 + 15 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (2400 - 150 * (this.level - 1)) / this.g.stats.haste; }
+  get cooldown() { return (2400 - 150 * (this.level - 1)) / this.g.atkHaste; }
   get length() { return (240 + 20 * (this.level - 1)) * this.g.stats.area; }
   get width() { return 34 * this.g.stats.area; }
 

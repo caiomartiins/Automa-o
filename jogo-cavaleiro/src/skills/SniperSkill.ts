@@ -6,7 +6,7 @@ export class SniperSkill extends Skill {
   private timer = 700;
 
   get damage() { return (55 + 20 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (2300 - 150 * (this.level - 1)) / this.g.stats.haste; }
+  get cooldown() { return (2300 - 150 * (this.level - 1)) / this.g.atkHaste; }
   get length() { return 620 * this.g.stats.area; }
   get width() { return (this.level >= 4 ? 34 : 24) * this.g.stats.area; }
   get shots() { return this.level >= 5 ? 3 : this.level >= 3 ? 2 : 1; }

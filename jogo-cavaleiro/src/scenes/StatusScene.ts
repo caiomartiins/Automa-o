@@ -237,13 +237,13 @@ export class StatusScene extends Phaser.Scene {
       ['HIT', `${g.hit()}`],
       ['Crítico', pct(g.critChance())],
       ['HP', `${Math.ceil(Math.max(0, g.hp))} / ${g.stats.maxHp}`],
-      ['Nv classe', `${g.jobLevel}`],
+      ['Conjuração', pct(g.castHaste)],
     ];
     const right: [string, string][] = [
       ['Def', `${pct(g.hardDef())} + ${g.softDef()}`],
       ['Flee', `${g.flee()}`],
       ['Esq. perfeita', `${(g.perfectDodge() * 100).toFixed(1)}%`],
-      ['Aspd', pct(g.stats.haste)],
+      ['Vel. ataque', pct(g.atkHaste)],
       ['Mov', `${Math.round(g.stats.speed)}`],
       ['Zeny', `${g.zenyRun} z`],
     ];

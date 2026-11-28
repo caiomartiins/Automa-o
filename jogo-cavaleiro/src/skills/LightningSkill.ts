@@ -7,7 +7,7 @@ export class LightningSkill extends Skill {
   private timer = 500;
 
   get damage() { return (22 + 8 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (this.level >= 3 ? 1350 : 1650) / this.g.stats.haste; }
+  get cooldown() { return (this.level >= 3 ? 1350 : 1650) / this.g.castHaste; }
   get jumps() { return 2 + Math.min(this.level, 4); }
   get bolts() { return this.level >= 5 ? 2 : 1; }
 

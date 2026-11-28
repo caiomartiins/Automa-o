@@ -6,7 +6,7 @@ export class FireballSkill extends Skill {
   private timer = 300;
 
   get damage() { return (14 + 6 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (this.level >= 5 ? 950 : 1150) / this.g.stats.haste; }
+  get cooldown() { return (this.level >= 5 ? 950 : 1150) / this.g.castHaste; }
   get count() { return [1, 2, 2, 3, 4][this.level - 1]; }
   get blast() { return (this.level >= 3 ? 58 : 44) * this.g.stats.area; }
 

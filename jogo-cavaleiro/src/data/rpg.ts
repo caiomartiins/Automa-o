@@ -72,7 +72,8 @@ export const ATTRS: Record<Attr, { short: string; name: string; desc: string; co
  */
 export const ATTR_FX = {
   atkDiv: 40,
-  agiAspd: 0.012, dexAspd: 0.003,
+  /** AGI e DES aceleram os ataques físicos; DES (e um pouco de AGI) acelera as magias (conjuração) */
+  agiAspd: 0.012, dexAspd: 0.002, dexCast: 0.01, agiCast: 0.002,
   vitRegen: 0.03, vitResist: 0.01,
   sorDrop: 0.02,
   /** Pontos iniciais para distribuir no começo da partida */
