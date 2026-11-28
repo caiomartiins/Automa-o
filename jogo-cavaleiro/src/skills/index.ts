@@ -13,7 +13,8 @@ import { SniperSkill } from './SniperSkill';
 import { ImpactSkill } from './ImpactSkill';
 import { AuraSkill } from './AuraSkill';
 import { BookSkill } from './BookSkill';
-import { HeroicChargeSkill, WhirlwindSkill, XSlashSkill, ArrowShowerSkill, BrandishSkill, DoubleStrafeSkill, ExplosiveArrowSkill, FalconSkill, GrandCrossSkill, MagnumSkill, ShieldBoomerangSkill, TrapSkill } from './LineSkills';
+import { HeroicChargeSkill, WhirlwindSkill, XSlashSkill, ArrowShowerSkill, DoubleStrafeSkill, ExplosiveArrowSkill, FalconSkill, GrandCrossSkill, MagnumSkill, ShieldBoomerangSkill, TrapSkill } from './LineSkills';
+import { BrandishSkill, PierceSkill, SpearBoomerangSkill, SpearStabSkill, TitanImpactSkill } from './KnightSkills';
 import { EarthSpikeSkill, FireWallSkill, FrostDiverSkill, IceBoltSkill, LordSkill, QuagmireSkill, SoulSkill, StormGustSkill, ThunderBoltSkill, ThunderstormSkill } from './MageSkills';
 
 const FACTORIES: Record<SkillId, new (g: GameScene) => Skill> = {
@@ -51,6 +52,10 @@ const FACTORIES: Record<SkillId, new (g: GameScene) => Skill> = {
   flecha: ArrowSkill,
   chuva: ArrowRainSkill,
   tiro: SniperSkill,
+  perfurar: PierceSkill,
+  estocada: SpearStabSkill,
+  lancabum: SpearBoomerangSkill,
+  titan: TitanImpactSkill,
 };
 
 export function createSkill(id: SkillId, g: GameScene): Skill {

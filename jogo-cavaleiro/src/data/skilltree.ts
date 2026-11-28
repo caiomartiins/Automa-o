@@ -24,6 +24,7 @@ export type PassiveId =
   // Espadachim / Cavaleiro / Paladino
   | 'pericia' | 'vigor' | 'recuperar' | 'furia'
   | 'rapidez' | 'contra' | 'determinacao' | 'esgrima'
+  | 'pericialanca' | 'montaria' | 'periciamont' | 'duasmaos'
   | 'fe' | 'defensor' | 'cura' | 'baluarte'
   // Arqueiro / Caçador de Sombras / Atirador de Elite
   | 'coruja' | 'aguia' | 'concentracao'
@@ -65,6 +66,12 @@ export interface PassiveFx {
   berserk?: number;
   /** Chance de lançar uma magia de Mago ao arremessar livros */
   recall?: number;
+  /** Dano das habilidades de lança */
+  spear?: number;
+  /** Dano contra monstros médios */
+  vsMedium?: number;
+  /** Montado (Montaria): a Perícia com Lança rende mais */
+  mount?: number;
 }
 
 export interface TreeNode {
@@ -162,29 +169,33 @@ export const TREE: TreeNode[] = [
     passive: P('Fúria', 0xff5a4a, 'Quanto mais ferido, mais forte: dano extra com menos da metade do HP.', (l) => `+${l * 8}% de dano com HP abaixo de 50%`, { berserk: 0.08 }),
   },
 
-  // ================= Cavaleiro (espada e capa)
-  { id: 'investida', cls: 'cavaleiro', col: 0, row: 0, req: [] },
-  { id: 'impacto', cls: 'cavaleiro', col: 1, row: 0, req: [] },
+  // ================= Cavaleiro: lança e espada de duas mãos (10 níveis; cada nível dá mais dano ou mais área)
   {
-    id: 'contra', cls: 'cavaleiro', col: 2, row: 0, req: [],
-    passive: P('Contra-Ataque', 0xffa060, 'Ao ser atingido, chance de revidar com um golpe forte no agressor.', (l) => `${l * 8}% de chance de revidar`, { counter: 0.08 }),
+    id: 'pericialanca', cls: 'cavaleiro', col: 0, row: 0, req: [],
+    passive: { ...P('Perícia com Lança', 0xffd04a, 'Treino com a lança: mais dano nas habilidades de lança (25% a mais quando montado).', (l) => `+${l * 4}% de dano de lança (+${l * 5}% montado)`, { spear: 0.04 }), max: 10 },
   },
-  { id: 'cortex', cls: 'cavaleiro', col: 0, row: 1, req: [{ id: 'investida', lv: 2 }] },
+  { id: 'perfurar', cls: 'cavaleiro', col: 1, row: 0, req: [{ id: 'pericialanca', lv: 1 }] },
+  { id: 'estocada', cls: 'cavaleiro', col: 2, row: 0, req: [{ id: 'perfurar', lv: 5 }] },
+  { id: 'lancabum', cls: 'cavaleiro', col: 0, row: 1, req: [{ id: 'perfurar', lv: 3 }] },
   {
-    id: 'rapidez', cls: 'cavaleiro', col: 1, row: 1, req: [{ id: 'impacto', lv: 1 }],
-    passive: P('Esgrima Veloz', 0xffe080, 'Golpes de espada mais rápidos.', (l) => `+${l * 6}% de velocidade de ataque`, { haste: 0.06 }),
+    id: 'montaria', cls: 'cavaleiro', col: 1, row: 1, req: [{ id: 'vigor', lv: 1 }],
+    passive: { ...P('Montaria', 0xe8c070, 'Monta numa ave de guerra: anda bem mais rápido, mas ataca um pouco mais devagar (a Perícia em Montaria compensa).', () => '+25% de velocidade de movimento, -12% de velocidade de ataque, Perícia com Lança mais forte', { speedPct: 0.25, haste: -0.12, mount: 1 }), max: 1 },
   },
   {
-    id: 'determinacao', cls: 'cavaleiro', col: 2, row: 1, req: [{ id: 'contra', lv: 1 }],
-    passive: P('Determinação', 0xe8eef8, 'Vontade de cavaleiro: mais vida e menos dano recebido.', (l) => `+${l * 5}% de HP máx. e -${l * 3}% de dano recebido`, { hpPct: 0.05, dmgTaken: 0.03 }),
+    id: 'periciamont', cls: 'cavaleiro', col: 2, row: 1, req: [{ id: 'montaria', lv: 1 }],
+    passive: P('Perícia em Montaria', 0xd8a860, 'Luta bem montado: recupera a velocidade de ataque e fere mais os monstros médios.', (l) => `+${l * 3}% de velocidade de ataque e +${l * 5}% de dano em monstros médios`, { haste: 0.03, vsMedium: 0.05 }),
   },
-  { id: 'turbilhao', cls: 'cavaleiro', col: 0, row: 2, req: [{ id: 'cortex', lv: 2 }, { id: 'impacto', lv: 2 }] },
+  { id: 'brandir', cls: 'cavaleiro', col: 0, row: 2, req: [{ id: 'montaria', lv: 1 }, { id: 'lancabum', lv: 3 }] },
   {
-    id: 'esgrima', cls: 'cavaleiro', col: 1, row: 2, req: [{ id: 'investida', lv: 1 }],
-    passive: P('Perícia de Cavaleiro', 0xd8d8e8, 'Domínio da espada: mais dano corpo a corpo e mais acerto.', (l) => `+${l * 5}% de dano corpo a corpo e +${l * 3} HIT`, { melee: 0.05, hit: 3 }),
+    id: 'contra', cls: 'cavaleiro', col: 1, row: 2, req: [],
+    passive: P('Contra-Ataque', 0xffa060, 'Postura defensiva: chance de bloquear o golpe de um monstro (sem dano) e revidar com um golpe crítico.', (l) => `${l * 7}% de chance de bloquear e revidar com crítico`, { counter: 0.07 }),
   },
+  {
+    id: 'duasmaos', cls: 'cavaleiro', col: 2, row: 2, req: [],
+    passive: { ...P('Rapidez com Duas Mãos', 0xffe080, 'Domínio do espadão: ataques muito mais rápidos, precisos e críticos.', (l) => `+${l * 3}% de vel. de ataque, +${l * 2} HIT e +${(l * 0.6).toFixed(1)}% de crítico`, { haste: 0.03, hit: 2, crit: 0.006 }), max: 10 },
+  },
+  { id: 'titan', cls: 'cavaleiro', col: 0, row: 3, req: [{ id: 'duasmaos', lv: 10 }, { id: 'contra', lv: 5 }, { id: 'explosao', lv: 3 }] },
 
-  // ================= Paladino
   { id: 'aura', cls: 'paladino', col: 0, row: 0, req: [] },
   { id: 'bumerangue', cls: 'paladino', col: 1, row: 0, req: [{ id: 'escudo', lv: 1 }] },
   {

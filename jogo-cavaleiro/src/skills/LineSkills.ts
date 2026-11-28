@@ -31,45 +31,6 @@ export class MagnumSkill extends Skill {
   }
 }
 
-/** Brandir Lança: grande leque à frente (e atrás no nível 5) */
-export class BrandishSkill extends Skill {
-  readonly id = 'brandir' as const;
-  private timer = 700;
-  private readonly arc = Phaser.Math.DegToRad(150);
-  get damage() { return (40 + 14 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (this.level >= 4 ? 1900 : 2300) / this.g.stats.haste; }
-  get range() { return (120 + 12 * this.level) * this.g.stats.area; }
-
-  update(dt: number) {
-    this.timer -= dt;
-    if (this.timer > 0) return;
-    const p = this.g.player;
-    if (!this.g.nearestEnemies(p.x, p.y, 1, this.range).length) {
-      this.timer = 150;
-      return;
-    }
-    this.timer = this.cooldown;
-    this.g.playerAttacked();
-    const angle = this.g.facing.angle();
-    this.sweep(angle);
-    if (this.level >= 5) this.sweep(angle + Math.PI);
-  }
-
-  private sweep(angle: number) {
-    const p = this.g.player;
-    const r = this.range;
-    this.g.fx.slash(p.x, p.y, angle, r, 0xffe080);
-    this.g.fx.slash(p.x, p.y, angle, r * 0.7, 0xffffff);
-    for (const e of this.g.queryEnemies(p.x, p.y, r, this.near).slice()) {
-      if (!e.active) continue;
-      const dx = e.x - p.x;
-      const dy = e.y - p.y;
-      if (dx * dx + dy * dy > (r + e.def.radius) ** 2) continue;
-      if (Math.abs(Phaser.Math.Angle.Wrap(Math.atan2(dy, dx) - angle)) <= this.arc / 2) this.g.damageEnemy(e, this.damage, 220, p.x, p.y, this.id);
-    }
-  }
-}
-
 /** Escudo Bumerangue: escudo arremessado que atravessa os inimigos */
 export class ShieldBoomerangSkill extends Skill {
   readonly id = 'bumerangue' as const;

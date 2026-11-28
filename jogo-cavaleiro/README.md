@@ -52,6 +52,8 @@ Todos os heróis usam sprites recortados das imagens enviadas. A fonte em PNG fi
 
 ## Árvores de habilidades (`src/data/skilltree.ts`)
 
+**Cavaleiro (lança e espadão, até 10 níveis):** Perícia com Lança (passiva, +4%/nv no dano de lança, +25% a mais montado), Perfurar (1/2/3 golpes conforme o tamanho; nv 4 atravessa, nv 10 +1 golpe), Estocada (linha que empurra e atordoa; 3 direções no nv 6, 4 no nv 10), Lança Bumerangue (5 nv, arremesso de longe; atravessa no nv 3, 2 lanças no nv 5), Montaria (+25% movimento, -12% vel. de ataque), Perícia em Montaria (recupera a vel. de ataque, +dano em médios), Brandir Lança (leque que empurra; 200° no nv 6, gira para trás no nv 10), Contra-Ataque (bloqueia o golpe e revida com crítico), Rapidez com Duas Mãos (vel. de ataque, HIT e crítico) e Impacto do Titã (dois golpes em área no alvo; área cresce a cada nível).
+
 Todas as classes (menos o Aprendiz) usam árvore. Regras de build:
 
 - **1 ponto por nível de classe** (cada nível de base também vale meio nível de classe).

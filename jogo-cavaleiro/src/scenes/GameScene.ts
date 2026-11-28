@@ -131,6 +131,10 @@ export class GameScene extends Phaser.Scene implements RpgHost {
   private critDmg = 0;
   private poisonChance = 0;
   private counterChance = 0;
+  /** Bônus de lança (Perícia com Lança), dano em médios e se está montado */
+  private spearDmg = 0;
+  private vsMedium = 0;
+  private mounted = 0;
   private berserk = 0;
   private recall = 0;
   /** Pontos de habilidade já ganhos na classe atual (há um teto por classe) */
@@ -292,6 +296,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     this.passiveLv = {};
     this.dmgTakenRed = this.skillFlee = this.hpPct = 0;
     this.skillHit = this.critDmg = this.poisonChance = this.counterChance = this.berserk = this.recall = 0;
+    this.spearDmg = this.vsMedium = this.mounted = 0;
     this.classPoints = 0;
     this.paidLv = {};
     this.committedAttrs = { ...this.attrs };
@@ -513,12 +518,15 @@ export class GameScene extends Phaser.Scene implements RpgHost {
 
   private onEnemyTouch(e: Enemy) {
     if (e.isStopped(this.elapsed)) return;
-    const hit = this.hurtPlayer(e.damage, false, e.hit);
-    // Contra-Ataque: chance de revidar no agressor
-    if (hit && this.counterChance && e.active && Math.random() < this.counterChance) {
-      this.fx.slash(this.player.x, this.player.y, Math.atan2(e.y - this.player.y, e.x - this.player.x), 60, 0xffa060);
-      this.damageEnemy(e, (40 + this.level * 2) * this.stats.might, 260, this.player.x, this.player.y, 'espada');
+    // Contra-Ataque: bloqueia o golpe (sem dano) e revida com um golpe crítico
+    if (this.counterChance && this.elapsed >= this.invulnUntil && Math.random() < this.counterChance) {
+      this.invulnUntil = this.elapsed + PLAYER_IFRAMES;
+      this.fx.ring(this.player.x, this.player.y, 22, 1.8, 220, 0xffa060, 0.6);
+      this.fx.slash(this.player.x, this.player.y, Math.atan2(e.y - this.player.y, e.x - this.player.x), 70, 0xffa060);
+      this.damageEnemy(e, (40 + this.level * 2) * this.stats.might * (1.5 + this.critDmg), 260, this.player.x, this.player.y, 'espada');
+      return;
     }
+    const hit = this.hurtPlayer(e.damage, false, e.hit);
     // cogumelos podem envenenar
     if (hit && e.def.id === 'cogumelo' && Math.random() < 0.2) this.afflictPlayer('veneno', 3000);
   }
@@ -1088,8 +1096,11 @@ export class GameScene extends Phaser.Scene implements RpgHost {
         elemMult = elementMult(sk.element, e.def.element);
         mult *= elemMult * (1 + (this.mods.elemDmg[sk.element] ?? 0));
         mult *= sk.sizeMod?.[e.def.size] ?? 1;
+        // Perícia com Lança (montado rende 25% a mais)
+        if (sk.spear && this.spearDmg) mult *= 1 + this.spearDmg * (this.mounted > 0 ? 1.25 : 1);
       }
       mult *= 1 + (this.mods.raceDmg[e.def.race] ?? 0);
+      if (this.vsMedium && e.def.size === 'medio') mult *= 1 + this.vsMedium;
       if (crit) mult *= 1.5 + this.critDmg;
       // Fúria: dano extra com menos da metade do HP
       if (this.berserk && this.hp < this.stats.maxHp / 2) mult *= 1 + this.berserk;
@@ -1669,6 +1680,9 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     this.counterChance += sign * (f.counter ?? 0);
     this.berserk += sign * (f.berserk ?? 0);
     this.recall += sign * (f.recall ?? 0);
+    this.spearDmg += sign * (f.spear ?? 0);
+    this.vsMedium += sign * (f.vsMedium ?? 0);
+    this.mounted += sign * (f.mount ?? 0);
     if (this.hp > this.stats.maxHp) this.hp = this.stats.maxHp;
   }
 

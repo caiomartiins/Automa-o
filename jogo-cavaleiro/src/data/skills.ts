@@ -6,7 +6,8 @@ export type SkillId =
   | 'explosao' | 'brandir' | 'bumerangue' | 'cruz'
   | 'duplo' | 'rajada' | 'armadilha' | 'falcao' | 'explosiva'
   | 'investida' | 'cortex' | 'turbilhao'
-  | 'flecha' | 'chuva' | 'tiro';
+  | 'flecha' | 'chuva' | 'tiro'
+  | 'perfurar' | 'estocada' | 'lancabum' | 'titan';
 
 import type { DamageKind, Element, Size, StatusId } from './rpg';
 
@@ -27,6 +28,8 @@ export interface SkillDef {
   sizeMod?: Partial<Record<Size, number>>;
   /** Atributo do dano físico: 'vit' = habilidades de escudo e sagradas do Paladino (dano pela VIT, nunca erram) */
   stat?: 'vit';
+  /** Habilidade de lança (ganha o bônus da Perícia com Lança) */
+  spear?: boolean;
 }
 
 export const SKILLS: Record<SkillId, SkillDef> = {
@@ -276,13 +279,73 @@ export const SKILLS: Record<SkillId, SkillDef> = {
     ],
   },
   brandir: {
-    id: 'brandir', name: 'Brandir Lança', maxLevel: 5, color: 0xffd04a, element: 'neutro', kind: 'melee', status: { id: 'sangrando', chance: 0.2 }, sizeMod: { grande: 1.2 },
+    id: 'brandir', name: 'Brandir Lança', maxLevel: 10, color: 0xffd04a, element: 'neutro', kind: 'melee', spear: true, status: { id: 'sangrando', chance: 0.15 }, sizeMod: { grande: 1.2 },
     levelDesc: [
-      'Gira a lança num grande leque à frente, acertando todos de uma vez.',
-      '+14 dano, alcance maior.',
-      '+14 dano, alcance maior.',
+      'Gira a lança num grande leque à frente, empurrando grupos de monstros.',
+      '+12 dano, alcance maior.',
+      '+12 dano, alcance maior, recarga menor.',
+      '+12 dano, alcance maior.',
+      '+12 dano, alcance maior, recarga menor.',
+      'Leque bem mais aberto (200°)! +12 dano.',
+      '+12 dano, alcance maior.',
+      '+12 dano, alcance maior, recarga menor.',
+      '+12 dano, alcance maior.',
+      'Gira para trás também! +12 dano.',
+    ],
+  },
+  perfurar: {
+    id: 'perfurar', name: 'Perfurar', maxLevel: 10, color: 0xfff0b0, element: 'neutro', kind: 'melee', spear: true, status: { id: 'sangrando', chance: 0.12 },
+    levelDesc: [
+      'Estocadas rápidas no alvo mais próximo: 1 golpe em pequenos, 2 em médios, 3 em grandes.',
+      '+9 dano por golpe, recarga menor.',
+      '+9 dano por golpe, mais alcance.',
+      'A lança atravessa e fere quem está atrás do alvo! +9 dano.',
+      '+9 dano por golpe, recarga menor.',
+      '+9 dano por golpe, mais alcance.',
+      'Faixa de perfuração mais larga! +9 dano.',
+      '+9 dano por golpe, recarga menor.',
+      '+9 dano por golpe, mais alcance.',
+      '+1 golpe em todos os alvos! +9 dano.',
+    ],
+  },
+  estocada: {
+    id: 'estocada', name: 'Estocada', maxLevel: 10, color: 0xffd04a, element: 'neutro', kind: 'melee', spear: true, status: { id: 'atordoado', chance: 0.1 }, statusPerLv: 0.02,
+    levelDesc: [
+      'Estocada rápida em linha que joga os inimigos para longe e pode atordoar.',
+      '+14 dano, linha mais longa e larga.',
       '+14 dano, recarga menor.',
-      'Gira para trás também! +14 dano.',
+      '+14 dano, linha mais longa e larga.',
+      '+14 dano, recarga menor.',
+      'Estoca em 3 direções! +14 dano.',
+      '+14 dano, linha mais longa e larga.',
+      '+14 dano, recarga menor.',
+      '+14 dano, linha mais longa e larga.',
+      'Estoca em 4 direções! +14 dano.',
+    ],
+  },
+  lancabum: {
+    id: 'lancabum', name: 'Lança Bumerangue', maxLevel: 5, color: 0xffe08a, element: 'neutro', kind: 'melee', spear: true, sizeMod: { grande: 1.15 },
+    levelDesc: [
+      'Arremessa a lança no inimigo mais distante ao alcance, empurrando-o.',
+      '+30 dano, mais alcance, recarga menor.',
+      'A lança atravessa 2 inimigos! +30 dano.',
+      '+30 dano, mais alcance, recarga menor.',
+      'Arremessa 2 lanças, cada uma atravessa 3! +30 dano.',
+    ],
+  },
+  titan: {
+    id: 'titan', name: 'Impacto do Titã', maxLevel: 10, color: 0xffd27a, element: 'neutro', kind: 'melee', status: { id: 'atordoado', chance: 0.1 }, sizeMod: { grande: 1.2 },
+    levelDesc: [
+      'Golpe de espadão no alvo: acerta DUAS vezes todos os inimigos em volta dele.',
+      '+16 dano, área maior.',
+      '+16 dano, área maior, recarga menor.',
+      '+16 dano, área maior.',
+      '+16 dano, área maior, recarga menor.',
+      '+16 dano, área maior.',
+      '+16 dano, área maior, recarga menor.',
+      '+16 dano, área maior.',
+      '+16 dano, área maior, recarga menor.',
+      '+16 dano, área bem maior.',
     ],
   },
   bumerangue: {
