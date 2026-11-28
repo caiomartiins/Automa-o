@@ -174,6 +174,9 @@ export class GameScene extends Phaser.Scene implements RpgHost {
   private spawnTimer = 0;
   /** Monstros da horda esperando para entrar (espalhados por vários quadros) */
   private hordeQueue: { def: EnemyDef; angle?: number }[] = [];
+  private hitStopUntil = 0;
+  /** Horda já avisada (contagem regressiva) */
+  private hordeWarned = -1;
   private nextWaveAt = 60;
   /** Calendário de chefes: a cada 2 min, alternando mini-chefe e chefe */
   /** Chefes por nível: a cada 4 níveis, alternando mini-chefe e chefe */
@@ -266,6 +269,8 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     this.over = false;
     this.spawnTimer = 600;
     this.hordeQueue = [];
+    this.hitStopUntil = 0;
+    this.hordeWarned = -1;
     this.nextWaveAt = 60;
     this.miniDone = this.pendingMini = this.bossDone = this.pendingBoss = 0;
     this.shopVisits = 0;
@@ -374,9 +379,27 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     for (const a of ATTR_IDS) this.raiseAttr(a, 4);
   }
 
+  /**
+   * Hit-stop: o mundo quase para por alguns milissegundos nos golpes importantes
+   * (chefe derrotado, golpe pesado recebido). Dá peso ao impacto.
+   */
+  hitStop(ms: number) {
+    this.hitStopUntil = Math.max(this.hitStopUntil, this.time.now + ms);
+  }
+
+  /** Vibração curta no celular (quando o aparelho permite) */
+  haptic(pattern: number | number[]) {
+    if (!isTouch(this)) return;
+    try {
+      navigator.vibrate?.(pattern);
+    } catch {
+      /* sem vibração */
+    }
+  }
+
   update(_time: number, delta: number) {
     if (this.over || !this.cameras?.main) return;
-    const dt = Math.min(delta, 50);
+    const dt = Math.min(delta, 50) * (this.time.now < this.hitStopUntil ? 0.08 : 1);
     this.elapsed += dt;
     this.frame++;
     this.sparkBudget = this.sparkMax;
@@ -577,8 +600,13 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     this.hp -= dmg;
     this.invulnUntil = this.elapsed + PLAYER_IFRAMES;
     this.hurtUntil = this.elapsed + 100;
-    this.cameras.main.shake(90, 0.004);
+    this.cameras.main.shake(heavy ? 140 : 90, heavy ? 0.008 : 0.004);
     this.fx.number(this.player.x, this.player.y - 30, `-${dmg}`, 0xff3a3a);
+    if (heavy) {
+      this.hitStop(70);
+      this.haptic(40);
+    }
+    this.events.emit('player-hurt', heavy);
     if (this.hp <= 0) {
       if (this.items.pena > 0) this.revive();
       else this.gameOver();
@@ -874,6 +902,12 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     // durante a luta contra o chefe não vêm hordas (a próxima espera a luta acabar)
     if (fight && t >= this.nextWaveAt - 15) this.nextWaveAt = t + 15;
 
+    // aviso da horda: contagem de 3 segundos antes (o jogador se prepara)
+    if (!fight && t >= this.nextWaveAt - 3 && this.hordeWarned !== this.nextWaveAt) {
+      this.hordeWarned = this.nextWaveAt;
+      this.events.emit('horde-warn', 3);
+      this.haptic([30, 80, 30]);
+    }
     // a cada minuto, uma horda cerca o jogador
     if (t >= this.nextWaveAt) {
       this.nextWaveAt += 60;
@@ -1227,6 +1261,8 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       this.rollRare(def.id, x, y);
       this.gainJob(15);
       this.events.emit('toast', `${def.name} derrotada!`.replace('Carniçal derrotada', 'Carniçal derrotado'), '#9aff8a');
+      this.hitStop(120);
+      this.haptic(60);
       this.time.delayedCall(700, () => this.magnetAllXp());
       return;
     }
@@ -1250,6 +1286,8 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       this.rollRare(def.id, x, y);
       this.gainJob(50);
       this.events.emit('announce', `${def.name} foi derrotado!`);
+      this.hitStop(180);
+      this.haptic([60, 40, 90]);
       // vitória: as gemas do mapa todo vêm até o jogador e os monstros perto recuam
       this.time.delayedCall(900, () => this.magnetAllXp());
       this.grantInvuln(1500);
@@ -1327,6 +1365,13 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       return null;
     }
     p.place(kind, value, x, y, extra);
+    // equipamento raro no chão: coluna de luz na cor da raridade
+    if (kind === 'equip') {
+      const it = equipById(extra);
+      const color = it?.glow ?? (it?.drop ? 0xb07aff : it?.epic ? 0x5ab0ff : it?.legend ? 0xffc84a : 0xffffff);
+      this.fx.beam(x, y, color, 3500);
+      this.fx.ring(x, y, 14, 3, 500, color, 0.6);
+    }
     return p;
   }
 

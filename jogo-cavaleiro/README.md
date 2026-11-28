@@ -157,6 +157,17 @@ Ao ser derrotado, solta gemas, zeny e tem 35% de chance de soltar a Carta Carni�
 
 **Números de dano** (fonte própria em `src/assets/dmgfont.webp`): brancos nos golpes normais, laranja na fraqueza, cinza na resistência, vermelhos no dano recebido e verdes na cura. O crítico aparece amarelo, maior, com estrela de impacto e o selo "Crit". A esquiva mostra "Miss".
 
+## Visual e sensação de jogo
+
+Guiado pela seleção de skills de game dev em `.claude/skills` (thedivergentai/gd-agentic-skills: tema de interface, tweening/juice, ondas, ARPG, mobile, desempenho):
+
+- **Tema "Arcano Noturno"** (`src/ui.ts`): uma paleta única (azul-noite com bordas e botões dourados) usada por todas as telas; nenhuma tela tem cor própria fixa. Botões afundam ao toque e brilham no hover.
+- **Menu e fim de jogo** com fundo vivo: piso andando devagar, vinheta e brasas douradas subindo; título com brilho pulsando.
+- **Aviso de horda**: contagem "HORDA EM 3, 2, 1" com bordas vermelhas piscando (o jogador nunca é pego de surpresa).
+- **Vida baixa** (abaixo de 30%): as bordas da tela pulsam em vermelho como batimento.
+- **Hit-stop**: o mundo quase para por um instante ao levar golpe pesado de chefe e ao derrotar chefes, dando peso ao impacto. No celular, vibração curta nesses momentos e no aviso de horda.
+- **Itens raros no chão** ganham uma coluna de luz na cor da raridade (roxo raro, azul épico, dourado lendário, cor da arma mítica).
+
 ## Desempenho no celular
 
 - **Atlas de texturas** (`src/atlas.ts`): no carregamento, monstros, cenário, itens e efeitos são copiados para uma folha grande. No celular o Phaser desenha uma textura por vez, então isso derrubou as chamadas de desenho de ~290 para ~36 por quadro.

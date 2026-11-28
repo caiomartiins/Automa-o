@@ -126,7 +126,7 @@ export class StatusScene extends Phaser.Scene {
 
     // personagem no meio, sobre um fundo levemente azulado
     const mx = x + colW;
-    c.add(this.add.rectangle(mx, y + 4, midW, h - 8, 0xeef3fa).setOrigin(0));
+    c.add(this.add.rectangle(mx, y + 4, midW, h - 8, WIN.iconBg).setOrigin(0));
     const hs = (heroScale(cls.texture) / 0.5) * Math.min(1.1, (h - 20) / 175);
     c.add(this.add.sprite(mx + midW / 2, y + h / 2, cls.texture, 'idle0').setScale(hs).play(`${cls.texture}-idle`));
 
@@ -135,7 +135,7 @@ export class StatusScene extends Phaser.Scene {
       const item = equipById(save.equip[s]);
       const ix = side === 'l' ? x + 8 + icon / 2 : x + w - 8 - icon / 2;
       // moldura do ícone
-      c.add(this.add.rectangle(ix, sy, icon + 4, icon + 4, 0xdde6f3).setStrokeStyle(1, WIN.panelBorder));
+      c.add(this.add.rectangle(ix, sy, icon + 4, icon + 4, WIN.iconBg).setStrokeStyle(1, WIN.panelBorder));
       const tx = side === 'l' ? ix + icon / 2 + 8 : ix - icon / 2 - 8;
       const origin = side === 'l' ? 0 : 1;
       if (item) {
@@ -147,7 +147,7 @@ export class StatusScene extends Phaser.Scene {
           .setWordWrapWidth(colW - icon - 24).setAlign(side === 'l' ? 'left' : 'right'));
       } else {
         // slot vazio: nome do slot apagado, como na referência
-        c.add(wtext(this, tx, sy, SLOT_NAME[s].toLowerCase(), 12 * k, '#a9bad6').setOrigin(origin, 0.5));
+        c.add(wtext(this, tx, sy, SLOT_NAME[s].toLowerCase(), 12 * k, WIN.slotText).setOrigin(origin, 0.5));
       }
     };
     SLOTS_LEFT.forEach((s, i) => slot(s, i, 'l'));
@@ -162,7 +162,7 @@ export class StatusScene extends Phaser.Scene {
       c.add(wtext(this, x + 64 * k, y + 36 * k, g.pet.name, 13 * k, WIN.text, true));
       c.add(wtext(this, x + 64 * k, y + 54 * k, g.pet.desc, 11 * k, WIN.label));
     } else {
-      c.add(wtext(this, x + 12, y + 32 * k, 'nenhum (ovos caem dos monstros)', 12 * k, '#a9bad6'));
+      c.add(wtext(this, x + 12, y + 32 * k, 'nenhum (ovos caem dos monstros)', 12 * k, WIN.slotText));
     }
     const cy = y + 78 * k;
     c.add(wtext(this, x + 12, cy, `Cartas (${g.cards.length})`, 13 * k, WIN.accent, true));
@@ -174,7 +174,7 @@ export class StatusScene extends Phaser.Scene {
         return `${cd.name}${n > 1 ? ` x${n}` : ''}: ${cd.desc}`;
       }).join('\n')
       : 'nenhuma ainda (raras nos monstros; os chefes sempre soltam a deles)';
-    const cardTxt = wtext(this, x + 12, cy + 22 * k, lines, 11 * k, count.size ? WIN.text : '#a9bad6').setLineSpacing(3)
+    const cardTxt = wtext(this, x + 12, cy + 22 * k, lines, 11 * k, count.size ? WIN.text : WIN.slotText).setLineSpacing(3)
       .setWordWrapWidth(w - 24);
     c.add(cardTxt);
     // conjuntos ativos e coleção
@@ -192,9 +192,9 @@ export class StatusScene extends Phaser.Scene {
     const headH = 26 * k;
     const bar = this.add.graphics();
     bar.fillStyle(WIN.border).fillRect(x, y, w, headH);
-    bar.fillStyle(0xd6e3f5).fillRect(x + 1, y + 1, w - 2, headH - 2);
+    bar.fillStyle(WIN.header).fillRect(x + 1, y + 1, w - 2, headH - 2);
     c.add(bar);
-    c.add(wtext(this, x + 8, y + headH / 2, '▲  Status', 14 * k, '#1c2a46', true).setOrigin(0, 0.5));
+    c.add(wtext(this, x + 8, y + headH / 2, '▲  Status', 14 * k, WIN.headerText, true).setOrigin(0, 0.5));
     c.add(wtext(this, x + w - 8, y + headH / 2, 'Atributos sobem nas cartas ao upar', 12 * k, WIN.label, true).setOrigin(1, 0.5));
     const top = y + headH;
     c.add(uiPanel(this, x, top, w, h - headH));
@@ -218,7 +218,7 @@ export class StatusScene extends Phaser.Scene {
       const bx = x + attrW * 0.42;
       const bw = attrW - (bx - x) - 14;
       const bar = this.add.graphics();
-      bar.fillStyle(0xdfe6f0).fillRect(bx, ry - 6 * k, bw, 12 * k);
+      bar.fillStyle(WIN.track).fillRect(bx, ry - 6 * k, bw, 12 * k);
       bar.fillStyle(ATTRS[a].color).fillRect(bx, ry - 6 * k, (bw * Math.min(99, g.attr(a))) / 99, 12 * k);
       c.add(bar);
     });

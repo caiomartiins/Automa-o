@@ -142,16 +142,16 @@ export class Fx {
   warnLine(x: number, y: number, angle: number, len: number, width: number, ms: number, color: number) {
     const sx = len / 16;
     const b = this.image('fx-quad', 0);
-    b.img.setPosition(x, y).setRotation(angle).setScale(sx, width / 16).setTint(0x000000).setDepth(WARN_DEPTH);
+    b.img.setOrigin(0, 0.5).setPosition(x, y).setRotation(angle).setScale(sx, width / 16).setTint(0x000000).setDepth(WARN_DEPTH);
     this.push(b.img, 'warn', ms, b.pool, { alpha: 0.25 });
     const f = this.image('fx-quad', 0);
-    f.img.setPosition(x, y).setRotation(angle).setScale(0, width / 16).setTint(color).setDepth(WARN_DEPTH + 1);
+    f.img.setOrigin(0, 0.5).setPosition(x, y).setRotation(angle).setScale(0, width / 16).setTint(color).setDepth(WARN_DEPTH + 1);
     this.push(f.img, 'warnbar', ms, f.pool, { s1: sx, alpha: 0.55 });
     const nx = (-Math.sin(angle) * width) / 2;
     const ny = (Math.cos(angle) * width) / 2;
     for (const k of [-1, 1]) {
       const e = this.image('fx-quad', 0);
-      e.img.setPosition(x + nx * k, y + ny * k).setRotation(angle).setScale(sx, 4 / 16).setTint(color).setDepth(WARN_DEPTH + 2);
+      e.img.setOrigin(0, 0.5).setPosition(x + nx * k, y + ny * k).setRotation(angle).setScale(sx, 4 / 16).setTint(color).setDepth(WARN_DEPTH + 2);
       this.push(e.img, 'warn', ms, e.pool, { alpha: 1 });
     }
   }
@@ -177,6 +177,13 @@ export class Fx {
     const { img, pool } = this.image(key);
     img.setOrigin(0.5, o.originY ?? 0.5).setPosition(x, y).setScale(scale).setDepth(o.depth ?? FX_DEPTH - 3);
     this.push(img, o.grow ? 'pop' : 'fade', life, pool, { s0: scale, alpha: o.alpha ?? 1 });
+  }
+
+  /** Coluna de luz colorida (item raro no chão), sumindo devagar */
+  beam(x: number, y: number, color: number, life: number) {
+    const { img, pool } = this.image('fx-quad');
+    img.setOrigin(0.5, 1).setPosition(x, y + 6).setScale(12 / 16, 160 / 16).setTint(color).setDepth(y - 2);
+    this.push(img, 'fade', life, pool, { alpha: 0.6 });
   }
 
   /** Raio em zigue-zague passando pelos pontos (corrente de raios) */
@@ -283,6 +290,7 @@ export class Fx {
         it.pool.push(it.obj);
         if (it.kind === 'number' || it.kind === 'crit') this.numbers--;
         if (it.kind === 'miss') this.misses--;
+        if (it.kind === 'fade') (it.obj as Phaser.GameObjects.Image).setBlendMode?.(Phaser.BlendModes.NORMAL);
         if (it.kind === 'anim') {
           this.anims--;
           (it.obj as Phaser.GameObjects.Image).setFlipX(false).setOrigin(0.5);

@@ -158,11 +158,11 @@ export class SkillTreeScene extends Phaser.Scene {
     // ---- cabeçalho com os pontos
     const bar = this.add.graphics();
     bar.fillStyle(WIN.border).fillRect(pad, y, w - pad * 2, headH);
-    bar.fillStyle(0xd6e3f5).fillRect(pad + 1, y + 1, w - pad * 2 - 2, headH - 2);
+    bar.fillStyle(WIN.header).fillRect(pad + 1, y + 1, w - pad * 2 - 2, headH - 2);
     c.add(bar);
     // limites da build: 4 ativas e 4 passivas
     const slots = g.slotCount(this.level);
-    c.add(wtext(this, pad + 8, y + headH / 2, `Ativas ${slots.active}/${MAX_ACTIVE}   Passivas ${slots.passive}/${MAX_PASSIVE}`, 13 * k, '#1c2a46', true).setOrigin(0, 0.5));
+    c.add(wtext(this, pad + 8, y + headH / 2, `Ativas ${slots.active}/${MAX_ACTIVE}   Passivas ${slots.passive}/${MAX_PASSIVE}`, 13 * k, WIN.headerText, true).setOrigin(0, 0.5));
     const left = this.pointsLeft();
     c.add(wtext(this, w - pad - 8, y + headH / 2, `Pontos: ${left}${this.pendingTotal() ? ` (${this.pendingTotal()} a confirmar)` : ''}   ganhos ${g.classPoints}/${g.classPointCap()}`, 13 * k, left > 0 ? WIN.accent : WIN.label, true).setOrigin(1, 0.5));
     y += headH + 6;
@@ -218,7 +218,7 @@ export class SkillTreeScene extends Phaser.Scene {
     const color = nodeColor(n);
 
     const card = this.add.container(x, y);
-    card.add(uiPanel(this, 0, 0, w, h, sel ? 0xe6f0ff : lv > 0 ? 0xffffff : 0xf4f6fa));
+    card.add(uiPanel(this, 0, 0, w, h, sel ? WIN.hover : lv > 0 ? WIN.panel : WIN.iconBg));
     if (sel) card.add(this.add.rectangle(w / 2, h / 2, w - 2, h - 2).setStrokeStyle(2, 0x2559b0));
     card.add(this.add.rectangle(1, 1, 6, h - 2, reqOk ? color : 0xc0c8d4).setOrigin(0));
     const zone = this.add.zone(0, 0, w, h).setOrigin(0).setInteractive({ useHandCursor: true });

@@ -8,7 +8,7 @@ import { ATTRS, ATTR_IDS, CARDS, ELEMENTS, KIND_NAME, REFINE_DMG } from '../data
 import { loadSave } from '../save';
 import type { StatusScene } from './StatusScene';
 import {
-  dim, headline, isPortrait, isTouch, onResize, resizeWindow, uiArrow, uiBar, uiButton, uiPanel, uiScale, uiWindow, WIN, wtext,
+  dangerEdge, dim, headline, isPortrait, isTouch, onResize, resizeWindow, uiArrow, uiBar, uiButton, uiPanel, uiScale, uiWindow, WIN, wtext,
   type UIWindow,
 } from '../ui';
 
@@ -43,6 +43,9 @@ export class UIScene extends Phaser.Scene {
   private pointsBtn!: ReturnType<typeof uiButton>;
 
   private announceText!: Phaser.GameObjects.Text;
+  /** Bordas vermelhas (perigo) e contagem da horda */
+  private danger!: Phaser.GameObjects.Image;
+  private lowHp = false;
   private toastText!: Phaser.GameObjects.Text;
 
   private last = { info: '', time: '', skills: '', items: '', boss: '', points: '' };
@@ -147,6 +150,28 @@ export class UIScene extends Phaser.Scene {
     };
     this.game_.events.on('announce', onAnnounce);
     this.game_.events.on('toast', onToast);
+
+    // ---- perigo: bordas vermelhas e contagem regressiva da horda
+    this.danger = dangerEdge(this);
+    const countText = headline(this, width / 2, height * 0.36, '', 46 * k, '#ff6a5a').setOrigin(0.5).setAlpha(0).setStroke('#2a0505', 8 * k);
+    const onHorde = (secs: number) => {
+      for (let i = 0; i <= secs; i++) {
+        this.time.delayedCall(i * 1000, () => {
+          countText.setText(i < secs ? `HORDA EM ${secs - i}` : 'HORDA!').setAlpha(1).setScale(1.6);
+          this.tweens.killTweensOf(countText);
+          this.tweens.add({ targets: countText, scale: 1, duration: 260, ease: 'Back.Out' });
+          this.tweens.add({ targets: countText, alpha: 0, delay: i < secs ? 650 : 900, duration: 300 });
+          this.flashDanger(i < secs ? 0.55 : 0.85, 700);
+        });
+      }
+    };
+    const onHurt = (heavy: boolean) => heavy && this.flashDanger(0.7, 350);
+    this.game_.events.on('horde-warn', onHorde);
+    this.game_.events.on('player-hurt', onHurt);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.game_.events.off('horde-warn', onHorde);
+      this.game_.events.off('player-hurt', onHurt);
+    });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.game_.events.off('announce', onAnnounce);
       this.game_.events.off('toast', onToast);
@@ -167,6 +192,24 @@ export class UIScene extends Phaser.Scene {
     onResize(this, () => this.scene.restart());
     this.input.keyboard?.on('keydown-P', () => this.togglePause());
     this.input.keyboard?.on('keydown-ESC', () => this.togglePause());
+  }
+
+  /** Pisca as bordas vermelhas (sem atrapalhar o pulso de vida baixa) */
+  private flashDanger(alpha: number, ms: number) {
+    if (this.lowHp) return;
+    this.tweens.killTweensOf(this.danger);
+    this.danger.setAlpha(alpha);
+    this.tweens.add({ targets: this.danger, alpha: 0, duration: ms, ease: 'Quad.Out' });
+  }
+
+  /** Vida abaixo de 30%: as bordas pulsam como batimento */
+  private updateLowHp(pct: number) {
+    const low = pct > 0 && pct < 0.3;
+    if (low === this.lowHp) return;
+    this.lowHp = low;
+    this.tweens.killTweensOf(this.danger);
+    if (low) this.tweens.add({ targets: this.danger, alpha: { from: 0.25, to: 0.7 }, duration: 520, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+    else this.danger.setAlpha(0);
   }
 
   /** Abre a janela de Status para distribuir os pontos (o jogo pausa) */
@@ -225,6 +268,7 @@ export class UIScene extends Phaser.Scene {
     if (this.hudTimer < 200 && !hurt) return;
     this.hudTimer = 0;
     this.lastHp = g.hp;
+    this.updateLowHp(g.hp / g.stats.maxHp);
     const k = this.k;
 
     const jobNeed = jobForLevel(g.jobLevel);

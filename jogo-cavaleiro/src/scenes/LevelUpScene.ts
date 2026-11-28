@@ -78,7 +78,7 @@ export class LevelUpScene extends Phaser.Scene {
       const y = portrait ? cardsTop + i * (cardH + gap) : cardsTop;
       const card = this.add.container(x, y);
       const hover = this.add.rectangle(1, 1, cardW - 2, cardH - 2, WIN.hover).setOrigin(0).setVisible(false);
-      const mark = this.add.rectangle(cardW / 2, cardH / 2, cardW - 3, cardH - 3).setStrokeStyle(4, 0x2559b0).setVisible(false);
+      const mark = this.add.rectangle(cardW / 2, cardH / 2, cardW - 3, cardH - 3).setStrokeStyle(4, WIN.select).setVisible(false);
       this.marks.push(mark);
       card.add([uiPanel(this, 0, 0, cardW, cardH), hover, mark]);
       card.add(this.add.rectangle(1, 1, 5, cardH - 2, opt.color).setOrigin(0));

@@ -8,7 +8,7 @@ import { SKILLS } from '../data/skills';
 import { MAPS } from '../data/rpg';
 import { loadSave, writeSave } from '../save';
 import type { RunResult } from './GameScene';
-import { darken, dim, headline, isPortrait, isTouch, onResize, uiButton, uiPanel, uiScale, uiWindow, WIN, wtext } from '../ui';
+import { atmosphere, darken, dim, glowTitle, headline, isPortrait, isTouch, onResize, uiButton, uiPanel, uiScale, uiWindow, WIN, wtext } from '../ui';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -43,11 +43,10 @@ export class MenuScene extends Phaser.Scene {
     const portrait = height > width;
     const touch = isTouch(this);
     const s = uiScale(this);
-    this.add.tileSprite(0, 0, width, height, 'grama').setOrigin(0);
-    dim(this, 0.35);
+    atmosphere(this);
 
     const titleY = portrait ? 56 : 34;
-    headline(this, width / 2, titleY, 'ASCENSÃO DO CAVALEIRO', Math.min(44, (width - 40) / 14), '#ffe9a0').setOrigin(0.5);
+    glowTitle(this, width / 2, titleY, 'ASCENSÃO DO CAVALEIRO', Math.min(44, (width - 40) / 14));
 
     // ---- janela principal: classes
     const bottomH = portrait ? 104 + 90 * s : 96;
@@ -185,8 +184,8 @@ export class GameOverScene extends Phaser.Scene {
     const r = this.result;
     const s = uiScale(this);
     const touch = isTouch(this);
-    this.add.tileSprite(0, 0, width, height, 'grama').setOrigin(0);
-    dim(this, 0.7);
+    atmosphere(this);
+    dim(this, 0.35);
 
     // em pé: janela na largura toda, linhas e botões maiores (mais fáceis de ler e tocar)
     const portrait = isPortrait(this);
@@ -207,7 +206,7 @@ export class GameOverScene extends Phaser.Scene {
     const btnArea = portrait ? btnH * 2 + 14 + 24 : 50 * s;
     const h = 24 * s + 16 + rows.length * rowH + 20 + btnArea;
     if (portrait) {
-      headline(this, width / 2, (height - h) / 2 - 60 * s, 'FIM DE JOGO', 34 * s, '#ffd27a').setOrigin(0.5);
+      glowTitle(this, width / 2, (height - h) / 2 - 60 * s, 'FIM DE JOGO', 34 * s);
     }
     const win = uiWindow(this, (width - w) / 2, (height - h) / 2, w, h, 'Você caiu em batalha', s);
     const pad = 14;
