@@ -199,20 +199,8 @@ const SHEETS: SheetDef[] = [
   hero('hero-arqueiro', arqueiroUrl, 2, 4, 1, 2, true, 1.5),
   hero('hero-atirador', atiradorUrl, 3, 3, 1, 1),
   hero('hero-cacador-sombras', cacadorSombrasUrl, 2, 3, 1, 2, false, 1.5),
-  {
-    key: 'hero-aprendiz',
-    url: aprendizUrl,
-    cellW: 128,
-    cellH: 128,
-    frames: ['idle0', 'idle1', 'idle2', 'walk0', 'walk1', 'walk2', 'walk3', 'walk4', 'walk5', 'atk0', 'atk1', 'atk2', 'hurt', 'die0', 'die1', 'die2'],
-    scale: SPRITE_SCALE,
-    anims: [
-      { name: 'idle', frames: ['idle0', 'idle1', 'idle2', 'idle1'], rate: 4, repeat: -1 },
-      { name: 'walk', frames: ['walk0', 'walk1', 'walk2', 'walk3', 'walk4', 'walk5'], rate: 10, repeat: -1 },
-      { name: 'attack', frames: ['atk0', 'atk1', 'atk2'], rate: 14, repeat: 0 },
-      { name: 'die', frames: ['die0', 'die1', 'die2'], rate: 5, repeat: 0 },
-    ],
-  },
+  hero('hero-aprendiz', aprendizUrl, 2, 4, 3, 2, true, 2),
+
 ];
 
 /** Escala de exibição de cada personagem (a arte gerada é 2x, por isso 0.5) */
