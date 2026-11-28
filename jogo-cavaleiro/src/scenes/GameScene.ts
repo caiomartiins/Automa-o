@@ -133,6 +133,14 @@ export class GameScene extends Phaser.Scene implements RpgHost {
   private counterChance = 0;
   /** Bônus de lança (Perícia com Lança), dano em médios e se está montado */
   private spearDmg = 0;
+  private swordDmg = 0;
+  private twoHandDmg = 0;
+  private idleRegen = 0;
+  private potionBonus = 0;
+  private statusResist = 0;
+  /** Impacto Explosivo: golpes com fogo até `fireUntil` (+fireBonus de dano) */
+  private fireUntil = 0;
+  private fireBonus = 0;
   private vsMedium = 0;
   private mounted = 0;
   private berserk = 0;
@@ -297,6 +305,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     this.dmgTakenRed = this.skillFlee = this.hpPct = 0;
     this.skillHit = this.critDmg = this.poisonChance = this.counterChance = this.berserk = this.recall = 0;
     this.spearDmg = this.vsMedium = this.mounted = 0;
+    this.swordDmg = this.twoHandDmg = this.idleRegen = this.potionBonus = this.statusResist = this.fireUntil = this.fireBonus = 0;
     this.classPoints = 0;
     this.paidLv = {};
     this.committedAttrs = { ...this.attrs };
@@ -513,7 +522,9 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     }
     this.player.setAlpha(this.elapsed < this.invulnUntil ? 0.6 + 0.4 * Math.sin(this.elapsed / 30) : 1);
 
-    this.hp = Math.min(this.stats.maxHp, this.hp + (this.stats.regen * dt) / 1000);
+    // Aumentar Recuperação de HP: regenera mais parado
+    const regen = this.stats.regen + (this.isMoving ? 0 : this.idleRegen);
+    this.hp = Math.min(this.stats.maxHp, this.hp + (regen * dt) / 1000);
   }
 
   private onEnemyTouch(e: Enemy) {
@@ -526,14 +537,15 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       this.damageEnemy(e, (40 + this.level * 2) * this.stats.might * (1.5 + this.critDmg), 260, this.player.x, this.player.y, 'espada');
       return;
     }
-    const hit = this.hurtPlayer(e.damage, false, e.hit);
+    // monstro provocado bate 10% mais forte
+    const hit = this.hurtPlayer(e.damage * (e.tauntUntil > this.elapsed ? 1.1 : 1), false, e.hit);
     // cogumelos podem envenenar
     if (hit && e.def.id === 'cogumelo' && Math.random() < 0.2) this.afflictPlayer('veneno', 3000);
   }
 
   /** Aplica maldição (lentidão) ou veneno no jogador; VIT dá chance de resistir */
   afflictPlayer(kind: 'maldicao' | 'veneno' | 'teia', ms: number) {
-    if (Math.random() < Math.min(0.5, this.attr('vit') * ATTR_FX.vitResist)) {
+    if (Math.random() < Math.min(0.75, this.attr('vit') * ATTR_FX.vitResist + this.statusResist)) {
       this.fx.miss(this.player.x, this.player.y - 44);
       return;
     }
@@ -1098,9 +1110,15 @@ export class GameScene extends Phaser.Scene implements RpgHost {
         mult *= sk.sizeMod?.[e.def.size] ?? 1;
         // Perícia com Lança (montado rende 25% a mais)
         if (sk.spear && this.spearDmg) mult *= 1 + this.spearDmg * (this.mounted > 0 ? 1.25 : 1);
+        if (sk.sword && this.swordDmg) mult *= 1 + this.swordDmg;
+        if (sk.twoHand && this.twoHandDmg) mult *= 1 + this.twoHandDmg;
       }
       mult *= 1 + (this.mods.raceDmg[e.def.race] ?? 0);
       if (this.vsMedium && e.def.size === 'medio') mult *= 1 + this.vsMedium;
+      // Provocar: o monstro provocado recebe mais dano
+      if (e.tauntUntil > this.elapsed) mult *= 1 + e.tauntDef;
+      // Impacto Explosivo: golpes com fogo por alguns segundos
+      if (this.elapsed < this.fireUntil) mult *= 1 + this.fireBonus;
       if (crit) mult *= 1.5 + this.critDmg;
       // Fúria: dano extra com menos da metade do HP
       if (this.berserk && this.hp < this.stats.maxHp / 2) mult *= 1 + this.berserk;
@@ -1118,6 +1136,9 @@ export class GameScene extends Phaser.Scene implements RpgHost {
       if (e.hp > 0) {
         if (sk?.kind === 'ranged' && this.poisonChance && Math.random() < this.poisonChance) this.applyStatus(e, 'envenenado', dmg);
         if (sk?.status && Math.random() < sk.status.chance + (sk.statusPerLv ?? 0) * ((this.skills.get(sk.id)?.level ?? 1) - 1)) this.applyStatus(e, sk.status.id, dmg);
+        // Golpe Fulminante: atordoa a partir do Nv 6
+        const bashLv = sk?.id === 'fulminante' ? this.skills.get('fulminante')!.level : 0;
+        if (bashLv >= 6 && Math.random() < 0.1 + 0.05 * (bashLv - 6)) this.applyStatus(e, 'atordoado', dmg);
         if (this.mods.freezeChance && Math.random() < this.mods.freezeChance) this.applyStatus(e, 'congelado', dmg);
       }
     }
@@ -1314,7 +1335,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     const px = this.player.x;
     const py = this.player.y;
     const heal = (n: number) => {
-      const v = Math.round(Math.min(n, this.stats.maxHp - this.hp));
+      const v = Math.round(Math.min(n * (1 + this.potionBonus), this.stats.maxHp - this.hp));
       this.hp += v;
       this.fx.number(px, py - 30, `+${v}`, 0x7dff6b);
     };
@@ -1566,6 +1587,12 @@ export class GameScene extends Phaser.Scene implements RpgHost {
 
   // ---------------------------------------------------------------- árvore de habilidades
 
+  /** Impacto Explosivo: os golpes ficam com fogo (+bonus de dano) por `ms` */
+  fireBuff(bonus: number, ms: number) {
+    this.fireBonus = bonus;
+    this.fireUntil = this.elapsed + ms;
+  }
+
   /** Invulnerável por um instante (avanços e esquivas de habilidades) */
   grantInvuln(ms: number) {
     this.invulnUntil = Math.max(this.invulnUntil, this.elapsed + ms);
@@ -1683,6 +1710,11 @@ export class GameScene extends Phaser.Scene implements RpgHost {
     this.spearDmg += sign * (f.spear ?? 0);
     this.vsMedium += sign * (f.vsMedium ?? 0);
     this.mounted += sign * (f.mount ?? 0);
+    this.swordDmg += sign * (f.sword ?? 0);
+    this.twoHandDmg += sign * (f.twoHand ?? 0);
+    this.idleRegen += sign * (f.idleRegen ?? 0);
+    this.potionBonus += sign * (f.potion ?? 0);
+    this.statusResist += sign * (f.resist ?? 0);
     if (this.hp > this.stats.maxHp) this.hp = this.stats.maxHp;
   }
 

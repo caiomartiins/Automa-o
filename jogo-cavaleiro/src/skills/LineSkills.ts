@@ -12,8 +12,8 @@ export class MagnumSkill extends Skill {
   readonly id = 'explosao' as const;
   private timer = 600;
   get damage() { return (30 + 10 * (this.level - 1)) * this.g.stats.might; }
-  get cooldown() { return (this.level >= 4 ? 2200 : 2700) / this.g.stats.haste; }
-  get radius() { return (85 + 10 * this.level + (this.level >= 5 ? 20 : 0)) * this.g.stats.area; }
+  get cooldown() { return (2700 - 60 * (this.level - 1)) / this.g.stats.haste; }
+  get radius() { return (85 + 10 * this.level + (this.level >= 5 ? 20 : 0) + (this.level >= 10 ? 25 : 0)) * this.g.stats.area; }
 
   update(dt: number) {
     this.timer -= dt;
@@ -27,6 +27,8 @@ export class MagnumSkill extends Skill {
     this.g.playerAttacked();
     this.g.fx.ring(p.x, p.y, this.radius * 0.3, 3.2, 300, 0xffb040, 0.35);
     this.g.explode(p.x, p.y, this.radius, this.damage, 340, 0xff6a20, this.id);
+    // golpes com fogo por alguns segundos
+    this.g.fireBuff(0.08 + 0.02 * this.level, this.level >= 10 ? 8000 : 5000);
     this.g.cameras.main.shake(90, 0.004);
   }
 }

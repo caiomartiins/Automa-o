@@ -7,7 +7,7 @@ export type SkillId =
   | 'duplo' | 'rajada' | 'armadilha' | 'falcao' | 'explosiva'
   | 'investida' | 'cortex' | 'turbilhao'
   | 'flecha' | 'chuva' | 'tiro'
-  | 'perfurar' | 'estocada' | 'lancabum' | 'titan';
+  | 'perfurar' | 'estocada' | 'lancabum' | 'titan' | 'fulminante' | 'provocar';
 
 import type { DamageKind, Element, Size, StatusId } from './rpg';
 
@@ -30,12 +30,16 @@ export interface SkillDef {
   stat?: 'vit';
   /** Habilidade de lança (ganha o bônus da Perícia com Lança) */
   spear?: boolean;
+  /** Golpe de espadão (ganha o bônus da Perícia com Espada de Duas Mãos) */
+  twoHand?: boolean;
+  /** Golpe de espada de uma mão (ganha o bônus da Perícia com Espada) */
+  sword?: boolean;
 }
 
 export const SKILLS: Record<SkillId, SkillDef> = {
   // ---- Cavaleiro
   espada: {
-    id: 'espada', name: 'Golpe de Espada', maxLevel: 5, color: 0xd8d8e8, element: 'neutro', kind: 'melee', status: { id: 'sangrando', chance: 0.1 }, sizeMod: { grande: 0.85 },
+    id: 'espada', name: 'Golpe de Espada', maxLevel: 5, color: 0xd8d8e8, element: 'neutro', kind: 'melee', sword: true, status: { id: 'sangrando', chance: 0.1 }, sizeMod: { grande: 0.85 },
     levelDesc: [
       'Golpe em arco na direção em que você anda.',
       '+5 dano, ataques mais rápidos, +alcance.',
@@ -269,13 +273,18 @@ export const SKILLS: Record<SkillId, SkillDef> = {
 
   // ---- Espadachim / Cavaleiro / Paladino: árvore
   explosao: {
-    id: 'explosao', name: 'Impacto Explosivo', maxLevel: 5, color: 0xff8a3a, element: 'fogo', kind: 'melee', status: { id: 'queimando', chance: 0.25 },
+    id: 'explosao', name: 'Impacto Explosivo', maxLevel: 10, color: 0xff8a3a, element: 'fogo', kind: 'melee', status: { id: 'queimando', chance: 0.25 },
     levelDesc: [
-      'Explosão de fogo ao seu redor que empurra os inimigos para longe.',
-      '+10 dano, área maior.',
-      '+10 dano, área maior.',
-      '+10 dano, recarga menor.',
-      '+10 dano, área bem maior.',
+      'Explosão de fogo em volta que empurra os inimigos e deixa seus golpes com fogo por 5 s (+10% de dano).',
+      '+10 dano, área maior, +2% no bônus de fogo.',
+      '+10 dano, área maior, +2% no bônus de fogo.',
+      '+10 dano, recarga menor, +2% no bônus de fogo.',
+      '+10 dano, área bem maior, +2% no bônus de fogo.',
+      '+10 dano, área maior, +2% no bônus de fogo.',
+      '+10 dano, recarga menor, +2% no bônus de fogo.',
+      '+10 dano, área maior, +2% no bônus de fogo.',
+      '+10 dano, recarga menor, +2% no bônus de fogo.',
+      '+10 dano, área bem maior, bônus de fogo dura 8 s.',
     ],
   },
   brandir: {
@@ -291,6 +300,36 @@ export const SKILLS: Record<SkillId, SkillDef> = {
       '+12 dano, alcance maior, recarga menor.',
       '+12 dano, alcance maior.',
       'Gira para trás também! +12 dano.',
+    ],
+  },
+  fulminante: {
+    id: 'fulminante', name: 'Golpe Fulminante', maxLevel: 10, color: 0xfff0c0, element: 'neutro', kind: 'melee', twoHand: true, sizeMod: { grande: 1.1 },
+    levelDesc: [
+      'Golpe forte no inimigo mais próximo.',
+      '+15 dano, recarga menor.',
+      '+15 dano, recarga menor.',
+      'Onda de choque em volta do alvo! +15 dano.',
+      '+15 dano, recarga menor.',
+      'Passa a atordoar (chance cresce a cada nível)! +15 dano.',
+      'Onda de choque maior! +15 dano.',
+      '+15 dano, recarga menor.',
+      '+15 dano, recarga menor.',
+      'Onda de choque bem maior! +15 dano.',
+    ],
+  },
+  provocar: {
+    id: 'provocar', name: 'Provocar', maxLevel: 10, color: 0xff4a4a, element: 'neutro', kind: 'melee',
+    levelDesc: [
+      'Provoca os monstros em volta: recebem +6% de dano, mas batem 10% mais forte. Não funciona em chefes nem mortos-vivos.',
+      '+3% de dano recebido por eles, área maior, recarga menor.',
+      '+3% de dano recebido por eles, área maior, recarga menor.',
+      '+3% de dano recebido por eles, área maior, recarga menor.',
+      '+3% de dano recebido por eles, área maior, recarga menor.',
+      '+3% de dano recebido por eles, área maior, recarga menor.',
+      '+3% de dano recebido por eles, área maior, recarga menor.',
+      '+3% de dano recebido por eles, área maior, recarga menor.',
+      '+3% de dano recebido por eles, área maior, recarga menor.',
+      '+3% de dano recebido por eles, área bem maior (+33% no total).',
     ],
   },
   perfurar: {
@@ -334,7 +373,7 @@ export const SKILLS: Record<SkillId, SkillDef> = {
     ],
   },
   titan: {
-    id: 'titan', name: 'Impacto do Titã', maxLevel: 10, color: 0xffd27a, element: 'neutro', kind: 'melee', status: { id: 'atordoado', chance: 0.1 }, sizeMod: { grande: 1.2 },
+    id: 'titan', name: 'Impacto do Titã', maxLevel: 10, color: 0xffd27a, element: 'neutro', kind: 'melee', twoHand: true, status: { id: 'atordoado', chance: 0.1 }, sizeMod: { grande: 1.2 },
     levelDesc: [
       'Golpe de espadão no alvo: acerta DUAS vezes todos os inimigos em volta dele.',
       '+16 dano, área maior.',

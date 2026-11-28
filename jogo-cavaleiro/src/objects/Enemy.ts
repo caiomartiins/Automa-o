@@ -36,6 +36,9 @@ export class Enemy extends Phaser.GameObjects.Sprite {
   nextDot = 0;
   /** Tem algum estado ativo (para atualizar a cor só quando preciso) */
   hasStatus = false;
+  /** Provocado (Provocar): até quando, e o dano extra que recebe */
+  tauntUntil = 0;
+  tauntDef = 0;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     super(scene, x, y, 'en-gosma');
@@ -55,6 +58,7 @@ export class Enemy extends Phaser.GameObjects.Sprite {
     this.knockUntil = this.flashUntil = this.shieldHitAt = 0;
     for (const k of STATUS_PRIORITY) this.statusUntil[k] = this.statusDot[k] = 0;
     this.nextDot = 0;
+    this.tauntUntil = this.tauntDef = 0;
     this.hasStatus = false;
     this.blocking = false;
     this.restoreTint(-1);
@@ -74,6 +78,11 @@ export class Enemy extends Phaser.GameObjects.Sprite {
           this.setTint(STATUS[k].tint);
           return;
         }
+      }
+      // provocado: avermelhado
+      if (this.tauntUntil > now) {
+        this.setTint(0xff9a9a);
+        return;
       }
     }
     if (this.def?.tint !== undefined) this.setTint(this.def.tint);

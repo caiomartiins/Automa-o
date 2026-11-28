@@ -22,7 +22,7 @@ export type PassiveId =
   | 'foco' | 'barreira' | 'dominio'
   | 'lembranca' | 'vulcao' | 'diluvio' | 'vendaval' | 'dracologia' | 'conjuracao'
   // Espadachim / Cavaleiro / Paladino
-  | 'pericia' | 'vigor' | 'recuperar' | 'furia'
+  | 'pericia' | 'vigor' | 'recuperar' | 'furia' | 'pericia2m'
   | 'rapidez' | 'contra' | 'determinacao' | 'esgrima'
   | 'pericialanca' | 'montaria' | 'periciamont' | 'duasmaos'
   | 'fe' | 'defensor' | 'cura' | 'baluarte'
@@ -72,6 +72,14 @@ export interface PassiveFx {
   vsMedium?: number;
   /** Montado (Montaria): a Perícia com Lança rende mais */
   mount?: number;
+  /** Dano dos golpes de espada / de espadão */
+  sword?: number;
+  twoHand?: number;
+  /** HP/s extra parado e cura extra de itens (fração) */
+  idleRegen?: number;
+  potion?: number;
+  /** Resistência a estados (lentidão, maldição, veneno, teia) */
+  resist?: number;
 }
 
 export interface TreeNode {
@@ -148,25 +156,27 @@ export const TREE: TreeNode[] = [
     passive: P('Vendaval', 0x9ae8a0, 'Ventos ao seu redor: mais esquiva e dano de Vento.', (l) => `+${l * 4} Flee e +${l * 6}% de dano de Vento`, { flee: 4, elem: { vento: 0.06 } }),
   },
 
-  // ================= Espadachim
+  // ================= Espadachim (até 10 níveis; o Golpe de Espada e o Escudo Giratório vêm de graça)
   { id: 'espada', cls: 'espadachim', col: 0, row: 0, req: [] },
   { id: 'escudo', cls: 'espadachim', col: 1, row: 0, req: [] },
   {
-    id: 'pericia', cls: 'espadachim', col: 2, row: 0, req: [],
-    passive: P('Perícia com Espada', 0xd8d8e8, 'Treino com a espada: mais dano corpo a corpo e mais acerto.', (l) => `+${l * 5}% de dano corpo a corpo e +${l * 2} HIT`, { melee: 0.05, hit: 2 }),
-  },
-  { id: 'explosao', cls: 'espadachim', col: 0, row: 1, req: [{ id: 'espada', lv: 3 }] },
-  {
-    id: 'vigor', cls: 'espadachim', col: 1, row: 1, req: [{ id: 'escudo', lv: 2 }],
-    passive: P('Vigor Inabalável', 0x5a8cff, 'Aguenta firme: menos dano recebido.', (l) => `-${l * 4}% de dano recebido`, { dmgTaken: 0.04 }),
+    id: 'recuperar', cls: 'espadachim', col: 2, row: 0, req: [],
+    passive: { ...P('Aumentar Recuperação de HP', 0x7ae07a, 'Recupera vida mais rápido (o dobro parado) e as poções e a comida curam mais.', (l) => `+${(l * 0.25).toFixed(2)} HP/s (+${(l * 0.5).toFixed(1)} parado), +${l * 2}% de HP máx., cura de itens +${l * 10}%`, { regen: 0.25, idleRegen: 0.5, hpPct: 0.02, potion: 0.1 }), max: 10 },
   },
   {
-    id: 'recuperar', cls: 'espadachim', col: 2, row: 1, req: [],
-    passive: P('Recuperar HP', 0x7ae07a, 'Corpo treinado: mais vida máxima e regeneração.', (l) => `+${l * 4}% de HP máx. e +${(l * 0.5).toFixed(1)} HP/s`, { hpPct: 0.04, regen: 0.5 }),
+    id: 'pericia', cls: 'espadachim', col: 0, row: 1, req: [],
+    passive: { ...P('Perícia com Espada', 0xd8d8e8, 'Treino com a espada: mais dano corpo a corpo e muito mais nos golpes de espada.', (l) => `+${l * 2}% de dano corpo a corpo, +${l * 4}% no Golpe de Espada e +${l * 2} HIT`, { melee: 0.02, sword: 0.04, hit: 2 }), max: 10 },
   },
   {
-    id: 'furia', cls: 'espadachim', col: 0, row: 2, req: [{ id: 'explosao', lv: 1 }],
-    passive: P('Fúria', 0xff5a4a, 'Quanto mais ferido, mais forte: dano extra com menos da metade do HP.', (l) => `+${l * 8}% de dano com HP abaixo de 50%`, { berserk: 0.08 }),
+    id: 'pericia2m', cls: 'espadachim', col: 1, row: 1, req: [{ id: 'pericia', lv: 1 }],
+    passive: { ...P('Perícia com Espada de Duas Mãos', 0xc8b89a, 'Domínio do espadão: muito mais dano nos golpes pesados (Golpe Fulminante e Impacto do Titã).', (l) => `+${l * 5}% de dano nos golpes de espadão`, { twoHand: 0.05 }), max: 10 },
+  },
+  { id: 'fulminante', cls: 'espadachim', col: 2, row: 1, req: [] },
+  { id: 'explosao', cls: 'espadachim', col: 0, row: 2, req: [{ id: 'fulminante', lv: 5 }] },
+  { id: 'provocar', cls: 'espadachim', col: 1, row: 2, req: [] },
+  {
+    id: 'vigor', cls: 'espadachim', col: 2, row: 2, req: [{ id: 'provocar', lv: 5 }],
+    passive: { ...P('Vigor', 0x5a8cff, 'Aguenta firme: menos dano recebido e resiste a lentidão, maldição, veneno e teia.', (l) => `-${l * 2}% de dano recebido e +${l * 4}% de resistência a estados`, { dmgTaken: 0.02, resist: 0.04 }), max: 10 },
   },
 
   // ================= Cavaleiro: lança e espada de duas mãos (10 níveis; cada nível dá mais dano ou mais área)

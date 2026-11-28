@@ -203,3 +203,62 @@ export class TitanImpactSkill extends Skill {
     }
   }
 }
+
+/** Golpe Fulminante: golpe forte num alvo; atordoa a partir do Nv 6 e ganha onda de choque nos níveis altos */
+export class BashSkill extends Skill {
+  readonly id = 'fulminante' as const;
+  private timer = 300;
+  get damage() { return (50 + 15 * (this.level - 1)) * this.g.stats.might; }
+  get cooldown() { return (1300 - 40 * (this.level - 1)) / this.g.stats.haste; }
+  /** Nv 4+: onda de choque em volta do alvo; cresce no Nv 7 e 10 */
+  get splash() { return (this.level >= 10 ? 95 : this.level >= 7 ? 75 : this.level >= 4 ? 55 : 0) * this.g.stats.area; }
+
+  update(dt: number) {
+    this.timer -= dt;
+    if (this.timer > 0) return;
+    const p = this.g.player;
+    const t = this.g.nearestEnemies(p.x, p.y, 1, 130 * this.g.stats.area)[0];
+    if (!t) {
+      this.timer = 120;
+      return;
+    }
+    this.timer = this.cooldown;
+    this.g.playerAttacked();
+    const a = Math.atan2(t.y - p.y, t.x - p.x);
+    this.g.fx.slash(t.x, t.y, a, 60, 0xfff0c0);
+    this.g.fx.ring(t.x, t.y, 12, 3, 220, 0xffffff, 0.6);
+    this.g.damageEnemy(t, this.damage, 200, p.x, p.y, this.id);
+    if (this.splash > 0) this.g.explode(t.x, t.y, this.splash, this.damage * 0.5, 120, 0xffe0a0, this.id);
+  }
+}
+
+/** Provocar: atrai e enfraquece os inimigos em volta (defesa menor, mas batem um pouco mais forte) */
+export class ProvokeSkill extends Skill {
+  readonly id = 'provocar' as const;
+  private timer = 800;
+  get cooldown() { return (6000 - 200 * (this.level - 1)) / this.g.stats.haste; }
+  get radius() { return (140 + 14 * this.level) * this.g.stats.area; }
+  /** Dano extra que os provocados recebem */
+  get defDown() { return 0.06 + 0.03 * (this.level - 1); }
+
+  update(dt: number) {
+    this.timer -= dt;
+    if (this.timer > 0) return;
+    const p = this.g.player;
+    if (!this.g.nearestEnemies(p.x, p.y, 1, this.radius).length) {
+      this.timer = 200;
+      return;
+    }
+    this.timer = this.cooldown;
+    this.g.fx.ring(p.x, p.y, this.radius * 0.2, 5, 400, 0xff4a4a, 0.4);
+    const until = this.g.elapsed + 4000 + 200 * this.level;
+    for (const e of this.g.queryEnemies(p.x, p.y, this.radius, this.near)) {
+      // não funciona em chefes nem em mortos-vivos
+      if (!e.active || e.def.boss || e.def.miniboss || e.def.race === 'mortovivo') continue;
+      if ((e.x - p.x) ** 2 + (e.y - p.y) ** 2 > this.radius ** 2) continue;
+      e.tauntUntil = until;
+      e.tauntDef = this.defDown;
+      e.setTint(0xff9a9a);
+    }
+  }
+}
