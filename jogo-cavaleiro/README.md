@@ -116,7 +116,7 @@ Gosma, Esqueleto, **Lobo Cinzento** (a partir de 1:30, rápido e ágil; as horda
 
 ## Calendário de chefes
 
-**Mini-chefe** a cada **10 níveis**, alternando **Carniçal** (10, 30, 50...) e **Rainha Magmática** (20, 40, 60...); **chefe** a cada **15 níveis**: **15** Bafome, **30** Minotauro, **45** Lorde Ossário, e o rodízio recomeça (cada volta do mesmo chefe vem muito mais forte).
+Mini-chefe e chefe se alternam a cada 10 níveis. **Mini-chefes** nos níveis **10, 30, 50...** (Carniçal, Rainha Magmática, Carniçal...); **chefes** a cada **20 níveis**, o primeiro só no **nível 20**: **20** Bafome, **40** Minotauro, **60** Lorde Ossário, e o rodízio recomeça (cada volta do mesmo chefe vem bem mais forte).
 
 **Rainha Magmática** (`src/aranha.ts`): aranha de lava com Cuspe de Fogo, Pisada de Magma (deixa poça que queima), Teia (prende e deixa lento), Jato Ácido (envenena), Salto (marca o chão e cai em cima) e **Chuva de Magma** (bolas de magma caem nas marcas e deixam chamas no chão); fúria com metade da vida, quando chama a **Ninhada** (4 filhotes rápidos). Solta Presa de Magma, Capa de Seda Rubra e a carta dela.
 
@@ -124,7 +124,7 @@ Gosma, Esqueleto, **Lobo Cinzento** (a partir de 1:30, rápido e ágil; as horda
 
 **Durante a luta contra um chefe**: ao surgir, ele espanta 70% dos monstros comuns (menos os colados no jogador); enquanto estiver vivo vêm cerca de um terço dos monstros (no máximo 35% do limite na tela) e nenhuma horda, mas cada monstro tem vida ×2 e dano ×1,5.
 
-**Lorde Ossário** (`src/lich.ts`), o chefe mais forte (15.000 de vida, só a partir do nível 45): Esfera da Alma (esferas verdes que perseguem), Ceifa Sombria (golpe giratório de perto), Explosão Profana (ondas de choque que se espalham), Passo Fantasma + Raio Necrótico (some, reaparece perto e dispara um raio em linha) e **Prisão de Ossos** (um círculo de ossos sobe em volta do jogador com uma brecha e o centro explode: saia pela brecha antes do centro encher). Com metade da vida: fúria, invoca fantasmas e esqueletos e faz cair uma Chuva de Caveiras. Solta a Coroa Ossária, o Manto das Almas, a carta dele e a arma mítica Foice das Almas (brilho verde).
+**Lorde Ossário** (`src/lich.ts`), o chefe mais forte (15.000 de vida, só a partir do nível 60): Esfera da Alma (esferas verdes que perseguem), Ceifa Sombria (golpe giratório de perto), Explosão Profana (ondas de choque que se espalham), Passo Fantasma + Raio Necrótico (some, reaparece perto e dispara um raio em linha) e **Prisão de Ossos** (um círculo de ossos sobe em volta do jogador com uma brecha e o centro explode: saia pela brecha antes do centro encher). Com metade da vida: fúria, invoca fantasmas e esqueletos e faz cair uma Chuva de Caveiras. Solta a Coroa Ossária, o Manto das Almas, a carta dele e a arma mítica Foice das Almas (brilho verde).
 
 ## Inimigos e chefes
 Gosma, Morcego, Cogumelo Andante, Esqueleto, Fantasma, Orc e Cavaleiro Negro (elite) aparecem conforme o tempo passa. A cada minuto vem uma horda.

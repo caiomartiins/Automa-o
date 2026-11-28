@@ -108,7 +108,13 @@ export class MenuScene extends Phaser.Scene {
         if (k < 2) c.add(wtext(this, x + spacing / 2, heroY, k === 0 ? '→' : 'ou', 14 * s, darken(line.color), true).setOrigin(0.5));
       });
       if (!portrait) {
-        const [s0, s1, s2] = line.classes.map((id) => SKILLS[CLASSES[id].grantsSkill!].name);
+        // estilo de cada classe (nem toda classe ganha uma habilidade fixa)
+        const STYLE: Record<string, string> = {
+          espadachim: 'Técnica à escolha', cavaleiro: 'Lança e espadão', paladino: 'Escudo e magia sagrada',
+          mago: 'Bola de Fogo', bruxo: 'Fogo, gelo e raios', professor: 'Livros e terra',
+          arqueiro: 'Flecha', patrulheiro: 'Tiros certeiros', cacador: 'Sombras e armadilhas',
+        };
+        const [s0, s1, s2] = line.classes.map((id) => STYLE[id] ?? (CLASSES[id].grantsSkill ? SKILLS[CLASSES[id].grantsSkill!].name : CLASSES[id].name));
         c.add(wtext(this, cx, y0 + cardH - 14 * s, `${s0}  →  ${s1} ou ${s2}`, 11 * s, WIN.muted).setOrigin(0.5)
           .setAlign('center').setWordWrapWidth(cardW - 16));
       }

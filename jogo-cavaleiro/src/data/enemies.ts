@@ -80,7 +80,7 @@ export const MINOTAURO: EnemyDef = {
   element: 'terra', race: 'bruto', size: 'grande', lv: 30
 };
 
-/** Lorde Ossário: o chefe mais forte. Só aparece a partir do nível 45 (3º do rodízio: 45, 90, 135...) */
+/** Lorde Ossário: o chefe mais forte. Só aparece a partir do nível 60 (3º do rodízio: 60, 120, 180...) */
 export const LICH: EnemyDef = {
   id: 'lich', name: 'Lorde Ossário', texture: 'en-lich', hp: 15000, speed: 78, damage: 60, xp: 420, radius: 38,
   from: 0, weight: 0, knockback: 0, scale: 1.9, boss: true,
@@ -93,11 +93,16 @@ export const LICH: EnemyDef = {
  * Cada volta deixa o mesmo chefe mais forte.
  */
 export const BOSS_EVERY = 120;
-/** Mini-chefe a cada 10 níveis, alternando: 10 Carniçal, 20 Rainha Magmática, 30 Carniçal... */
-export const MINI_LEVEL_EVERY = 10;
+/**
+ * Calendário por nível: mini-chefe e chefe se alternam a cada 10 níveis.
+ * Mini-chefes nos níveis 10, 30, 50... (Carniçal, Rainha Magmática, Carniçal...).
+ */
+export const MINI_LEVEL_EVERY = 20;
+/** Deslocamento do calendário dos mini-chefes (10, 30, 50...) */
+export const MINI_LEVEL_OFFSET = 10;
 export const MINI_ROTATION = ['zumbi', 'aranha'] as const;
-/** Chefe a cada 15 níveis: 15 Bafome, 30 Minotauro, 45 Lorde Ossário, e o rodízio recomeça mais forte */
-export const BOSS_LEVEL_EVERY = 15;
+/** Chefe a cada 20 níveis (o 1º só no nível 20): 20 Bafome, 40 Minotauro, 60 Lorde Ossário, e o rodízio recomeça mais forte */
+export const BOSS_LEVEL_EVERY = 20;
 /** Loja no meio da partida a cada 10 níveis */
 export const SHOP_LEVEL_EVERY = 10;
 

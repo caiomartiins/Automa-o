@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { Enemy } from '../objects/Enemy';
 import { Pickup } from '../objects/Pickup';
-import { ZUMBI, ARANHA, BAFOME, MINOTAURO, LICH, BOSS_LEVEL_EVERY, MINI_LEVEL_EVERY, MINI_ROTATION, BOSS_ROTATION, HARD_FROM, SHOP_LEVEL_EVERY, levelScale, ENEMIES, MAX_ENEMY_RADIUS, dmgScale, hpScale, speedScale, threatLevel, type EnemyDef } from '../data/enemies';
+import { ZUMBI, ARANHA, BAFOME, MINOTAURO, LICH, BOSS_LEVEL_EVERY, MINI_LEVEL_EVERY, MINI_LEVEL_OFFSET, MINI_ROTATION, BOSS_ROTATION, HARD_FROM, SHOP_LEVEL_EVERY, levelScale, ENEMIES, MAX_ENEMY_RADIUS, dmgScale, hpScale, speedScale, threatLevel, type EnemyDef } from '../data/enemies';
 import { BafomeAI } from '../boss';
 import { ZombieAI } from '../miniboss';
 import { MinotaurAI } from '../minotaur';
@@ -1916,7 +1916,7 @@ export class GameScene extends Phaser.Scene implements RpgHost {
         this.shopVisits = shops;
         this.pendingShop = true;
       }
-      const minis = Math.floor(this.level / MINI_LEVEL_EVERY);
+      const minis = Math.floor((this.level + MINI_LEVEL_OFFSET) / MINI_LEVEL_EVERY);
       if (minis > this.miniDone + this.pendingMini) this.pendingMini = minis - this.miniDone;
       const bosses = Math.floor(this.level / BOSS_LEVEL_EVERY);
       if (bosses > this.bossDone + this.pendingBoss) this.pendingBoss = bosses - this.bossDone;
