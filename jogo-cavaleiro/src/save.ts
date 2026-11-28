@@ -22,12 +22,13 @@ export interface SaveData {
   map: string;
   best: { time: number; level: number };
   /** Versão de teste já recebeu o zeny inicial */
-  testZeny?: boolean;
+  /** Versão de teste: quanto zeny inicial já foi dado (true = 5.000, das versões antigas) */
+  testZeny?: boolean | number;
 }
 
 const KEY = 'ascensao-do-cavaleiro:save';
 
-/** Zeny inicial (a versão de teste é gerada com VITE_START_ZENY=5000) */
+/** Zeny inicial (a versão de teste é gerada com VITE_START_ZENY=100000) */
 const START_ZENY = Number(import.meta.env.VITE_START_ZENY ?? 0) || 0;
 
 const fresh = (): SaveData => ({ zeny: START_ZENY, up: {}, refine: 0, refines: {}, owned: [], equip: {}, v: 2, pet: null, map: 'campo', best: { time: 0, level: 0 } });
@@ -64,9 +65,11 @@ export function loadSave(): SaveData {
       data = { ...data, v: 1, ...JSON.parse(raw) };
       migrate(data);
       // versão de teste: garante o zeny inicial uma vez, mesmo com save antigo
-      if (START_ZENY && !data.testZeny) {
+      // versão de teste: completa o zeny até o valor atual (também quem já tinha o bônus antigo de 5.000)
+      const given = data.testZeny === true ? 5000 : Number(data.testZeny) || 0;
+      if (START_ZENY && given < START_ZENY) {
         data.zeny = Math.max(data.zeny, START_ZENY);
-        data.testZeny = true;
+        data.testZeny = START_ZENY;
       }
     }
   } catch {
